@@ -21,25 +21,29 @@ export const ThemeProvider = ({ children }) => {
 };
 
 const lightColors = {
-  background: ['#E0F2F1', '#B3E5FC', '#81D4FA'],
-  textMain: '#01579B',
-  textSecondary: '#0277BD',
-  cardText: '#012B4D',
-  cardDesc: '#37474F',
-  glass: 'rgba(255, 255, 255, 0.4)',
-  glassBorder: 'rgba(255, 255, 255, 0.6)',
+  // Soft mint to sky blue gradient
+  background: ['#ffffff', '#f3f4f6', '#ffffff'], 
+  textMain: '#102A43',      
+  textSecondary: '#010406',    
+  cardText: '#6d859c',
+  cardDesc: '#3e5569',
+  primary: '#243B55',          
+  glass: 'rgba(255, 255, 255, 0.5)', 
+  glassBorder: 'rgba(255, 255, 255, 0.8)',
   status: 'dark-content'
+  
 };
 
 const darkColors = {
-  background: ['#012B4D', '#001529', '#000814'],
-  textMain: '#81D4FA',
-  textSecondary: '#B3E5FC',
-  cardText: '#E0F2F1',
-  cardDesc: '#B0BEC5',
-  glass: 'rgba(0, 0, 0, 0.4)',
-  glassBorder: 'rgba(255, 255, 255, 0.1)',
+  // Deep Navy to Charcoal (Adds depth)
+  background: ['#000000', '#000000', '#010101'], 
+  textMain: '#F8FAFC',         
+  textSecondary: '#94A3B8',    
+  cardText: '#F1F5F9',
+  cardDesc: '#CBD5E1',
+  primary: '#38BDF8',       
+  glass: 'rgba(14, 21, 39, 0.6)', 
+  glassBorder: 'rgba(255, 255, 255, 0.15)',
   status: 'light-content'
 };
-
 export const useTheme = () => useContext(ThemeContext);
