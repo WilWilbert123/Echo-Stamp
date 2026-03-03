@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -17,10 +18,10 @@ import {
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
-import GlassButton from '../components/GlassButton';
-import GlassCard from '../components/GlassCard';
 import { useTheme } from '../context/ThemeContext';
 import { addEchoAsync } from '../redux/echoSlice';
+
+const { width, height } = Dimensions.get('window');
 
 const CreateEcho = ({ navigation }) => {
   const { isDark, colors } = useTheme();
@@ -39,17 +40,14 @@ const CreateEcho = ({ navigation }) => {
     const preFetchLocation = async () => {
       try {
         setIsLocating(true);
-        
-        // Check for permissions
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
           setAddress("Permission denied");
           return;
         }
 
-        // Get position with high accuracy
         const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High, 
+          accuracy: Location.Accuracy.High,
         });
 
         if (location) {
@@ -60,12 +58,9 @@ const CreateEcho = ({ navigation }) => {
 
           if (reverseGeocode.length > 0) {
             const area = reverseGeocode[0];
-            
-            // Refined formatting to handle Pitogo/Taguig/Makati border
             const streetName = area.street && !area.street.includes('+') ? area.street : "";
-            const brgy = area.district || ""; // Pitogo usually lives here
+            const brgy = area.district || "";
             const cityName = area.city || "";
-            // Only show province if it's not Metro Manila to keep it short
             const province = (area.region && area.region !== "Metro Manila") ? area.region : "";
 
             const formattedAddress = [streetName, brgy, cityName, province]
@@ -102,28 +97,25 @@ const CreateEcho = ({ navigation }) => {
       Alert.alert("Wait", "Please give this moment a title.");
       return;
     }
-
-    if (!user?.id) {
-        Alert.alert("Error", "No active user session found.");
-        return;
+    const userId = user?._id || user?.id;
+    if (!userId) {
+      Alert.alert("Error", "No active user session found.");
+      return;
     }
 
     try {
       setLoading(true);
-      
       const echoData = {
-        userId: user.id, 
+        userId: userId,
         title: title.trim(),
         description: description.trim(),
         emotion: emotion,
         location: {
           address: address || "Somewhere beautiful"
         }
-      
       };
 
       await dispatch(addEchoAsync(echoData)).unwrap();
-      
       Alert.alert("Success", "Memory anchored!");
       navigation.goBack();
     } catch (error) {
@@ -135,64 +127,73 @@ const CreateEcho = ({ navigation }) => {
   };
 
   return (
-    <LinearGradient colors={colors.background} style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
       <StatusBar barStyle={colors.status} />
+
+      {/* BRANDED WAVY HEADER */}
+      <View style={styles.headerBackground}>
+        <View style={[styles.blueWave, { backgroundColor: colors.primary, opacity: isDark ? 0.3 : 0.8 }]} />
+        <View style={[styles.darkWave, { backgroundColor: isDark ? '#1E293B' : '#637D8B', opacity: 0.6 }]} />
+      </View>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingTop: Platform.OS === 'ios' ? 60 : 40 }]}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.navHeader}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Ionicons name="chevron-back" size={28} color={colors.textMain} />
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={[styles.backButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
+            >
+              <Ionicons name="chevron-back" size={24} color={isDark ? "#FFF" : colors.primary} />
             </TouchableOpacity>
-            <Text style={[styles.header, { color: colors.textMain }]}>New Echo</Text>
-            <View style={{ width: 28 }} />
+            <Text style={[styles.headerTitle, { color: isDark ? '#FFF' : colors.primary }]}>New Echo</Text>
+            <View style={{ width: 40 }} />
           </View>
 
-          {/* Location Status Bar */}
-          <View style={[styles.locationStatus, { backgroundColor: colors.glass }]}>
+          {/* Location Bar */}
+          <View style={[styles.locationStatus, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]}>
             <Ionicons
               name={address && !address.includes("denied") ? "location" : "location-outline"}
               size={14}
-              color={address && !address.includes("denied") ? (isDark ? "#81C784" : "#2E7D32") : colors.textMain}
+              color={isDark ? colors.primary : colors.primary}
             />
-            <Text 
-                numberOfLines={1}
-                style={[styles.locationStatusText, { color: colors.textMain }, address && !address.includes("denied") && { color: isDark ? "#81C784" : "#2E7D32" }]}
-            >
+            <Text numberOfLines={1} style={[styles.locationStatusText, { color: isDark ? '#FFF' : colors.textMain }]}>
               {isLocating ? "Finding your spot..." : address || "Location ready"}
             </Text>
           </View>
 
-          {/* Title Input */}
-          <GlassCard style={[styles.inputCard, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
+          {/* Main Input Area */}
+          <View style={[styles.solidCard, { 
+            backgroundColor: isDark ? colors.glass : '#FFF',
+            borderColor: colors.glassBorder,
+            borderWidth: isDark ? 1 : 0
+          }]}>
             <View style={styles.labelRow}>
-              <Text style={[styles.label, { color: colors.textMain }]}>What happened?</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>What happened?</Text>
               <Text style={[styles.counter, { color: colors.textSecondary }]}>{title.length}/500</Text>
             </View>
             <TextInput
-              style={[styles.input, { color: colors.cardText }]}
+              style={[styles.input, { color: colors.textMain }]}
               placeholder="Name this moment..."
-              placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "rgba(1, 87, 155, 0.4)"}
+              placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)"}
               value={title}
               onChangeText={setTitle}
               maxLength={500}
+              multiline
             />
-          </GlassCard>
-
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.label, { color: colors.textMain }]}>How did it feel?</Text>
           </View>
 
-          {/* Emotion Selection */}
+          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>HOW DID IT FEEL?</Text>
+
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalScrollPadding}
+            contentContainerStyle={styles.emotionScrollContent}
             style={styles.emotionScrollView}
           >
             {emotions.map((item) => (
@@ -201,18 +202,21 @@ const CreateEcho = ({ navigation }) => {
                 onPress={() => setEmotion(item.label)}
                 style={[
                   styles.emotionBox,
-                  { backgroundColor: colors.glass, borderColor: colors.glassBorder },
-                  emotion === item.label && [
-                    styles.activeEmotionBox,
-                    { borderColor: colors.textMain, backgroundColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.8)' }
-                  ]
+                  { 
+                    backgroundColor: isDark ? colors.glass : '#FFF',
+                    borderColor: emotion === item.label ? colors.primary : colors.glassBorder,
+                    borderWidth: emotion === item.label ? 2 : 1
+                  },
+                  emotion === item.label && {
+                    backgroundColor: isDark ? 'rgba(56,189,248,0.1)' : 'rgba(56,189,248,0.05)'
+                  }
                 ]}
               >
                 <Text style={styles.emojiText}>{item.emoji}</Text>
                 <Text style={[
                   styles.emotionText,
                   { color: colors.textSecondary },
-                  emotion === item.label && { color: colors.textMain, fontWeight: '800' }
+                  emotion === item.label && { color: colors.primary, fontWeight: '800' }
                 ]}>
                   {item.label}
                 </Text>
@@ -220,62 +224,80 @@ const CreateEcho = ({ navigation }) => {
             ))}
           </ScrollView>
 
-          {/* Detail Input */}
-          <GlassCard style={[styles.inputCard, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
-            <Text style={[styles.label, { color: colors.textMain }]}>Add more detail (Optional)</Text>
+          {/* Details Card */}
+          <View style={[styles.solidCard, { 
+            backgroundColor: isDark ? colors.glass : '#FFF',
+            borderColor: colors.glassBorder,
+            borderWidth: isDark ? 1 : 0
+          }]}>
+            <Text style={[styles.label, { color: colors.textSecondary, marginBottom: 10 }]}>ADD MORE DETAIL</Text>
             <TextInput
-              style={[styles.input, styles.textArea, { color: colors.cardText }]}
+              style={[styles.input, styles.textArea, { color: colors.textMain }]}
               placeholder="Capture the small things..."
-              placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "rgba(1, 87, 155, 0.4)"}
+              placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)"}
               value={description}
               onChangeText={setDescription}
               multiline
               numberOfLines={4}
               textAlignVertical="top"
             />
-          </GlassCard>
+          </View>
 
-          {/* Save Button */}
-          <View style={styles.buttonContainer}>
+          {/* Footer Action */}
+          <View style={styles.footer}>
             {loading ? (
-              <View style={styles.loadingWrapper}>
-                <ActivityIndicator size="large" color={colors.textMain} />
-              </View>
+              <ActivityIndicator size="large" color={colors.primary} />
             ) : (
-              <GlassButton
-                title="Anchor Memory"
+              <TouchableOpacity
+                style={styles.mainButton}
                 onPress={handleSave}
-              />
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={isDark ? [colors.primary, '#0369A1'] : ['#8ECCE3', '#6AB8D2']}
+                  style={styles.buttonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={styles.buttonText}>Anchor Memory</Text>
+                  <Ionicons name="bookmark" size={20} color="#FFF" />
+                </LinearGradient>
+              </TouchableOpacity>
             )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 60 },
-  navHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  header: { fontSize: 24, fontWeight: '800' },
-  locationStatus: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, alignSelf: 'flex-start', maxWidth: '100%' },
-  locationStatusText: { fontSize: 11, marginLeft: 5, fontWeight: '600' },
-  inputCard: { marginBottom: 25, padding: 18, borderWidth: 1 },
-  labelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  label: { fontWeight: '700', fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 },
-  counter: { fontSize: 11, opacity: 0.6 },
-  input: { fontSize: 18, fontWeight: '500' },
-  textArea: { minHeight: 80, fontSize: 16, marginTop: 10 },
-  sectionHeader: { marginBottom: 15, paddingLeft: 5 },
-  emotionBox: { width: 85, paddingVertical: 15, borderRadius: 35, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-  activeEmotionBox: { transform: [{ scale: 0.9 }] },
-  emojiText: { fontSize: 24, marginBottom: 5 },
-  emotionText: { fontSize: 10, fontWeight: '600' },
-  buttonContainer: { marginTop: 10, alignItems: 'center' },
-  loadingWrapper: { alignItems: 'center' },
+  headerBackground: { position: 'absolute', top: 0, width: '100%', height: height * 0.25 },
+  blueWave: { position: 'absolute', top: -50, right: -50, width: width * 1.3, height: height * 0.2, borderBottomLeftRadius: 300, transform: [{ rotate: '-10deg' }] },
+  darkWave: { position: 'absolute', top: -30, right: -80, width: width * 0.9, height: height * 0.18, borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
+  navHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  backButton: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  headerTitle: { fontSize: 22, fontWeight: '900' },
+  locationStatus: { flexDirection: 'row', alignItems: 'center', marginBottom: 25, paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, alignSelf: 'center' },
+  locationStatusText: { fontSize: 12, marginLeft: 6, fontWeight: '700' },
+  solidCard: { padding: 20, borderRadius: 24, marginBottom: 20, ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10 }, android: { elevation: 2 } }) },
+  labelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+  label: { fontWeight: '800', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 },
+  counter: { fontSize: 11, fontWeight: '600' },
+  input: { fontSize: 17, fontWeight: '500', lineHeight: 24 },
+  textArea: { minHeight: 120 },
+  sectionLabel: { fontSize: 11, fontWeight: '800', marginLeft: 10, marginBottom: 15, letterSpacing: 1.5 },
   emotionScrollView: { marginBottom: 25 },
-  horizontalScrollPadding: { paddingHorizontal: 5, gap: 12 }
+  emotionScrollContent: { paddingHorizontal: 5, gap: 12 },
+  emotionBox: { width: 90, height: 95, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
+  emojiText: { fontSize: 32, marginBottom: 8 },
+  emotionText: { fontSize: 11, fontWeight: '700' },
+  footer: { marginTop: 10, alignItems: 'center' },
+  mainButton: { width: '100%', height: 60, borderRadius: 30, overflow: 'hidden' },
+  buttonGradient: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  buttonText: { color: '#FFF', fontSize: 18, fontWeight: '800' },
 });
 
 export default CreateEcho;

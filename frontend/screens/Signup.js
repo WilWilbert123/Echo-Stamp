@@ -15,224 +15,166 @@ import {
     View
 } from 'react-native';
 
-// Custom Components & Context
-import GlassCard from '../components/GlassCard';
 import { useTheme } from '../context/ThemeContext';
 import API from '../services/api';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const Signup = ({ navigation }) => {
     const { colors, isDark } = useTheme();
     
     // Form State
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
-    const [focusedInput, setFocusedInput] = useState(null);
 
     const handleSignup = async () => {
-        // 1. Validation
         if (!email.trim() || !password.trim() || !username.trim()) {
-            Alert.alert("Missing Info", "Please fill in all fields to create your Echo.");
+            Alert.alert("Error", "Please fill in all required fields.");
             return;
         }
-
-        if (password.length < 6) {
-            Alert.alert("Security", "Password should be at least 6 characters.");
+        if (password !== confirmPassword) {
+            Alert.alert("Error", "Passwords do not match.");
             return;
         }
 
         setLoading(true);
         try {
-            // 2. API Call
             await API.post('/users/register', { 
+                firstName,
+                lastName,
                 username: username.trim(), 
                 email: email.toLowerCase().trim(), 
                 password 
             });
 
-            // 3. Success Feedback
             Alert.alert(
-                "Welcome!", 
-                "Account created successfully. Please login to continue.",
+                "Success", 
+                "Account created! Please login.",
                 [{ text: "OK", onPress: () => navigation.navigate('Login') }]
             );
         } catch (error) {
-            const message = error.response?.data?.message || "Something went wrong during signup.";
-            Alert.alert("Signup Failed", message);
+            Alert.alert("Signup Failed", error.response?.data?.message || "Check your details.");
         } finally {
             setLoading(false);
         }
     };
 
-    // Dynamic style helper
-    const getInputBorder = (name) => ({
-        borderColor: focusedInput === name ? colors.primary : colors.glassBorder,
-        backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-    });
-
     return (
-        <View style={styles.container}>
-            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-            <LinearGradient colors={colors.background} style={StyleSheet.absoluteFill} />
+        <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
+            <StatusBar barStyle={colors.status} />
             
+            {/* 1. TOP BACKGROUND SHAPES */}
+            <View style={[styles.headerBackground, { backgroundColor: colors.background[0] }]}>
+                <View style={[styles.blueWave, { backgroundColor: colors.primary, opacity: isDark ? 0.4 : 1 }]} />
+                <View style={[styles.darkWave, { backgroundColor: isDark ? '#1E293B' : '#637D8B', opacity: 0.6 }]} />
+            </View>
+
             <KeyboardAvoidingView 
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
                 style={styles.flex}
             >
                 <View style={styles.inner}>
-                    {/* Back Button */}
-                    <TouchableOpacity 
-                        style={[styles.backBtn, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]} 
-                        onPress={() => navigation.goBack()}
-                    >
-                        <Ionicons name="arrow-back" size={22} color={colors.textMain} />
-                    </TouchableOpacity>
-
+                    {/* 2. HEADER TEXT */}
                     <View style={styles.headerArea}>
-                        <Text style={[styles.title, { color: colors.textMain }]}>Create Echo</Text>
+                        <Text style={[styles.title, { color: colors.textMain }]}>Let's Get Started!</Text>
                         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                            Begin your emotional resonance
+                            Create an account to get all features
                         </Text>
                     </View>
 
-                    <GlassCard style={[styles.authCard, { 
-                        backgroundColor: colors.glass, 
-                        borderColor: colors.glassBorder 
-                    }]}>
-                        {/* Username Input */}
-                        <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Username</Text>
-                        <View style={[styles.inputWrapper, getInputBorder('username')]}>
-                            <Ionicons name="person-outline" size={20} color={focusedInput === 'username' ? colors.primary : colors.textSecondary} style={styles.inputIcon} />
-                            <TextInput 
-                                placeholder="Display name"
-                                placeholderTextColor={isDark ? '#94A3B880' : '#64748B80'}
-                                style={[styles.input, { color: colors.textMain }]}
-                                value={username}
-                                onChangeText={setUsername}
-                                onFocus={() => setFocusedInput('username')}
-                                onBlur={() => setFocusedInput(null)}
-                                editable={!loading}
-                            />
-                        </View>
+                    {/* 3. FORM FIELDS */}
+                    <View style={styles.formContainer}>
+                        {[
+                            { icon: 'person-outline', placeholder: 'First Name', val: firstName, set: setFirstName },
+                            { icon: 'person-outline', placeholder: 'Last Name', val: lastName, set: setLastName },
+                            { icon: 'at-outline', placeholder: 'User Name', val: username, set: setUsername },
+                            { icon: 'mail-outline', placeholder: 'Email', val: email, set: setEmail, type: 'email-address' },
+                            { icon: 'lock-closed-outline', placeholder: 'Password', val: password, set: setPassword, secure: true },
+                            { icon: 'shield-checkmark-outline', placeholder: 'Confirm Password', val: confirmPassword, set: setConfirmPassword, secure: true },
+                        ].map((item, index) => (
+                            <View key={index} style={[
+                                styles.inputWrapper, 
+                                { 
+                                    backgroundColor: isDark ? colors.glass : '#F4F4F4',
+                                    borderColor: colors.glassBorder,
+                                    borderWidth: isDark ? 1 : 0
+                                }
+                            ]}>
+                                <Ionicons name={item.icon} size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                                <TextInput 
+                                    placeholder={item.placeholder}
+                                    placeholderTextColor={isDark ? '#64748B' : '#999'}
+                                    style={[styles.input, { color: colors.textMain }]}
+                                    value={item.val}
+                                    onChangeText={item.set}
+                                    secureTextEntry={item.secure}
+                                    keyboardType={item.type || 'default'}
+                                    autoCapitalize="none"
+                                    editable={!loading}
+                                />
+                            </View>
+                        ))}
+                    </View>
 
-                        {/* Email Input */}
-                        <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Email</Text>
-                        <View style={[styles.inputWrapper, getInputBorder('email')]}>
-                            <Ionicons name="mail-outline" size={20} color={focusedInput === 'email' ? colors.primary : colors.textSecondary} style={styles.inputIcon} />
-                            <TextInput 
-                                placeholder="email@address.com"
-                                placeholderTextColor={isDark ? '#94A3B880' : '#64748B80'}
-                                style={[styles.input, { color: colors.textMain }]}
-                                value={email}
-                                onChangeText={setEmail}
-                                onFocus={() => setFocusedInput('email')}
-                                onBlur={() => setFocusedInput(null)}
-                                autoCapitalize="none"
-                                keyboardType="email-address"
-                                editable={!loading}
-                            />
-                        </View>
-
-                        {/* Password Input */}
-                        <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Password</Text>
-                        <View style={[styles.inputWrapper, getInputBorder('password')]}>
-                            <Ionicons name="lock-closed-outline" size={20} color={focusedInput === 'password' ? colors.primary : colors.textSecondary} style={styles.inputIcon} />
-                            <TextInput 
-                                placeholder="••••••••"
-                                placeholderTextColor={isDark ? '#94A3B880' : '#64748B80'}
-                                style={[styles.input, { color: colors.textMain }]}
-                                value={password}
-                                onChangeText={setPassword}
-                                onFocus={() => setFocusedInput('password')}
-                                onBlur={() => setFocusedInput(null)}
-                                secureTextEntry={!showPassword}
-                                editable={!loading}
-                            />
-                            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                                <Ionicons name={showPassword ? "eye-off" : "eye"} size={20} color={colors.textSecondary} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <TouchableOpacity 
-                            style={[
-                                styles.signupBtn, 
-                                { backgroundColor: colors.primary, shadowColor: colors.primary, opacity: loading ? 0.8 : 1 }
-                            ]}
-                            onPress={handleSignup}
-                            disabled={loading}
+                    {/* 4. CREATE BUTTON */}
+                    <TouchableOpacity 
+                        style={styles.createBtn} 
+                        onPress={handleSignup}
+                        disabled={loading}
+                    >
+                        <LinearGradient
+                            colors={isDark ? [colors.primary, '#0369A1'] : ['#8ECCE3', '#6AB8D2']}
+                            start={{x: 0, y: 0}} end={{x: 1, y: 0}}
+                            style={styles.gradient}
                         >
                             {loading ? (
                                 <ActivityIndicator color="#FFF" />
                             ) : (
-                                <Text style={styles.signupBtnText}>Get Started</Text>
+                                <Text style={styles.createBtnText}>CREATE</Text>
                             )}
-                        </TouchableOpacity>
-                    </GlassCard>
+                        </LinearGradient>
+                    </TouchableOpacity>
 
-                    <View style={styles.footer}>
+                    {/* 5. FOOTER */}
+                    <TouchableOpacity 
+                        style={styles.footerLink} 
+                        onPress={() => navigation.navigate('Login')}
+                    >
                         <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-                            Already a member?{' '}
+                            Already have an account? <Text style={[styles.loginLink, { color: colors.primary }]}>Login here</Text>
                         </Text>
-                        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                            <Text style={[styles.loginLink, { color: colors.primary }]}>Sign In</Text>
-                        </TouchableOpacity>
-                    </View>
+                    </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
         </View>
     );
 };
 
-export default Signup;
-
 const styles = StyleSheet.create({
     container: { flex: 1 },
     flex: { flex: 1 },
-    inner: { flex: 1, justifyContent: 'center', paddingHorizontal: 28 },
-    backBtn: { 
-        position: 'absolute', 
-        top: 50, 
-        left: 20, 
-        width: 45, 
-        height: 45, 
-        borderRadius: 15, 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        borderWidth: 1 
-    },
-    headerArea: { marginBottom: 35 },
-    title: { fontSize: 34, fontWeight: '900', letterSpacing: -1 },
-    subtitle: { fontSize: 16, marginTop: 4, opacity: 0.7 },
-    authCard: { padding: 24, borderRadius: 30, borderWidth: 1 },
-    inputLabel: { fontSize: 13, fontWeight: '700', marginBottom: 8, marginLeft: 4, textTransform: 'uppercase', opacity: 0.6 },
-    inputWrapper: { 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        borderRadius: 16, 
-        paddingHorizontal: 15, 
-        marginBottom: 20, 
-        height: 58, 
-        borderWidth: 1.5 
-    },
-    inputIcon: { marginRight: 12 },
-    input: { flex: 1, fontSize: 16, fontWeight: '600' },
-    signupBtn: { 
-        height: 58, 
-        borderRadius: 18, 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        marginTop: 10, 
-        shadowOpacity: 0.3, 
-        shadowRadius: 10, 
-        shadowOffset: { width: 0, height: 5 },
-        elevation: 5
-    },
-    signupBtnText: { color: '#FFF', fontSize: 18, fontWeight: '800' },
-    footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 30 },
-    footerText: { fontSize: 15, fontWeight: '600' },
-    loginLink: { fontSize: 15, fontWeight: '800' }
+    headerBackground: { position: 'absolute', top: 0, width: '100%', height: height * 0.25 },
+    blueWave: { position: 'absolute', top: -50, right: -50, width: width * 1.2, height: height * 0.2, borderBottomLeftRadius: 300, transform: [{ rotate: '-10deg' }] },
+    darkWave: { position: 'absolute', top: -30, right: -80, width: width * 0.8, height: height * 0.18, borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] },
+    inner: { flex: 1, paddingHorizontal: 35, justifyContent: 'center', paddingTop: 60 },
+    headerArea: { alignItems: 'center', marginBottom: 25 },
+    title: { fontSize: 26, fontWeight: 'bold' },
+    subtitle: { fontSize: 13, marginTop: 5 },
+    formContainer: { marginBottom: 10 },
+    inputWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, paddingHorizontal: 15, height: 50, marginBottom: 12 },
+    inputIcon: { marginRight: 10 },
+    input: { flex: 1, fontSize: 14 },
+    createBtn: { height: 50, borderRadius: 12, overflow: 'hidden', marginTop: 10, elevation: 4, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 5, shadowOffset: { width: 0, height: 4 } },
+    gradient: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    createBtnText: { color: '#FFF', fontSize: 15, fontWeight: '800', letterSpacing: 1 },
+    footerLink: { marginTop: 30, alignItems: 'center' },
+    footerText: { fontSize: 13 },
+    loginLink: { fontWeight: 'bold' },
 });
+
+export default Signup;

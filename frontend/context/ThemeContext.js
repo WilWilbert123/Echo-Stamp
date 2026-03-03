@@ -23,7 +23,7 @@ export const ThemeProvider = ({ children }) => {
 const lightColors = {
   // Soft mint to sky blue gradient
   background: ['#ffffff', '#f3f4f6', '#ffffff'], 
-  textMain: '#102A43',      
+  textMain: '#000000',      
   textSecondary: '#010406',    
   cardText: '#6d859c',
   cardDesc: '#3e5569',
