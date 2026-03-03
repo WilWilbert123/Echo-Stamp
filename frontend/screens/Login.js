@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
@@ -16,8 +16,6 @@ import {
 } from 'react-native';
 import { useDispatch } from 'react-redux';
 
-// Custom Components & Context
-import GlassCard from '../components/GlassCard';
 import { useTheme } from '../context/ThemeContext';
 import { setCredentials } from '../redux/authSlice';
 import API from '../services/api';
@@ -25,266 +23,164 @@ import API from '../services/api';
 const { width, height } = Dimensions.get('window');
 
 const Login = ({ navigation }) => {
+    // 1. Hook into your ThemeContext
     const { colors, isDark } = useTheme();
     const dispatch = useDispatch();
 
-    // Form State
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
-    const [focusedInput, setFocusedInput] = useState(null); // 'email' or 'password'
 
     const handleLogin = async () => {
         if (!email.trim() || !password.trim()) {
-            return Alert.alert("Required", "Please enter both email and password.");
+            return Alert.alert("Error", "Please fill in all fields");
         }
-
         setLoading(true);
         try {
             const response = await API.post('/users/login', {
                 email: email.toLowerCase().trim(),
                 password
             });
-
             dispatch(setCredentials(response.data));
-            // Navigation usually happens automatically if your App.js listens to the Redux state
         } catch (error) {
-            const message = error.response?.data?.error || "Invalid credentials. Please try again.";
-            Alert.alert("Login Failed", message);
+            Alert.alert("Login Failed", error.response?.data?.error || "Check your credentials");
         } finally {
             setLoading(false);
         }
     };
 
-    // Helper to get dynamic border color for inputs
-    const getBorderColor = (inputName) => {
-        if (focusedInput === inputName) return colors.primary;
-        return colors.glassBorder;
-    };
-
     return (
-        <View style={styles.container}>
-            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-            
-            <LinearGradient 
-                colors={isDark ? ['#0F172A', '#1E293B', '#0F172A'] : colors.background} 
-                style={StyleSheet.absoluteFill} 
-            />
+     
+        <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
+            <StatusBar barStyle={colors.status} />
+
+            {/* CURVED HEADER BACKGROUND */}
+            <View style={[styles.headerBackground, { backgroundColor: colors.background[0] }]}>
+           
+                <View style={[styles.blueWave, { backgroundColor: colors.primary, opacity: isDark ? 0.4 : 1 }]} />
+                <View style={[styles.darkWave, { backgroundColor: isDark ? '#1E293B' : '#637D8B', opacity: 0.6 }]} />
+            </View>
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={styles.keyboardView}
+                style={styles.flex}
             >
                 <View style={styles.inner}>
-                    {/* Top Branding Section */}
-                    <View style={styles.headerContainer}>
-                        <View style={[styles.logoGlow, { backgroundColor: colors.primary, shadowColor: colors.primary }]} />
-                        <View style={[styles.logoCircle, { backgroundColor: colors.primary }]}>
-                            <Ionicons name="infinite" size={48} color="#FFF" />
-                        </View>
-                        <Text style={[styles.greeting, { color: colors.textMain }]}>Welcome Back</Text>
-                        <Text style={[styles.subGreeting, { color: colors.textSecondary }]}>
-                            Log in to sync your emotional echoes
-                        </Text>
+
+                    {/* LOGO SECTION */}
+                    <View style={styles.logoContainer}>
+                        <Text style={[styles.logoText, { color: colors.primary }]}>ECHO</Text>
+                        <Text style={[styles.welcomeTitle, { color: colors.textMain }]}>Welcome back!</Text>
                     </View>
 
-                    {/* Auth Card */}
-                    <GlassCard style={[styles.card, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
-                        
-                        {/* Email Field */}
-                        <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Email Address</Text>
-                        <View style={[styles.inputContainer, { borderColor: getBorderColor('email'), backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.5)' }]}>
-                            <Ionicons name="mail-outline" size={20} color={focusedInput === 'email' ? colors.primary : colors.textSecondary} />
+                    {/* INPUT FIELDS */}
+                    <View style={styles.inputArea}>
+                     
+                        <View style={[styles.inputWrapper, { backgroundColor: isDark ? colors.glass : '#F3F3F3', borderColor: colors.glassBorder, borderWidth: isDark ? 1 : 0 }]}>
+                            <Ionicons name="person-outline" size={20} color={colors.textSecondary} />
                             <TextInput
+                                placeholder="Username"
+                                placeholderTextColor={isDark ? '#64748B' : '#999'}
                                 style={[styles.input, { color: colors.textMain }]}
-                                placeholder="name@example.com"
-                                placeholderTextColor={isDark ? '#475569' : '#94A3B8'}
                                 value={email}
                                 onChangeText={setEmail}
-                                onFocus={() => setFocusedInput('email')}
-                                onBlur={() => setFocusedInput(null)}
                                 autoCapitalize="none"
-                                keyboardType="email-address"
-                                editable={!loading}
                             />
                         </View>
 
-                        {/* Password Field */}
-                        <Text style={[styles.inputLabel, { color: colors.textSecondary, marginTop: 15 }]}>Password</Text>
-                        <View style={[styles.inputContainer, { borderColor: getBorderColor('password'), backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.5)' }]}>
-                            <Ionicons name="lock-closed-outline" size={20} color={focusedInput === 'password' ? colors.primary : colors.textSecondary} />
+                        <View style={[styles.inputWrapper, { backgroundColor: isDark ? colors.glass : '#F3F3F3', borderColor: colors.glassBorder, borderWidth: isDark ? 1 : 0 }]}>
+                            <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
                             <TextInput
+                                placeholder="Password"
+                                placeholderTextColor={isDark ? '#64748B' : '#999'}
                                 style={[styles.input, { color: colors.textMain }]}
-                                placeholder="••••••••"
-                                placeholderTextColor={isDark ? '#475569' : '#94A3B8'}
+                                secureTextEntry
                                 value={password}
                                 onChangeText={setPassword}
-                                onFocus={() => setFocusedInput('password')}
-                                onBlur={() => setFocusedInput(null)}
-                                secureTextEntry={!showPassword}
-                                editable={!loading}
                             />
-                            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                                <Ionicons 
-                                    name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                                    size={20} 
-                                    color={colors.textSecondary} 
-                                />
-                            </TouchableOpacity>
                         </View>
 
-                        <TouchableOpacity style={styles.forgotPassContainer}>
-                            <Text style={[styles.forgotPassText, { color: colors.primary }]}>Forgot Password?</Text>
-                        </TouchableOpacity>
-
-                        {/* Login Button */}
                         <TouchableOpacity
-                            onPress={handleLogin}
-                            disabled={loading}
-                            activeOpacity={0.85}
-                            style={[styles.button, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
+                            style={styles.forgotBtn}
+                            activeOpacity={0.7}
+                            onPress={() => navigation.navigate('ForgotPassword')} 
                         >
-                            {loading ? (
-                                <ActivityIndicator color="#FFF" />
-                            ) : (
-                                <View style={styles.buttonContent}>
-                                    <Text style={styles.buttonText}>Sign In</Text>
-                                    <Ionicons name="arrow-forward" size={20} color="#FFF" style={{ marginLeft: 8 }} />
-                                </View>
-                            )}
-                        </TouchableOpacity>
-                    </GlassCard>
-
-                    {/* Footer */}
-                    <View style={styles.footer}>
-                        <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-                            New to Echo?{' '}
-                        </Text>
-                        <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-                            <Text style={[styles.linkText, { color: colors.primary }]}>Create Account</Text>
+                            <Text style={[styles.forgotText, { color: colors.textSecondary }]}>Forgot Password?</Text>
                         </TouchableOpacity>
                     </View>
+
+                    {/* LOGIN BUTTON */}
+                    <TouchableOpacity
+                        style={styles.loginBtn}
+                        onPress={handleLogin}
+                        disabled={loading}
+                    >
+                        <LinearGradient
+                            colors={isDark ? [colors.primary, '#0369A1'] : ['#8ECCE3', '#6AB8D2']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.gradientBtn}
+                        >
+                            {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.loginBtnText}>LOG IN</Text>}
+                        </LinearGradient>
+                    </TouchableOpacity>
+
+                    {/* SOCIAL LOGIN SECTION */}
+                    <View style={styles.socialSection}>
+                        <Text style={[styles.socialText, { color: colors.textSecondary }]}>Or sign up using</Text>
+                        <View style={styles.socialIcons}>
+                            <TouchableOpacity style={[styles.iconCircle, { backgroundColor: isDark ? colors.glass : '#FFF' }]}>
+                                <FontAwesome5 name="facebook-f" size={20} color="#1877F2" />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.iconCircle, { backgroundColor: isDark ? colors.glass : '#FFF' }]}>
+                                <FontAwesome5 name="google" size={20} color="#EA4335" />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.iconCircle, { backgroundColor: isDark ? colors.glass : '#FFF' }]}>
+                                <FontAwesome5 name="apple" size={20} color={isDark ? "#FFF" : "#000"} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    {/* FOOTER */}
+                    <TouchableOpacity
+                        style={styles.footer}
+                        onPress={() => navigation.navigate('Signup')}
+                    >
+                        <Text style={[styles.footerText, { color: colors.textSecondary }]}>
+                            Don't have an account? <Text style={[styles.signUpText, { color: colors.primary }]}>Sign Up</Text>
+                        </Text>
+                    </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
         </View>
     );
 };
 
-export default Login;
-
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    keyboardView: {
-        flex: 1,
-    },
-    inner: {
-        flex: 1,
-        paddingHorizontal: 24,
-        justifyContent: 'center',
-    },
-    headerContainer: {
-        alignItems: 'center',
-        marginBottom: 40,
-    },
-    logoCircle: {
-        width: 90,
-        height: 90,
-        borderRadius: 45,
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 2,
-    },
-    logoGlow: {
-        position: 'absolute',
-        width: 70,
-        height: 70,
-        borderRadius: 35,
-        top: 10,
-        opacity: 0.5,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 1,
-        shadowRadius: 20,
-    },
-    greeting: {
-        fontSize: 32,
-        fontWeight: '800',
-        marginTop: 20,
-        letterSpacing: -0.5,
-    },
-    subGreeting: {
-        fontSize: 16,
-        marginTop: 8,
-        textAlign: 'center',
-        opacity: 0.8,
-    },
-    card: {
-        padding: 24,
-        borderRadius: 32,
-        borderWidth: 1,
-        width: '100%',
-    },
-    inputLabel: {
-        fontSize: 14,
-        fontWeight: '700',
-        marginBottom: 8,
-        marginLeft: 4,
-    },
-    inputContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        height: 60,
-        borderRadius: 16,
-        borderWidth: 1.5,
-        paddingHorizontal: 16,
-    },
-    input: {
-        flex: 1,
-        fontSize: 16,
-        fontWeight: '600',
-        marginLeft: 12,
-    },
-    forgotPassContainer: {
-        alignSelf: 'flex-end',
-        marginTop: 12,
-        marginBottom: 24,
-    },
-    forgotPassText: {
-        fontSize: 14,
-        fontWeight: '700',
-    },
-    button: {
-        height: 60,
-        borderRadius: 18,
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 8,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 10,
-    },
-    buttonContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    buttonText: {
-        color: '#FFF',
-        fontSize: 18,
-        fontWeight: '800',
-    },
-    footer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        marginTop: 32,
-    },
-    footerText: {
-        fontSize: 15,
-        fontWeight: '600',
-    },
-    linkText: {
-        fontSize: 15,
-        fontWeight: '800',
-    },
+    container: { flex: 1 },
+    flex: { flex: 1 },
+    headerBackground: { position: 'absolute', top: 0, width: '100%', height: height * 0.25 },
+    blueWave: { position: 'absolute', top: -50, right: -50, width: width * 1.2, height: height * 0.2, borderBottomLeftRadius: 300, transform: [{ rotate: '-10deg' }] },
+    darkWave: { position: 'absolute', top: -30, right: -80, width: width * 0.8, height: height * 0.18, borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] },
+    inner: { flex: 1, paddingHorizontal: 35, justifyContent: 'center', paddingTop: 80 },
+    logoContainer: { alignItems: 'center', marginBottom: 40 },
+    logoText: { fontSize: 50, fontWeight: '200', letterSpacing: 5, marginBottom: 10 },
+    welcomeTitle: { fontSize: 22, fontWeight: 'bold' },
+    inputArea: { marginBottom: 20 },
+    inputWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, paddingHorizontal: 15, height: 55, marginBottom: 15 },
+    input: { flex: 1, marginLeft: 10, fontSize: 14 },
+    forgotBtn: { alignSelf: 'flex-end' },
+    forgotText: { fontSize: 13, fontWeight: '500' },
+    loginBtn: { width: '100%', height: 55, borderRadius: 12, overflow: 'hidden', marginTop: 20, elevation: 4 },
+    gradientBtn: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    loginBtnText: { color: '#FFF', fontWeight: '800', fontSize: 15, letterSpacing: 1 },
+    socialSection: { alignItems: 'center', marginTop: 40 },
+    socialText: { fontSize: 13, marginBottom: 20, fontWeight: '500' },
+    socialIcons: { flexDirection: 'row', justifyContent: 'space-around', width: '70%' },
+    iconCircle: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
+    footer: { marginTop: 50, alignItems: 'center' },
+    footerText: { fontSize: 14 },
+    signUpText: { fontWeight: 'bold' },
 });
+
+export default Login;

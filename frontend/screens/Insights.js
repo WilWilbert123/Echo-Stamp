@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import React, { useMemo, useState } from 'react';
 import {
     Dimensions,
     ScrollView,
+    StatusBar,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -13,112 +13,98 @@ import { ContributionGraph, LineChart, PieChart, ProgressChart } from 'react-nat
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 
-import GlassCard from '../components/GlassCard';
 import { useTheme } from '../context/ThemeContext';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const Insights = () => {
     const insets = useSafeAreaInsets();
     const { colors, isDark } = useTheme();
-    
-    // Core state for most charts
+
     const { list } = useSelector((state) => state.echoes);
-    // Specifically for the Activity Map (Atlas/Journal)
     const { list: journalList } = useSelector((state) => state.journals);
-    
+
     const [timeframe, setTimeframe] = useState('Month');
 
-    // Mood Weights for Line Chart Logic
-    const moodWeights = {
-        'Excited': 10,
-        'Happy': 8,
-        'Loved': 8,
-        'Grateful': 7,
-        'Calm': 6,
-        'Neutral': 5,
-        'Tired': 4,
-        'Sad': 3,
-        'Angry': 2,
-    };
-
-    // Emotional Profile Palette
-    const emotionPalette = {
-        Happy: '#FFD700',
-        Calm: '#4FC3F7',
-        Proud: '#9C27B0',
-        Sad: '#546E7A',
-        Excited: '#FF5722',
-        Loved: '#E91E63',
-        Tired: '#3F51B5',
-        Grateful: '#4CAF50',
-        Neutral: '#9E9E9E',
-    };
-
-    const emojiMap = {
-        'Happy': '😊', 'Calm': '🌊', 'Proud': '⭐', 'Sad': '☁️',
-        'Excited': '✨', 'Loved': '❤️', 'Tired': '🔋', 'Grateful': '🙏', 'Neutral': '😐'
-    };
-
+    // Refined Chart Config for Glassmorphism
     const chartConfig = {
+        backgroundGradientFrom: colors.glass,
+        backgroundGradientTo: colors.glass,
         backgroundGradientFromOpacity: 0,
         backgroundGradientToOpacity: 0,
-        color: (opacity = 1) => isDark ? `rgba(130, 177, 255, ${opacity})` : `rgba(48, 79, 254, ${opacity})`,
-        labelColor: (opacity = 1) => colors.textSecondary,
+        color: (opacity = 1) => isDark ? `rgba(56, 189, 248, ${opacity})` : `rgba(14, 165, 233, ${opacity})`,
+        labelColor: (opacity = 1) => isDark ? `rgba(255, 255, 255, ${opacity * 0.6})` : `rgba(30, 41, 59, ${opacity * 0.7})`,
         strokeWidth: 3,
         decimalPlaces: 0,
         propsForDots: {
             r: "5",
             strokeWidth: "2",
-            stroke: colors.background[0]
+            stroke: isDark ? colors.background[0] : '#FFF'
         }
     };
 
-    // Mood Flow Chart Logic (Keeping Echoes)
+    const moodWeights = { 'Excited': 10, 'Happy': 8, 'Loved': 8, 'Grateful': 7, 'Calm': 6, 'Neutral': 5, 'Tired': 4, 'Sad': 3, 'Angry': 2 };
+    const emotionPalette = { Happy: '#FFD700', Calm: '#4FC3F7', Proud: '#9C27B0', Sad: '#546E7A', Excited: '#FF5722', Loved: '#E91E63', Tired: '#3F51B5', Grateful: '#4CAF50', Neutral: '#9E9E9E' };
+    const emojiMap = { 'Happy': '😊', 'Calm': '🌊', 'Proud': '⭐', 'Sad': '☁️', 'Excited': '✨', 'Loved': '❤️', 'Tired': '🔋', 'Grateful': '🙏', 'Neutral': '😐' };
+
+
+    // --- DATA LOGIC ---
     const chartData = useMemo(() => {
-        if (!list || list.length === 0) {
+        // 1. Ensure we have an array and filter out any corrupted entries
+        const safeList = Array.isArray(list) ? list.filter(echo => echo && echo.createdAt) : [];
+
+        if (safeList.length === 0) {
             return { labels: ["No Data"], datasets: [{ data: [0] }] };
         }
-        const sortedList = [...list].sort((a, b) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        );
+
+        // 2. Sort and handle date conversion safely
+        const sortedList = [...safeList].sort((a, b) => {
+            const dateA = new Date(a.createdAt).getTime();
+            const dateB = new Date(b.createdAt).getTime();
+            return dateA - dateB;
+        });
+
+        // 3. Take the last 6 echoes
         const recentEchoes = sortedList.slice(-6);
+
         const labels = recentEchoes.map(echo => {
             const date = new Date(echo.createdAt);
-            return timeframe === 'Day'
-                ? date.getHours() + ":00"
-                : (date.getMonth() + 1) + "/" + date.getDate();
+            // Check if date is valid, otherwise return "??"
+            if (isNaN(date.getTime())) return "??";
+            return (date.getMonth() + 1) + "/" + date.getDate();
         });
-        const dataPoints = recentEchoes.map(echo => moodWeights[echo.emotion] || 5);
-        return {
-            labels,
-            datasets: [{
-                data: dataPoints,
-                color: (opacity = 1) => isDark ? `rgba(130, 177, 255, ${opacity})` : `rgba(48, 79, 254, ${opacity})`,
-                strokeWidth: 4
-            }],
-            legend: ["Mood Flow"]
-        };
-    }, [list, timeframe, isDark]);
 
-    // --- ACTIVITY MAP LOGIC (NOW BASED ON JOURNAL/ATLAS) ---
+        const dataPoints = recentEchoes.map(echo => {
+            // Log this to your console to see if weights are actually hitting
+            const weight = moodWeights[echo.emotion];
+            return typeof weight === 'number' ? weight : 5; // Default to 5 if emotion not found
+        });
+
+        // Final safety check: if dataPoints contains NaN, the chart WILL NOT render
+        return {
+            labels: labels.length > 0 ? labels : ["..."],
+            datasets: [{
+                data: dataPoints.length > 0 ? dataPoints : [0],
+                strokeWidth: 4
+            }]
+        };
+    }, [list]); // Add moodWeights here if it's defined inside the component
+
     const heatmapData = useMemo(() => {
-        if (!journalList || journalList.length === 0) return [];
-        const dateMap = journalList.reduce((acc, entry) => {
+        const jList = Array.isArray(journalList) ? journalList : [];
+        if (jList.length === 0) return [];
+        const dateMap = jList.reduce((acc, entry) => {
             const date = new Date(entry.createdAt).toISOString().split('T')[0];
             acc[date] = (acc[date] || 0) + 1;
             return acc;
         }, {});
-        return Object.keys(dateMap).map(date => ({
-            date: date,
-            count: dateMap[date]
-        }));
+        return Object.keys(dateMap).map(date => ({ date, count: dateMap[date] }));
     }, [journalList]);
 
-    // Pie Chart Data (Keeping Echoes)
     const pieData = useMemo(() => {
-        if (!list || list.length === 0) return [];
-        const counts = list.reduce((acc, echo) => {
+        const data = Array.isArray(list) ? list : [];
+        if (data.length === 0) return [];
+        const counts = data.reduce((acc, echo) => {
             const emo = echo.emotion || 'Neutral';
             acc[emo] = (acc[emo] || 0) + 1;
             return acc;
@@ -127,16 +113,16 @@ const Insights = () => {
             name: `${emojiMap[key] || ''} ${key}`,
             population: counts[key],
             color: emotionPalette[key] || '#9E9E9E',
-            legendFontColor: colors.textMain,
-            legendFontSize: 12
+            legendFontColor: colors.textSecondary,
+            legendFontSize: 11
         })).sort((a, b) => b.population - a.population);
-    }, [list, colors]);
+    }, [list, colors.textSecondary]);
 
-    // Statistics Calculation (Keeping Echoes)
     const stats = useMemo(() => {
-        if (!list.length) return { total: 0, topEmotion: 'N/A', stability: 0 };
+        const data = Array.isArray(list) ? list : [];
+        if (!data.length) return { total: 0, topEmotion: 'N/A', stability: 0 };
         const now = new Date();
-        const filtered = list.filter(item => {
+        const filtered = data.filter(item => {
             const itemDate = new Date(item.createdAt);
             if (timeframe === 'Day') return itemDate.toDateString() === now.toDateString();
             if (timeframe === 'Month') return itemDate.getMonth() === now.getMonth();
@@ -151,84 +137,113 @@ const Insights = () => {
             ? Object.keys(emotionCounts).reduce((a, b) => emotionCounts[a] > emotionCounts[b] ? a : b)
             : 'None';
         const weights = filtered.map(e => moodWeights[e.emotion] || 5);
-        if (weights.length < 2) return { total: filtered.length, topEmotion, stability: 1 };
+        if (weights.length < 2) return { total: filtered.length, topEmotion, stability: 0.5 };
         const mean = weights.reduce((a, b) => a + b, 0) / weights.length;
         const variance = weights.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / weights.length;
         const stability = Math.max(0.1, Math.min(1, 1 - (variance / 20)));
         return { total: filtered.length, topEmotion, stability };
     }, [list, timeframe]);
-
+console.log("CHART DEBUG:", JSON.stringify(chartData.datasets[0].data));
     return (
-        <LinearGradient colors={colors.background} style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
+            <StatusBar barStyle={colors.status} />
+
+            {/* BRANDED WAVES */}
+            <View style={styles.headerBackground}>
+                <View style={[styles.blueWave, { backgroundColor: colors.primary, opacity: isDark ? 0.3 : 0.8 }]} />
+                <View style={[styles.darkWave, { backgroundColor: isDark ? '#1E293B' : '#637D8B', opacity: 0.6 }]} />
+            </View>
+
             <ScrollView
                 contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20, paddingBottom: 120 }]}
                 showsVerticalScrollIndicator={false}
             >
                 <View style={styles.header}>
-                    <Text style={[styles.headerTitle, { color: colors.textMain }]}>Insights</Text>
-                    <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Analyzing your emotional resonance.</Text>
+                    <Text style={[styles.headerTitle, { color: isDark ? '#FFF' : colors.primary }]}>
+                        Insights
+                    </Text>
+                    <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+                        Analyzing your emotional resonance.
+                    </Text>
                 </View>
 
-                {/* Segmented Picker */}
-                <View style={[styles.pickerContainer, { backgroundColor: colors.glass, borderColor: colors.glassBorder, borderWidth: 1 }]}>
+                {/* PILL PICKER */}
+                <View style={[styles.pickerContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
                     {['Day', 'Month', 'Year'].map((item) => (
                         <TouchableOpacity
                             key={item}
                             onPress={() => setTimeframe(item)}
                             style={[
                                 styles.pickerItem,
-                                timeframe === item && { backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : '#fff' }
+                                timeframe === item && {
+                                    backgroundColor: isDark ? colors.primary : '#FFF',
+                                    shadowColor: '#000',
+                                    shadowOpacity: 0.1,
+                                    shadowRadius: 4,
+                                    elevation: 2
+                                }
                             ]}
                         >
                             <Text style={[
                                 styles.pickerText,
-                                { color: timeframe === item ? colors.textMain : colors.textSecondary }
+                                { color: timeframe === item ? (isDark ? '#000' : colors.primary) : colors.textSecondary }
                             ]}>{item}</Text>
                         </TouchableOpacity>
                     ))}
                 </View>
 
-                {/* Grid Stats */}
+                {/* GRID STATS */}
                 <View style={styles.grid}>
-                    <GlassCard style={[styles.miniCard, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
-                        <Ionicons name="analytics" size={24} color={isDark ? "#82B1FF" : "#304FFE"} />
+                    <View style={[styles.miniCard, { backgroundColor: isDark ? colors.glass : '#FFF', borderColor: colors.glassBorder }]}>
+                        <Ionicons name="analytics" size={24} color={colors.primary} />
                         <Text style={[styles.miniValue, { color: colors.textMain }]}>{stats.total}</Text>
                         <Text style={[styles.miniLabel, { color: colors.textSecondary }]}>Total Echoes</Text>
-                    </GlassCard>
-                    <GlassCard style={[styles.miniCard, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
-                        <Ionicons name="heart" size={24} color="#F44336" />
+                    </View>
+                    <View style={[styles.miniCard, { backgroundColor: isDark ? colors.glass : '#FFF', borderColor: colors.glassBorder }]}>
+                        <Ionicons name="heart" size={24} color="#EF4444" />
                         <Text style={[styles.miniValue, { color: colors.textMain }]} numberOfLines={1}>{stats.topEmotion}</Text>
                         <Text style={[styles.miniLabel, { color: colors.textSecondary }]}>Dominant</Text>
-                    </GlassCard>
+                    </View>
                 </View>
 
-                {/* Mood Flow Chart */}
+                {/* MOOD FLOW */}
                 <Text style={[styles.sectionTitle, { color: colors.textMain }]}>Mood Flow</Text>
-                <GlassCard style={[styles.chartWrapper, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
-                    {list.length > 0 ? (
+                <View style={[styles.chartCard, { backgroundColor: isDark ? colors.glass : '#FFF', borderColor: colors.glassBorder }]}>
+                    {list?.length > 0 ? (
                         <LineChart
                             data={chartData}
-                            width={width - 40}
-                            height={200}
-                            chartConfig={chartConfig}
+                            width={Dimensions.get('window').width - 50} // Use direct dimensions for reliability
+                            height={220} // Slightly taller for better labels
+                            chartConfig={{
+                                ...chartConfig,
+                                // Add these three lines:
+                                fromZero: true,
+                                count: 6, // Match your slice(-6) logic
+                                propsForVerticalLabels: { fontSize: 10, fontWeight: '600' },
+                            }}
                             bezier
-                            style={styles.chartStyle}
+                            style={[styles.chartStyle, { paddingRight: 45, marginLeft: -15 }]} // Adjust offset
                             withInnerLines={false}
                             withOuterLines={false}
-                            fromZero={true}
+                            withDots={true}
+                            getDotColor={(dataPoint, dataPointIndex) => colors.primary}
+                            renderDotContent={({ x, y, index }) => (
+                                 
+                                <View key={index} style={{ position: 'absolute', top: y - 2, left: x - 2, width: 4, height: 4, borderRadius: 2, backgroundColor: colors.primary }} />
+                            )}
                         />
                     ) : (
                         <View style={styles.emptyContainer}>
-                            <Ionicons name="pulse" size={40} color={colors.textSecondary + '80'} />
-                            <Text style={{ color: colors.textSecondary, marginTop: 10 }}>Anchor an Echo to see your flow</Text>
+                            <Ionicons name="pulse" size={40} color={colors.glassBorder} />
+                            <Text style={{ color: colors.textSecondary, marginTop: 10, fontWeight: '500' }}>Anchor an Echo to see your flow</Text>
                         </View>
                     )}
-                </GlassCard>
+                </View>
 
-                {/* Activity Map (Updated to Journal List) */}
+                {/* ACTIVITY MAP */}
                 <Text style={[styles.sectionTitle, { color: colors.textMain }]}>Activity Map</Text>
-                <GlassCard style={[styles.chartWrapper, { paddingHorizontal: 0, backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
-                    {journalList && journalList.length > 0 ? (
+                <View style={[styles.chartCard, { paddingHorizontal: 0, backgroundColor: isDark ? colors.glass : '#FFF', borderColor: colors.glassBorder }]}>
+                    {journalList?.length > 0 ? (
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20 }}>
                             <ContributionGraph
                                 values={heatmapData}
@@ -243,20 +258,20 @@ const Insights = () => {
                         </ScrollView>
                     ) : (
                         <View style={styles.emptyContainer}>
-                            <Ionicons name="calendar-outline" size={40} color={colors.textSecondary + '80'} />
-                            <Text style={{ color: colors.textSecondary, marginTop: 10 }}>No journal activity recorded yet</Text>
+                            <Ionicons name="calendar-outline" size={40} color={colors.glassBorder} />
+                            <Text style={{ color: colors.textSecondary, marginTop: 10, fontWeight: '500' }}>No journal activity recorded</Text>
                         </View>
                     )}
-                </GlassCard>
+                </View>
 
-                {/* Emotional Profile */}
+                {/* PROFILE & RESILIENCE */}
                 <Text style={[styles.sectionTitle, { color: colors.textMain }]}>Emotional Profile</Text>
-                <GlassCard style={[styles.chartWrapper, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
-                    {list.length > 0 ? (
+                <View style={[styles.chartCard, { backgroundColor: isDark ? colors.glass : '#FFF', borderColor: colors.glassBorder }]}>
+                    {list?.length > 0 ? (
                         <PieChart
                             data={pieData}
-                            width={width - 40}
-                            height={200}
+                            width={width - 50}
+                            height={180}
                             chartConfig={chartConfig}
                             accessor={"population"}
                             backgroundColor={"transparent"}
@@ -265,74 +280,70 @@ const Insights = () => {
                         />
                     ) : (
                         <View style={styles.emptyContainer}>
-                            <Ionicons name="pie-chart-outline" size={40} color={colors.textSecondary + '80'} />
-                            <Text style={{ color: colors.textSecondary, marginTop: 10 }}>Anchor more memories</Text>
+                            <Ionicons name="pie-chart-outline" size={40} color={colors.glassBorder} />
+                            <Text style={{ color: colors.textSecondary, marginTop: 10, fontWeight: '500' }}>More data needed</Text>
                         </View>
                     )}
-                </GlassCard>
+                </View>
 
-                {/* Resilience Score */}
                 <Text style={[styles.sectionTitle, { color: colors.textMain }]}>Emotional Resilience</Text>
-                <GlassCard
-                    style={[
-                        styles.chartWrapper,
-                        list.length > 0 && { flexDirection: 'row', paddingHorizontal: 20 },  
-                        { backgroundColor: colors.glass, borderColor: colors.glassBorder }
-                    ]}
-                >
-                    {list.length > 0 ? (
+                <View style={[styles.chartCard, { flexDirection: 'row', backgroundColor: isDark ? colors.glass : '#FFF', borderColor: colors.glassBorder, padding: 20 }]}>
+                    {list?.length > 0 ? (
                         <>
                             <ProgressChart
                                 data={{ data: [stats.stability] }}
-                                width={width * 0.4}
-                                height={140}
-                                strokeWidth={12}
-                                radius={40}
+                                width={width * 0.35}
+                                height={120}
+                                strokeWidth={10}
+                                radius={35}
                                 chartConfig={{
                                     ...chartConfig,
-                                    color: (opacity = 1) => isDark ? `rgba(165, 214, 167, ${opacity})` : `rgba(76, 175, 80, ${opacity})`,
+                                    color: (opacity = 1) => `rgba(34, 197, 94, ${opacity})`,
                                 }}
                                 hideLegend={true}
                             />
-                            <View style={{ flex: 1, justifyContent: 'center', marginLeft: 10 }}>
-                                <Text style={[styles.miniValue, { color: colors.textMain, fontSize: 22 }]}>
+                            <View style={{ flex: 1, justifyContent: 'center', marginLeft: 15 }}>
+                                <Text style={[styles.miniValue, { color: colors.textMain, fontSize: 24, marginTop: 0 }]}>
                                     {Math.round(stats.stability * 100)}%
                                 </Text>
-                                <Text style={[styles.miniLabel, { color: colors.textSecondary, fontSize: 14 }]}>Stability Score</Text>
-                                <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 8, fontStyle: 'italic' }}>
-                                    {stats.stability > 0.7 ? "Consistent resonance." : "High emotional range."}
+                                <Text style={[styles.miniLabel, { color: colors.textSecondary, fontSize: 13 }]}>Stability Score</Text>
+                                <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 6, fontStyle: 'italic', lineHeight: 16 }}>
+                                    {stats.stability > 0.7 ? "Consistent resonance." : "Diverse emotional range."}
                                 </Text>
                             </View>
                         </>
                     ) : (
                         <View style={styles.emptyContainer}>
-                            <Ionicons name="shield-checkmark-outline" size={40} color={colors.textSecondary + '80'} />
-                            <Text style={{ color: colors.textSecondary, marginTop: 10 }}>Data needed for resilience</Text>
+                            <Ionicons name="shield-checkmark-outline" size={40} color={colors.glassBorder} />
+                            <Text style={{ color: colors.textSecondary, marginTop: 10, fontWeight: '500' }}>Data needed</Text>
                         </View>
                     )}
-                </GlassCard>
+                </View>
             </ScrollView>
-        </LinearGradient>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    scrollContent: { paddingHorizontal: 20 },
-    header: { marginBottom: 20 },
-    headerTitle: { fontSize: 34, fontWeight: '900', letterSpacing: -1 },
-    headerSubtitle: { fontSize: 16, opacity: 0.8 },
-    pickerContainer: { flexDirection: 'row', padding: 5, borderRadius: 15, marginBottom: 25 },
+    headerBackground: { position: 'absolute', top: 0, width: '100%', height: height * 0.25 },
+    blueWave: { position: 'absolute', top: -50, right: -50, width: width * 1.2, height: height * 0.2, borderBottomLeftRadius: 300, transform: [{ rotate: '-10deg' }] },
+    darkWave: { position: 'absolute', top: -30, right: -80, width: width * 0.8, height: height * 0.18, borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] },
+    scrollContent: { paddingHorizontal: 25 },
+    header: { marginBottom: 25 },
+    headerTitle: { fontSize: 36, fontWeight: '900', letterSpacing: -1 },
+    headerSubtitle: { fontSize: 16, fontWeight: '500' },
+    pickerContainer: { flexDirection: 'row', padding: 6, borderRadius: 16, marginBottom: 25 },
     pickerItem: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 12 },
-    pickerText: { fontWeight: '700', fontSize: 14 },
-    sectionTitle: { fontSize: 18, fontWeight: '800', marginBottom: 15, marginTop: 10 },
-    chartWrapper: { borderRadius: 24, paddingVertical: 15, alignItems: 'center', overflow: 'hidden', marginBottom: 20, borderWidth: 1 },
-    chartStyle: { borderRadius: 20, paddingRight: 40, marginTop: 10 },
-    grid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-    miniCard: { width: (width - 60) / 2, padding: 20, alignItems: 'center', borderRadius: 24, borderWidth: 1 },
-    miniValue: { fontSize: 18, fontWeight: '900', marginTop: 8 },
-    miniLabel: { fontSize: 12, fontWeight: '600', opacity: 0.6 },
-    emptyContainer: { height: 180, justifyContent: 'center', alignItems: 'center',width: '100%', }
+    pickerText: { fontWeight: '800', fontSize: 13 },
+    sectionTitle: { fontSize: 18, fontWeight: '800', marginBottom: 15, marginTop: 10, letterSpacing: 0.5 },
+    chartCard: { borderRadius: 28, paddingVertical: 20, alignItems: 'center', overflow: 'hidden', marginBottom: 20, borderWidth: 1 },
+    chartStyle: { borderRadius: 20, paddingRight: 45, marginTop: 10 },
+    grid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
+    miniCard: { width: (width - 65) / 2, padding: 20, alignItems: 'center', borderRadius: 28, borderWidth: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+    miniValue: { fontSize: 20, fontWeight: '900', marginTop: 10 },
+    miniLabel: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 },
+    emptyContainer: { height: 160, justifyContent: 'center', alignItems: 'center', width: '100%' }
 });
 
 export default Insights;
