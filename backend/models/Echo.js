@@ -1,21 +1,29 @@
 const mongoose = require('mongoose');
 
 const EchoSchema = new mongoose.Schema({
+  userId: {
+    type: String,  
+    required: true,
+    index: true 
+  },
+  type: {
+    type: String,
+    enum: [ 'mode'], 
+    required: true
+  },
   title: { 
     type: String, 
     required: true 
   },
   description: String,
   location: {
-    lat: Number,
-    lng: Number,
-    address: String
+    address: String  
   },
   emotion: { 
     type: String, 
     default: 'Neutral' 
   },
-  imageUrl: String,
+ 
   createdAt: { 
     type: Date, 
     default: Date.now 

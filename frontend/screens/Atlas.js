@@ -1,168 +1,351 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useMemo, useRef } from 'react';
-import { Dimensions, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import MapView, { Callout, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useSelector } from 'react-redux';
+import { ResizeMode, Video } from 'expo-av';
+import * as ImagePicker from 'expo-image-picker';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  Image,
+  Modal,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { useDispatch, useSelector } from 'react-redux';
 import GlassCard from '../components/GlassCard';
 import { useTheme } from '../context/ThemeContext';
 
-const { width } = Dimensions.get('window');
+import { addJournalAsync, deleteJournalAsync, getJournalsAsync, removeJournalMediaAsync } from '../redux/journalSlice';
+
+const { width, height } = Dimensions.get('window');
 
 const Atlas = () => {
+  const dispatch = useDispatch();
   const { colors, isDark } = useTheme();
-  const insets = useSafeAreaInsets();
-  const mapRef = useRef(null);
-  
-  // 1. Connect to Redux State
-  const { list } = useSelector((state) => state.echoes);
 
-  // 2. Custom Map Styles for Dark/Light Mode
-  const mapStyle = useMemo(() => {
-    if (!isDark) return []; 
-    return [
-      { "elementType": "geometry", "stylers": [{ "color": "#242f3e" }] },
-      { "elementType": "labels.text.fill", "stylers": [{ "color": "#746855" }] },
-      { "elementType": "labels.text.stroke", "stylers": [{ "color": "#242f3e" }] },
-      { "featureType": "administrative.locality", "elementType": "labels.text.fill", "stylers": [{ "color": "#d59563" }] },
-      { "featureType": "poi", "elementType": "labels.text.fill", "stylers": [{ "color": "#d59563" }] },
-      { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#38414e" }] },
-      { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#17263c" }] }
-    ];
-  }, [isDark]);
+  const { list } = useSelector((state) => state.journals);
+  const { user } = useSelector((state) => state.auth);
 
-  // 3. Auto-focus logic: Filtered to prevent "undefined" crashes
-  const focusAllMarkers = () => {
-    if (list && list.length > 0 && mapRef.current) {
-      // FIX: Only map echoes that actually have valid coordinates
-      const validCoords = list
-        .filter(echo => echo.location?.coords?.latitude && echo.location?.coords?.longitude)
-        .map(echo => ({
-          latitude: echo.location.coords.latitude,
-          longitude: echo.location.coords.longitude,
-        }));
-      
-      if (validCoords.length > 0) {
-        mapRef.current.fitToCoordinates(validCoords, {
-          edgePadding: { top: 100, right: 50, bottom: 100, left: 50 },
-          animated: true,
-        });
-      }
+  const [modalVisible, setModalVisible] = useState(false);
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [selectedJournal, setSelectedJournal] = useState(null);
+  const [tempCoords, setTempCoords] = useState(null);
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [mediaList, setMediaList] = useState([]); 
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const userId = user?._id || user?.id;
+    if (userId) dispatch(getJournalsAsync(userId));
+  }, [dispatch, user]);
+
+  const markers = useMemo(() => {
+    return (list || []).filter(j => j.location && typeof j.location.lat === 'number');
+  }, [list]);
+
+  const pickMedia = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images', 'videos'],
+      allowsMultipleSelection: true,
+      quality: 0.6,
+    });
+    if (!result.canceled) {
+      setMediaList([...mediaList, ...result.assets]);
     }
   };
 
-  useEffect(() => {
-    const timer = setTimeout(() => focusAllMarkers(), 1000);
-    return () => clearTimeout(timer);
-  }, [list.length]);
+  const handleSave = async () => {
+    const userId = user?._id || user?.id;
+    if (!title || !userId) return Alert.alert("Required", "Please add a title.");
+
+    setLoading(true);
+    const journalData = {
+      userId,
+      title,
+      description,
+      media: mediaList.map(m => m.uri),
+      location: {
+        lat: tempCoords.latitude,
+        lng: tempCoords.longitude,
+        address: "Pinned Location"
+      }
+    };
+
+    try {
+      await dispatch(addJournalAsync(journalData)).unwrap();
+      setModalVisible(false);
+      resetForm();
+    } catch (err) {
+      Alert.alert("Error", "Could not save to Journal.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setMediaList([]);
+  };
+
+  const handleDeleteJournal = (id) => {
+    Alert.alert("Delete Entry", "Remove this entire journal from your map?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete All", style: "destructive", onPress: async () => {
+          await dispatch(deleteJournalAsync(id));
+          setViewerVisible(false);
+        }
+      }
+    ]);
+  };
+
+  const handleRemoveSingleSavedMedia = (uriToRemove) => {
+    Alert.alert("Remove Photo", "Delete this photo permanently?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete", 
+        style: "destructive", 
+        onPress: async () => {
+          try {
+            await dispatch(removeJournalMediaAsync({ 
+              id: selectedJournal._id, 
+              mediaUri: uriToRemove 
+            })).unwrap();
+
+            const updatedMedia = selectedJournal.media.filter(m => m !== uriToRemove);
+            setSelectedJournal({ ...selectedJournal, media: updatedMedia });
+
+            if (updatedMedia.length === 0) setViewerVisible(false);
+          } catch (err) {
+            Alert.alert("Error", "Could not delete from server.");
+          }
+        }
+      }
+    ]);
+  };
+
+  const renderMediaItem = ({ item }) => {
+    const isVideo = item.endsWith('.mp4') || item.includes('video');
+    return (
+      <View style={styles.mediaSlide}>
+        {isVideo ? (
+          <Video
+            source={{ uri: item }}
+            style={styles.fullMedia}
+            useNativeControls
+            resizeMode={ResizeMode.CONTAIN}
+          />
+        ) : (
+          <Image source={{ uri: item }} style={styles.fullMedia} resizeMode="contain" />
+        )}
+        <TouchableOpacity 
+          style={styles.viewerSingleDelete} 
+          onPress={() => handleRemoveSingleSavedMedia(item)}
+        >
+          <Ionicons name="trash" size={16} color="white" />
+          <Text style={{ color: 'white', marginLeft: 5, fontWeight: '600' }}>Remove</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
+
       <MapView
-        ref={mapRef}
         provider={PROVIDER_GOOGLE}
-        style={StyleSheet.absoluteFillObject}
-        customMapStyle={mapStyle}
+        style={styles.map}
         initialRegion={{
-          latitude: 14.5995, 
-          longitude: 120.9842,
-          latitudeDelta: 10,
-          longitudeDelta: 10,
+          latitude: 14.5995, longitude: 120.9842,
+          latitudeDelta: 0.1, longitudeDelta: 0.1,
         }}
+        onLongPress={(e) => {
+          setTempCoords(e.nativeEvent.coordinate);
+          setModalVisible(true);
+        }}
+        customMapStyle={isDark ? darkMapStyle : []}
       >
-        {/* FIX: Ensure we only map markers for echoes with valid locations */}
-        {list.map((echo) => {
-          const lat = echo.location?.coords?.latitude;
-          const lng = echo.location?.coords?.longitude;
-
-          if (!lat || !lng) return null;
-
-          return (
-            <Marker
-              key={echo._id || Math.random().toString()}
-              coordinate={{ latitude: lat, longitude: lng }}
-              tracksViewChanges={false}
-            >
-              <View style={[styles.markerContainer, { backgroundColor: isDark ? '#304FFE' : '#FFF', borderColor: colors.textMain }]}>
-                <Text style={styles.markerEmoji}>
-                   {echo.emotion === 'Happy' ? '😊' : echo.emotion === 'Calm' ? '🌊' : echo.emotion === 'Energetic' ? '⚡' : '📍'}
-                </Text>
+        {markers.map((journal) => (
+          <Marker
+            key={journal._id}
+            coordinate={{ latitude: Number(journal.location.lat), longitude: Number(journal.location.lng) }}
+            onPress={() => {
+              setSelectedJournal(journal);
+              setActiveMediaIndex(0);
+              setViewerVisible(true);
+            }}
+          >
+            <View style={styles.pinWrapper}>
+              <View style={[styles.pinCircle, { borderColor: colors.primary, backgroundColor: isDark ? '#1a1a1a' : '#fff' }]}>
+                {journal.media?.[0] ? (
+                  <Image source={{ uri: journal.media[0] }} style={styles.markerImage} />
+                ) : (
+                  <Ionicons name="journal" size={16} color={colors.primary} />
+                )}
               </View>
-
-              <Callout tooltip>
-                <GlassCard style={[styles.calloutCard, { backgroundColor: colors.glass }]}>
-                  <View style={styles.calloutHeader}>
-                    <Text style={[styles.calloutTitle, { color: colors.textMain }]}>{echo.title || 'Untitled Echo'}</Text>
-                    <Ionicons name="chevron-forward" size={12} color={colors.textSecondary} />
-                  </View>
-                  <Text style={[styles.calloutDesc, { color: colors.textSecondary }]} numberOfLines={2}>
-                    {echo.location?.address || 'Saved memory location'}
-                  </Text>
-                </GlassCard>
-              </Callout>
-            </Marker>
-          );
-        })}
+              <View style={[styles.pinTail, { borderTopColor: colors.primary }]} />
+            </View>
+          </Marker>
+        ))}
       </MapView>
 
-      <View style={[styles.floatingHeader, { top: insets.top + 10 }]}>
-        <GlassCard style={[styles.headerCard, { backgroundColor: colors.glass }]}>
-          <View style={[styles.pulseDot, { backgroundColor: isDark ? '#82B1FF' : '#304FFE' }]} />
-          <Text style={[styles.headerText, { color: colors.textMain }]}>
-            {list.length} Echoes in your Atlas
-          </Text>
-        </GlassCard>
-      </View>
+      {/* CREATE MODAL */}
+      <Modal visible={modalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <GlassCard style={[styles.modalContent, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
+            <Text style={[styles.modalHeader, { color: colors.textMain }]}>Add to Atlas</Text>
 
-      <TouchableOpacity 
-        style={[styles.recenterBtn, { bottom: insets.bottom + 100 }]}
-        onPress={focusAllMarkers}
-      >
-        <GlassCard style={[styles.recenterInner, { backgroundColor: colors.glass }]}>
-            <Ionicons name="locate" size={24} color={colors.textMain} />
-        </GlassCard>
-      </TouchableOpacity>
+            <View style={styles.mediaSection}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20 }}>
+                <TouchableOpacity style={[styles.addMediaBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]} onPress={pickMedia}>
+                  <Ionicons name="camera" size={30} color={colors.textSecondary} />
+                </TouchableOpacity>
+                {mediaList.map((item, i) => (
+                  <View key={i} style={styles.previewContainer}>
+                    <Image source={{ uri: item.uri }} style={styles.previewItem} />
+                    <TouchableOpacity
+                      style={styles.removeBadge}
+                      onPress={() => setMediaList(prev => prev.filter((_, idx) => idx !== i))}
+                    >
+                      <Ionicons name="close-circle" size={22} color="#ff4444" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+
+            <TextInput
+              style={[styles.input, { color: colors.textMain, backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.5)', borderColor: colors.glassBorder }]}
+              placeholder="Moment Title..."
+              placeholderTextColor={colors.textSecondary}
+              value={title}
+              onChangeText={setTitle}
+            />
+
+            <TextInput
+              style={[styles.input, { height: 80, textAlignVertical: 'top', color: colors.textMain, backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.5)', borderColor: colors.glassBorder }]}
+              placeholder="Tell the story..."
+              multiline
+              placeholderTextColor={colors.textSecondary}
+              value={description}
+              onChangeText={setDescription}
+            />
+
+            <View style={styles.buttonRow}>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.btnCancel}>
+                <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleSave} style={[styles.btnSave, { backgroundColor: colors.primary }]}>
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnSaveText}>Pin to Map</Text>}
+              </TouchableOpacity>
+            </View>
+          </GlassCard>
+        </View>
+      </Modal>
+
+      {/* VIEWER MODAL */}
+      <Modal visible={viewerVisible} transparent animationType="fade">
+        <View style={[styles.viewerOverlay, { backgroundColor: 'rgba(0,0,0,0.95)' }]}>
+          <View style={styles.viewerHeader}>
+            <TouchableOpacity onPress={() => setViewerVisible(false)} style={styles.headerCircleBtn}>
+              <Ionicons name="close" size={28} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleDeleteJournal(selectedJournal?._id)} style={styles.headerCircleBtn}>
+              <Ionicons name="trash-outline" size={22} color="#ff4444" />
+            </TouchableOpacity>
+          </View>
+
+          {selectedJournal && (
+            <View style={{ flex: 1 }}>
+              <FlatList
+                data={selectedJournal.media}
+                renderItem={renderMediaItem}
+                keyExtractor={(item, index) => index.toString()}
+                horizontal
+                pagingEnabled
+                onScroll={(e) => setActiveMediaIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
+                showsHorizontalScrollIndicator={false}
+              />
+
+              <View style={styles.paginationRow}>
+                {selectedJournal.media.map((_, i) => (
+                  <View key={i} style={[styles.dot, { backgroundColor: i === activeMediaIndex ? colors.primary : '#555' }]} />
+                ))}
+              </View>
+
+              <GlassCard style={[styles.enhancedDetails, { backgroundColor: isDark ? 'rgba(30,30,30,0.8)' : 'rgba(255,255,255,0.9)' }]}>
+                <Text style={[styles.viewerTitle, { color: isDark ? '#fff' : '#000' }]}>{selectedJournal.title}</Text>
+                <Text style={[styles.viewerDescription, { color: isDark ? '#ccc' : '#444' }]}>{selectedJournal.description}</Text>
+              </GlassCard>
+            </View>
+          )}
+        </View>
+      </Modal>
     </View>
   );
 };
 
-export default Atlas;
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#121212' },
-  floatingHeader: { position: 'absolute', left: 20, right: 20, zIndex: 10 },
-  headerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 30,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  pulseDot: { width: 8, height: 8, borderRadius: 4, marginRight: 12 },
-  headerText: { fontWeight: '800', fontSize: 14, letterSpacing: -0.3 },
-  markerContainer: {
-    padding: 6,
-    borderRadius: 25,
-    borderWidth: 2,
-    ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4 },
-      android: { elevation: 8 }
-    })
-  },
-  markerEmoji: { fontSize: 20 },
-  calloutCard: {
-    padding: 15,
-    width: 220,
-    borderRadius: 20,
-    marginBottom: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  calloutHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  calloutTitle: { fontWeight: '900', fontSize: 15 },
-  calloutDesc: { fontSize: 12, lineHeight: 16, opacity: 0.8 },
-  recenterBtn: { position: 'absolute', right: 20, width: 56, height: 56, zIndex: 10 },
-  recenterInner: { flex: 1, borderRadius: 28, justifyContent: 'center', alignItems: 'center' }
+  container: { flex: 1 },
+  map: { width: width, height: height },
+  pinWrapper: { alignItems: 'center' },
+  pinCircle: { width: 34, height: 34, borderRadius: 17, borderWidth: 2, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', elevation: 5, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 3 },
+  markerImage: { width: '100%', height: '100%' },
+  pinTail: { width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 8, borderLeftColor: 'transparent', borderRightColor: 'transparent', marginTop: -2 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { width: '92%', padding: 20, borderRadius: 30, borderWidth: 1 },
+  modalHeader: { fontSize: 24, fontWeight: '900', marginBottom: 15, letterSpacing: -0.5 },
+  mediaSection: { height: 100, marginBottom: 15 },
+  addMediaBtn: { width: 80, height: 80, borderRadius: 20, borderStyle: 'dashed', borderWidth: 1.5, justifyContent: 'center', alignItems: 'center', borderColor: '#888', marginRight: 10 },
+  previewContainer: { width: 10, height: 80, borderRadius: 20, marginRight: 15, position: 'relative' },
+  previewItem: { width: '100%', height: '100%', borderRadius: 20 },
+  removeBadge: { position: 'absolute', top: -8, right: -8, backgroundColor: '#fff', borderRadius: 12, zIndex: 10 },
+  input: { width: '100%', borderRadius: 15, padding: 15, marginBottom: 12, borderWidth: 1 },
+  buttonRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginTop: 10 },
+  btnCancel: { marginRight: 20 },
+  btnSave: { paddingHorizontal: 25, paddingVertical: 12, borderRadius: 15, elevation: 2 },
+  btnSaveText: { color: '#fff', fontWeight: 'bold' },
+  viewerOverlay: { flex: 1 },
+  viewerHeader: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 50, zIndex: 10, position: 'absolute', top: 0, width: '100%' },
+  headerCircleBtn: { backgroundColor: 'rgba(0,0,0,0.5)', width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  mediaSlide: {   justifyContent: 'center', alightItems: 'center',marginBottom: 40, },
+  fullMedia: { width: width, height: '100%', },
+  viewerSingleDelete: { position: 'absolute', top: 550, right: 20, backgroundColor: 'rgba(255,0,0,0.8)', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 20, flexDirection: 'row', alignItems: 'center' },
+  paginationRow: { flexDirection: 'row', justifyContent: 'center', position: 'absolute', bottom: height * 0.32, width: '100%' },
+  dot: { width: 6, height: 6, borderRadius: 3, marginHorizontal: 4 },
+  enhancedDetails: { marginHorizontal: 20, padding: 20, borderRadius: 25, position: 'absolute', bottom: 40, width: width - 40, elevation: 10 },
+  viewerTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 8 },
+  viewerDescription: { fontSize: 16, lineHeight: 22 },
 });
+
+// COMPREHENSIVE DARK STYLE (Restores road lines and water)
+const darkMapStyle = [
+  { "elementType": "geometry", "stylers": [{ "color": "#1d2c4d" }] },
+  { "elementType": "labels.text.fill", "stylers": [{ "color": "#8ec3b9" }] },
+  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#1a3646" }] },
+  { "featureType": "administrative.country", "elementType": "geometry.stroke", "stylers": [{ "color": "#4b6878" }] },
+  { "featureType": "landscape.man_made", "elementType": "geometry.stroke", "stylers": [{ "color": "#334e87" }] },
+  { "featureType": "landscape.natural", "elementType": "geometry", "stylers": [{ "color": "#023e58" }] },
+  { "featureType": "poi", "elementType": "geometry", "stylers": [{ "color": "#283d6a" }] },
+  { "featureType": "poi", "elementType": "labels.text.fill", "stylers": [{ "color": "#6f9ba5" }] },
+  { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#304a7d" }] },
+  { "featureType": "road", "elementType": "labels.text.fill", "stylers": [{ "color": "#98a5be" }] },
+  { "featureType": "road.highway", "elementType": "geometry", "stylers": [{ "color": "#2c6675" }] },
+  { "featureType": "road.highway", "elementType": "geometry.stroke", "stylers": [{ "color": "#255763" }] },
+  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#0e1626" }] },
+  { "featureType": "water", "elementType": "labels.text.fill", "stylers": [{ "color": "#4e6d70" }] }
+];
+
+export default Atlas;

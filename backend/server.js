@@ -1,20 +1,27 @@
-const express = require('express');
-const morgan = require('morgan'); // Install: npm install morgan
-const { errorHandler } = require('./middleware/errorMiddleware');
-const connectDB = require('./config/db');
+    const express = require('express');
+    const morgan = require('morgan'); 
+    const cors = require('cors');  
+    const { errorHandler } = require('./middleware/errorMiddleware');
+    const connectDB = require('./config/db');
 
-connectDB();
-const app = express();
+    require('dotenv').config();  
+    connectDB();
 
-// Middleware
-app.use(express.json());
-app.use(morgan('dev')); // Logs: POST /api/echoes 201 45ms
+    const app = express();
 
-// Routes
-app.use('/api/echoes', require('./routes/echoRoutes'));
+    // Middleware
+    app.use(cors()); 
+    app.use(express.json());
+    app.use(morgan('dev')); 
 
-// Error Middleware (Must be after routes)
-app.use(errorHandler);
+    // Routes
+    app.use('/api/echoes', require('./routes/echoRoutes'));
+    app.use('/api/users', require('./routes/userRoutes'));  
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
+    app.use('/api/journals', require('./routes/journalRoutes'));
+
+    // Error Middleware
+    app.use(errorHandler);
+
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

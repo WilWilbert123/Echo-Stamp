@@ -1,9 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const { getEchoes, createEcho } = require('../controllers/echoController');
+const { getEchoes, createEcho, deleteEcho } = require('../controllers/echoController');
 
-router.route('/')
-  .get(getEchoes)
-  .post(createEcho);
+ 
+router.get('/:userId/:type', getEchoes);
+
+ 
+router.post('/', createEcho);
+
+// For deleting
+router.delete('/:id', deleteEcho);
 
 module.exports = router;
