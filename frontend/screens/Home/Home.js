@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import LottieView from 'lottie-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -18,10 +19,8 @@ import {
 import { Swipeable } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
-
-import { useTheme } from '../context/ThemeContext';
-import { deleteEchoAsync, getEchoesAsync } from '../redux/echoSlice';
-
+import { useTheme } from '../../context/ThemeContext';
+import { deleteEchoAsync, getEchoesAsync } from '../../redux/echoSlice';
 const { width, height } = Dimensions.get('window');
 
 const Home = () => {
@@ -36,6 +35,19 @@ const Home = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+
+  const emotionAssets = {
+  'Burnout': require('../../assets/burnout.json'),
+  'Calm': require('../../assets/chill.json'),
+  'Fire': require('../../assets/Fire.json'),
+  'Excited': require('../../assets/play.json'),
+  'Loved': require('../../assets/inlove.json'),
+  'Sad': require('../../assets/sad.json'),
+  'Sick': require('../../assets/sick.json'),
+  'Grateful': require('../../assets/walk.json'),
+};
+
+
 
   useEffect(() => {
     const userId = user?._id || user?.id;
@@ -82,32 +94,42 @@ const Home = () => {
     </TouchableOpacity>
   );
 
-  const renderItem = ({ item }) => (
-    <Swipeable renderRightActions={() => renderRightActions(item._id)} overshootRight={false}>
-      <TouchableOpacity 
-        activeOpacity={0.8} 
-        style={[
-          styles.echoCard, 
-          { 
-            backgroundColor: isDark ? colors.glass : '#F9F9F9',
-            borderColor: colors.glassBorder,
-            borderWidth: isDark ? 1 : 0 
-          }
-        ]}
-      >
-        <View style={styles.cardHeader}>
-          <View style={styles.titleContainer}>
-            <Text style={[styles.echoTitle, { color: colors.textMain }]}>{item.title}</Text>
-            <Text style={[styles.echoDate, { color: colors.textSecondary }]}>
-                {new Date(item.createdAt).toLocaleDateString()}
-            </Text>
-          </View>
-          <View style={[styles.emotionBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#FFF' }]}>
-            <Text style={[styles.echoEmotion, { color: colors.textMain }]}>
-                {item.emotion === 'Calm' ? '🌊' : '😊'} {item.emotion}
-            </Text>
-          </View>
+ const renderItem = ({ item }) => (
+  <Swipeable renderRightActions={() => renderRightActions(item._id)} overshootRight={false}>
+    <TouchableOpacity 
+      activeOpacity={0.8} 
+      style={[
+        styles.echoCard, 
+        { 
+          backgroundColor: isDark ? colors.glass : '#F9F9F9',
+          borderColor: colors.glassBorder,
+          borderWidth: isDark ? 1 : 0 
+        }
+      ]}
+    >
+      <View style={styles.cardHeader}>
+        <View style={styles.titleContainer}>
+          <Text style={[styles.echoTitle, { color: colors.textMain }]}>{item.title}</Text>
+          <Text style={[styles.echoDate, { color: colors.textSecondary }]}>
+              {new Date(item.createdAt).toLocaleDateString()}
+          </Text>
         </View>
+
+        {/* UPDATED EMOTION AREA */}
+        <View style={styles.emotionContainer}>
+          {emotionAssets[item.emotion] && (
+            <LottieView
+              source={emotionAssets[item.emotion]}
+              autoPlay
+              loop
+              style={{ width: 70, height: 70}}
+            />
+          )}
+          <Text style={[styles.echoEmotion, { color: colors.textSecondary, fontSize: 10, textAlign: 'center',marginTop:1  }]}>
+            {item.emotion}
+          </Text>
+        </View>
+      </View>
 
         {item.description && (
           <Text style={[styles.echoDescription, { color: isDark ? 'rgba(255,255,255,0.6)' : '#555' }]} numberOfLines={2}>
@@ -231,8 +253,9 @@ cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems:
 titleContainer: { flex: 1, marginRight: 10 },
 echoTitle: { fontSize: 18, fontWeight: '800', marginBottom: 2 },
 echoDate: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-emotionBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
-echoEmotion: { fontSize: 12, fontWeight: '700' },
+ 
+echoEmotion: { fontSize: 12, fontWeight: '700',textTransform: 'uppercase',marginTop: -5, },
+emotionContainer: {   position:'absolute',left:210,top:-5,},
 echoDescription: { fontSize: 14, lineHeight: 22, marginBottom: 15 },
 cardFooter: { flexDirection: 'row', alignItems: 'center', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(150,150,150,0.2)', paddingTop: 10 },
 locationText: { fontSize: 11, marginLeft: 5, fontWeight: '500' },

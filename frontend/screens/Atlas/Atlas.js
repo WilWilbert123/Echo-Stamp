@@ -19,10 +19,10 @@ import {
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useDispatch, useSelector } from 'react-redux';
-import GlassCard from '../components/GlassCard';
-import { useTheme } from '../context/ThemeContext';
+import GlassCard from '../../components/GlassCard';
+import { useTheme } from '../../context/ThemeContext';
 
-import { addJournalAsync, deleteJournalAsync, getJournalsAsync, removeJournalMediaAsync } from '../redux/journalSlice';
+import { addJournalAsync, deleteJournalAsync, getJournalsAsync, removeJournalMediaAsync } from '../../redux/journalSlice';
 
 const { width, height } = Dimensions.get('window');
 
@@ -309,9 +309,9 @@ const styles = StyleSheet.create({
   modalHeader: { fontSize: 24, fontWeight: '900', marginBottom: 15, letterSpacing: -0.5 },
   mediaSection: { height: 100, marginBottom: 15 },
   addMediaBtn: { width: 80, height: 80, borderRadius: 20, borderStyle: 'dashed', borderWidth: 1.5, justifyContent: 'center', alignItems: 'center', borderColor: '#888', marginRight: 10 },
-  previewContainer: { width: 10, height: 80, borderRadius: 20, marginRight: 15, position: 'relative' },
+  previewContainer: { width: 80, height: 80, borderRadius: 20, marginRight: 15, position: 'relative' },
   previewItem: { width: '100%', height: '100%', borderRadius: 20 },
-  removeBadge: { position: 'absolute', top: -8, right: -8, backgroundColor: '#fff', borderRadius: 12, zIndex: 10 },
+  removeBadge: { position: 'absolute', top: 1, right: -8, backgroundColor: '#fff', borderRadius: 12, zIndex: 10 },
   input: { width: '100%', borderRadius: 15, padding: 15, marginBottom: 12, borderWidth: 1 },
   buttonRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginTop: 10 },
   btnCancel: { marginRight: 20 },

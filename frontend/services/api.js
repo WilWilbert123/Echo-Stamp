@@ -5,11 +5,11 @@ const API = axios.create({
     timeout: 10000,
 });
 
-// Interceptor to add Auth Token to every request
+ 
 API.interceptors.request.use(
     async (config) => {
         try {
-            
+         
             const { store } = await import('../redux/store');
             const state = store.getState();
             const token = state.auth?.token; 
@@ -47,5 +47,10 @@ export const removeMediaFromJournal = (id, mediaUri) => API.patch(`/journals/${i
 export const postJournal = (journalData) => API.post('/journals', journalData);
 export const deleteJournal = (id) => API.delete(`/journals/${id}`);
 
+export const requestOtp = (userData) => API.post('/users/request-otp', userData);
+export const verifyOtp = (data) => API.post('/users/verify-otp', data);
+ 
+export const forgotPassword = (email) => API.post('/users/forgot-password', { email });
+export const resetPassword = (data) => API.post('/users/reset-password', data);
 
 export default API;

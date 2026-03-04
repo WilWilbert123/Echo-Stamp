@@ -13,7 +13,7 @@ import { ContributionGraph, LineChart, PieChart, ProgressChart } from 'react-nat
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 
-import { useTheme } from '../context/ThemeContext';
+import { useTheme } from '../../context/ThemeContext';
 
 const { width, height } = Dimensions.get('window');
 

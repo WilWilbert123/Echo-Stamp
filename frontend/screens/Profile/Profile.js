@@ -14,8 +14,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { useTheme } from '../context/ThemeContext';
-import { logout } from '../redux/authSlice';
+import { useTheme } from '../../context/ThemeContext';
+import { logout } from '../../redux/authSlice';
 
 const { width, height } = Dimensions.get('window');
 

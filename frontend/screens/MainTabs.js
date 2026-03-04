@@ -4,10 +4,10 @@ import { Platform } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 
 // Import your screens
-import Atlas from '../screens/Atlas';
-import Home from '../screens/Home';
-import Insights from '../screens/Insights';
-import Profile from '../screens/Profile';
+import Atlas from '../screens/Atlas/Atlas';
+import Home from '../screens/Home/Home';
+import Insights from '../screens/Insight/Insights';
+import Profile from '../screens/Profile/Profile';
 
 const Tab = createBottomTabNavigator();
 
