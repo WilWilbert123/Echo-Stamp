@@ -1,6 +1,6 @@
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -16,9 +16,9 @@ import {
 } from 'react-native';
 import { useDispatch } from 'react-redux';
 
-import { useTheme } from '../context/ThemeContext';
-import { setCredentials } from '../redux/authSlice';
-import API from '../services/api';
+import { useTheme } from '../../context/ThemeContext';
+import { setCredentials } from '../../redux/authSlice';
+import API from '../../services/api';
 
 const { width, height } = Dimensions.get('window');
 

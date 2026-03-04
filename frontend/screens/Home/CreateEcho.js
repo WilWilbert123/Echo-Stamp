@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
+import LottieView from 'lottie-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -17,9 +18,8 @@ import {
   View
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-
-import { useTheme } from '../context/ThemeContext';
-import { addEchoAsync } from '../redux/echoSlice';
+import { useTheme } from '../../context/ThemeContext';
+import { addEchoAsync } from '../../redux/echoSlice';
 
 const { width, height } = Dimensions.get('window');
 
@@ -82,14 +82,14 @@ const CreateEcho = ({ navigation }) => {
   }, []);
 
   const emotions = [
-    { label: 'Happy', emoji: '😊' },
-    { label: 'Calm', emoji: '🌊' },
-    { label: 'Proud', emoji: '⭐' },
-    { label: 'Sad', emoji: '☁️' },
-    { label: 'Excited', emoji: '✨' },
-    { label: 'Loved', emoji: '❤️' },
-    { label: 'Tired', emoji: '😴' },
-    { label: 'Grateful', emoji: '🙏' },
+    { label: 'Burnout', value: 'Burnout', animation: require('../../assets/burnout.json') },
+    { label: 'Chill', value: 'Calm', animation: require('../../assets/chill.json') },
+    { label: 'Fire', value: 'Fire', animation: require('../../assets/Fire.json') },
+    { label: 'Play', value: 'Excited', animation: require('../../assets/play.json') },
+    { label: 'In Love', value: 'Loved', animation: require('../../assets/inlove.json') },
+    { label: 'Sad', value: 'Sad', animation: require('../../assets/sad.json') },
+    { label: 'Sick', value: 'Sick', animation: require('../../assets/sick.json') },
+    { label: 'Walk', value: 'Grateful', animation: require('../../assets/walk.json') },
   ];
 
   const handleSave = async () => {
@@ -116,7 +116,7 @@ const CreateEcho = ({ navigation }) => {
       };
 
       await dispatch(addEchoAsync(echoData)).unwrap();
-      Alert.alert("Success", "Memory anchored!");
+      //Alert.alert("Success", "Memory anchored!");
       navigation.goBack();
     } catch (error) {
       console.error(error);
@@ -168,7 +168,7 @@ const CreateEcho = ({ navigation }) => {
           </View>
 
           {/* Main Input Area */}
-          <View style={[styles.solidCard, { 
+          <View style={[styles.solidCard, {
             backgroundColor: isDark ? colors.glass : '#FFF',
             borderColor: colors.glassBorder,
             borderWidth: isDark ? 1 : 0
@@ -199,24 +199,31 @@ const CreateEcho = ({ navigation }) => {
             {emotions.map((item) => (
               <TouchableOpacity
                 key={item.label}
-                onPress={() => setEmotion(item.label)}
+                onPress={() => setEmotion(item.value)} // set the value for your DB
                 style={[
                   styles.emotionBox,
-                  { 
+                  {
                     backgroundColor: isDark ? colors.glass : '#FFF',
-                    borderColor: emotion === item.label ? colors.primary : colors.glassBorder,
-                    borderWidth: emotion === item.label ? 2 : 1
+                    borderColor: emotion === item.value ? colors.primary : colors.glassBorder,
+                    borderWidth: emotion === item.value ? 2 : 1
                   },
-                  emotion === item.label && {
+                  emotion === item.value && {
                     backgroundColor: isDark ? 'rgba(56,189,248,0.1)' : 'rgba(56,189,248,0.05)'
                   }
                 ]}
               >
-                <Text style={styles.emojiText}>{item.emoji}</Text>
+                {/* RENDER LOTTIE INSTEAD OF TEXT EMOJI */}
+                <LottieView
+                  source={item.animation}
+                  autoPlay
+                  loop={emotion === item.value}
+                  style={{ width: 80, height: 80 }}
+                />
+
                 <Text style={[
                   styles.emotionText,
                   { color: colors.textSecondary },
-                  emotion === item.label && { color: colors.primary, fontWeight: '800' }
+                  emotion === item.value && { color: colors.primary, fontWeight: '800' }
                 ]}>
                   {item.label}
                 </Text>
@@ -225,7 +232,7 @@ const CreateEcho = ({ navigation }) => {
           </ScrollView>
 
           {/* Details Card */}
-          <View style={[styles.solidCard, { 
+          <View style={[styles.solidCard, {
             backgroundColor: isDark ? colors.glass : '#FFF',
             borderColor: colors.glassBorder,
             borderWidth: isDark ? 1 : 0
