@@ -111,45 +111,7 @@ exports.verifyOtpAndRegister = async (req, res) => {
     }
 };
 
-// --- FORGOT PASSWORD: Step 1 (Request Reset Code) ---
-exports.forgotPasswordRequest = async (req, res) => {
-    try {
-        const email = req.body.email ? req.body.email.toLowerCase().trim() : "";
-        if (!email) return res.status(400).json({ message: "Email is required" });
-
-        const user = await User.findOne({ email });
-
-        if (!user) {
-            return res.status(404).json({ message: "No account found with this email" });
-        }
-
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-        // Save OTP and explicitly set userData to null for security
-        await OtpEntry.findOneAndUpdate(
-            { email },
-            { 
-                otp, 
-                userData: null, 
-                createdAt: new Date() 
-            },
-            { upsert: true, returnDocument: 'after' }
-        );
-
-        await transporter.sendMail({
-            from: `"Echo Stamp" <${process.env.EMAIL_USER}>`,
-            to: email,
-            subject: 'Password Reset Code',
-            html: `<h1>Reset Your Password</h1><p>Your code is: <b>${otp}</b></p>`,
-        });
-
-        return res.status(200).json({ message: 'Reset code sent' });
-    } catch (error) {
-        console.error("FORGOT PASSWORD ERROR:", error);
-        return res.status(500).json({ message: 'Server error', error: error.message });
-    }
-};
-
+ 
 // --- FORGOT PASSWORD: Step 2 (Save New Password) ---
 exports.resetPassword = async (req, res) => {
     try {
@@ -205,6 +167,53 @@ exports.loginUser = async (req, res) => {
         }
     } catch (error) {
         console.error("LOGIN ERROR:", error);
+        return res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+// 3. FORGOT PASSWORD REQUEST
+exports.forgotPasswordRequest = async (req, res) => {
+    try {
+        const email = req.body.email ? req.body.email.toLowerCase().trim() : "";
+        const user = await User.findOne({ email });
+
+        if (!user) return res.status(404).json({ message: "No account found" });
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+      
+        await OtpEntry.findOneAndUpdate(
+            { email },
+            { otp, userData: null, createdAt: new Date() },
+            { upsert: true }
+        );
+
+        await transporter.sendMail({
+            from: `"Echo Stamp" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: 'Password Reset Code',
+            html: `<p>Your reset code is: <b>${otp}</b></p>`,
+        });
+
+        return res.status(200).json({ message: 'Reset code sent' });
+    } catch (error) {
+        return res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+// 4. VERIFY ONLY (For Reset Flow)
+exports.verifyOnly = async (req, res) => {
+    try {
+        const email = req.body.email ? req.body.email.toLowerCase().trim() : "";
+        const otp = req.body.otp ? req.body.otp.trim() : "";
+
+        const entry = await OtpEntry.findOne({ email, otp });
+        if (!entry) {
+            return res.status(400).json({ message: 'Invalid or expired code' });
+        }
+
+        return res.status(200).json({ message: 'OTP verified successfully' });
+    } catch (error) {
         return res.status(500).json({ message: 'Server error', error: error.message });
     }
 };

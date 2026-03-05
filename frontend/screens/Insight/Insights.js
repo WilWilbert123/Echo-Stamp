@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import LottieView from 'lottie-react-native';
 import React, { useMemo, useState } from 'react';
 import {
     Dimensions,
@@ -26,7 +27,22 @@ const Insights = () => {
 
     const [timeframe, setTimeframe] = useState('Month');
 
-    // Refined Chart Config for Glassmorphism
+    // --- EMOTION CONFIGURATION ---
+    const emotions = [
+        { label: 'Burnout', value: 'Burnout', animation: require('../../assets/burnout.json'), color: '#FF4B2B' },
+        { label: 'Chill', value: 'Calm', animation: require('../../assets/chill.json'), color: '#4FC3F7' },
+        { label: 'Fire', value: 'Fire', animation: require('../../assets/Fire.json'), color: '#FF8C00' },
+        { label: 'Play', value: 'Excited', animation: require('../../assets/play.json'), color: '#FF5722' },
+        { label: 'In Love', value: 'Loved', animation: require('../../assets/inlove.json'), color: '#E91E63' },
+        { label: 'Sad', value: 'Sad', animation: require('../../assets/sad.json'), color: '#546E7A' },
+        { label: 'Sick', value: 'Sick', animation: require('../../assets/sick.json'), color: '#9E9E9E' },
+        { label: 'Walk', value: 'Grateful', animation: require('../../assets/walk.json'), color: '#4CAF50' },
+    ];
+
+    const moodWeights = { 'Excited': 10, 'Fire': 9, 'Loved': 8, 'Grateful': 7, 'Calm': 6, 'Burnout': 3, 'Sad': 2, 'Sick': 1 };
+
+    const getEmotionDetails = (val) => emotions.find(e => e.value === val) || emotions[1];
+
     const chartConfig = {
         backgroundGradientFrom: colors.glass,
         backgroundGradientTo: colors.glass,
@@ -43,56 +59,29 @@ const Insights = () => {
         }
     };
 
-    const moodWeights = { 'Excited': 10, 'Happy': 8, 'Loved': 8, 'Grateful': 7, 'Calm': 6, 'Neutral': 5, 'Tired': 4, 'Sad': 3, 'Angry': 2 };
-    const emotionPalette = { Happy: '#FFD700', Calm: '#4FC3F7', Proud: '#9C27B0', Sad: '#546E7A', Excited: '#FF5722', Loved: '#E91E63', Tired: '#3F51B5', Grateful: '#4CAF50', Neutral: '#9E9E9E' };
-    const emojiMap = { 'Happy': '😊', 'Calm': '🌊', 'Proud': '⭐', 'Sad': '☁️', 'Excited': '✨', 'Loved': '❤️', 'Tired': '🔋', 'Grateful': '🙏', 'Neutral': '😐' };
-
-
     // --- DATA LOGIC ---
     const chartData = useMemo(() => {
-        // 1. Ensure we have an array and filter out any corrupted entries
         const safeList = Array.isArray(list) ? list.filter(echo => echo && echo.createdAt) : [];
+        if (safeList.length === 0) return { labels: ["No Data"], datasets: [{ data: [0] }] };
 
-        if (safeList.length === 0) {
-            return { labels: ["No Data"], datasets: [{ data: [0] }] };
-        }
-
-        // 2. Sort and handle date conversion safely
-        const sortedList = [...safeList].sort((a, b) => {
-            const dateA = new Date(a.createdAt).getTime();
-            const dateB = new Date(b.createdAt).getTime();
-            return dateA - dateB;
-        });
-
-        // 3. Take the last 6 echoes
+        const sortedList = [...safeList].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
         const recentEchoes = sortedList.slice(-6);
 
         const labels = recentEchoes.map(echo => {
             const date = new Date(echo.createdAt);
-            // Check if date is valid, otherwise return "??"
-            if (isNaN(date.getTime())) return "??";
-            return (date.getMonth() + 1) + "/" + date.getDate();
+            return isNaN(date.getTime()) ? "??" : (date.getMonth() + 1) + "/" + date.getDate();
         });
 
-        const dataPoints = recentEchoes.map(echo => {
-            // Log this to your console to see if weights are actually hitting
-            const weight = moodWeights[echo.emotion];
-            return typeof weight === 'number' ? weight : 5; // Default to 5 if emotion not found
-        });
+        const dataPoints = recentEchoes.map(echo => moodWeights[echo.emotion] || 5);
 
-        // Final safety check: if dataPoints contains NaN, the chart WILL NOT render
         return {
             labels: labels.length > 0 ? labels : ["..."],
-            datasets: [{
-                data: dataPoints.length > 0 ? dataPoints : [0],
-                strokeWidth: 4
-            }]
+            datasets: [{ data: dataPoints.length > 0 ? dataPoints : [0], strokeWidth: 4 }]
         };
-    }, [list]); // Add moodWeights here if it's defined inside the component
+    }, [list]);
 
     const heatmapData = useMemo(() => {
         const jList = Array.isArray(journalList) ? journalList : [];
-        if (jList.length === 0) return [];
         const dateMap = jList.reduce((acc, entry) => {
             const date = new Date(entry.createdAt).toISOString().split('T')[0];
             acc[date] = (acc[date] || 0) + 1;
@@ -105,22 +94,27 @@ const Insights = () => {
         const data = Array.isArray(list) ? list : [];
         if (data.length === 0) return [];
         const counts = data.reduce((acc, echo) => {
-            const emo = echo.emotion || 'Neutral';
+            const emo = echo.emotion || 'Calm';
             acc[emo] = (acc[emo] || 0) + 1;
             return acc;
         }, {});
-        return Object.keys(counts).map(key => ({
-            name: `${emojiMap[key] || ''} ${key}`,
-            population: counts[key],
-            color: emotionPalette[key] || '#9E9E9E',
-            legendFontColor: colors.textSecondary,
-            legendFontSize: 11
-        })).sort((a, b) => b.population - a.population);
-    }, [list, colors.textSecondary]);
+
+        return Object.keys(counts).map(key => {
+            const details = getEmotionDetails(key);
+            return {
+                name: key,
+                population: counts[key],
+                color: details.color,
+                // We hide default text to use our Custom Legend below
+                legendFontColor: 'transparent',
+                legendFontSize: 0 
+            };
+        }).sort((a, b) => b.population - a.population);
+    }, [list]);
 
     const stats = useMemo(() => {
         const data = Array.isArray(list) ? list : [];
-        if (!data.length) return { total: 0, topEmotion: 'N/A', stability: 0 };
+        if (!data.length) return { total: 0, topEmotion: 'Calm', stability: 0 };
         const now = new Date();
         const filtered = data.filter(item => {
             const itemDate = new Date(item.createdAt);
@@ -129,26 +123,26 @@ const Insights = () => {
             return true;
         });
         const emotionCounts = filtered.reduce((acc, item) => {
-            const emo = item.emotion || 'Neutral';
+            const emo = item.emotion || 'Calm';
             acc[emo] = (acc[emo] || 0) + 1;
             return acc;
         }, {});
         const topEmotion = Object.keys(emotionCounts).length
             ? Object.keys(emotionCounts).reduce((a, b) => emotionCounts[a] > emotionCounts[b] ? a : b)
-            : 'None';
+            : 'Calm';
         const weights = filtered.map(e => moodWeights[e.emotion] || 5);
-        if (weights.length < 2) return { total: filtered.length, topEmotion, stability: 0.5 };
         const mean = weights.reduce((a, b) => a + b, 0) / weights.length;
         const variance = weights.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / weights.length;
-        const stability = Math.max(0.1, Math.min(1, 1 - (variance / 20)));
-        return { total: filtered.length, topEmotion, stability };
+        const stability = Math.max(0.1, Math.min(1, 1 - (variance / 25)));
+        return { total: data.length, topEmotion, stability };
     }, [list, timeframe]);
-console.log("CHART DEBUG:", JSON.stringify(chartData.datasets[0].data));
+
+    const topEmotionDetails = getEmotionDetails(stats.topEmotion);
+
     return (
         <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
             <StatusBar barStyle={colors.status} />
 
-            {/* BRANDED WAVES */}
             <View style={styles.headerBackground}>
                 <View style={[styles.blueWave, { backgroundColor: colors.primary, opacity: isDark ? 0.3 : 0.8 }]} />
                 <View style={[styles.darkWave, { backgroundColor: isDark ? '#1E293B' : '#637D8B', opacity: 0.6 }]} />
@@ -159,12 +153,8 @@ console.log("CHART DEBUG:", JSON.stringify(chartData.datasets[0].data));
                 showsVerticalScrollIndicator={false}
             >
                 <View style={styles.header}>
-                    <Text style={[styles.headerTitle, { color: isDark ? '#FFF' : colors.primary }]}>
-                        Insights
-                    </Text>
-                    <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-                        Analyzing your emotional resonance.
-                    </Text>
+                    <Text style={[styles.headerTitle, { color: isDark ? '#FFF' : colors.primary }]}>Insights</Text>
+                    <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Analyzing your emotional resonance.</Text>
                 </View>
 
                 {/* PILL PICKER */}
@@ -173,21 +163,9 @@ console.log("CHART DEBUG:", JSON.stringify(chartData.datasets[0].data));
                         <TouchableOpacity
                             key={item}
                             onPress={() => setTimeframe(item)}
-                            style={[
-                                styles.pickerItem,
-                                timeframe === item && {
-                                    backgroundColor: isDark ? colors.primary : '#FFF',
-                                    shadowColor: '#000',
-                                    shadowOpacity: 0.1,
-                                    shadowRadius: 4,
-                                    elevation: 2
-                                }
-                            ]}
+                            style={[styles.pickerItem, timeframe === item && { backgroundColor: isDark ? colors.primary : '#FFF', elevation: 2 }]}
                         >
-                            <Text style={[
-                                styles.pickerText,
-                                { color: timeframe === item ? (isDark ? '#000' : colors.primary) : colors.textSecondary }
-                            ]}>{item}</Text>
+                            <Text style={[styles.pickerText, { color: timeframe === item ? (isDark ? '#000' : colors.primary) : colors.textSecondary }]}>{item}</Text>
                         </TouchableOpacity>
                     ))}
                 </View>
@@ -199,9 +177,14 @@ console.log("CHART DEBUG:", JSON.stringify(chartData.datasets[0].data));
                         <Text style={[styles.miniValue, { color: colors.textMain }]}>{stats.total}</Text>
                         <Text style={[styles.miniLabel, { color: colors.textSecondary }]}>Total Echoes</Text>
                     </View>
-                    <View style={[styles.miniCard, { backgroundColor: isDark ? colors.glass : '#FFF', borderColor: colors.glassBorder }]}>
-                        <Ionicons name="heart" size={24} color="#EF4444" />
-                        <Text style={[styles.miniValue, { color: colors.textMain }]} numberOfLines={1}>{stats.topEmotion}</Text>
+                    <View style={[styles.miniCard, { backgroundColor: isDark ? colors.glass : '#FFF', borderColor: colors.glassBorder, paddingVertical: 10 }]}>
+                        <LottieView 
+                            source={topEmotionDetails.animation} 
+                            autoPlay 
+                            loop 
+                            style={{ width: 45, height: 45 }}
+                        />
+                        <Text style={[styles.miniValue, { color: colors.textMain, marginTop: 5 }]} numberOfLines={1}>{topEmotionDetails.label}</Text>
                         <Text style={[styles.miniLabel, { color: colors.textSecondary }]}>Dominant</Text>
                     </View>
                 </View>
@@ -212,30 +195,18 @@ console.log("CHART DEBUG:", JSON.stringify(chartData.datasets[0].data));
                     {list?.length > 0 ? (
                         <LineChart
                             data={chartData}
-                            width={Dimensions.get('window').width - 50} // Use direct dimensions for reliability
-                            height={220} // Slightly taller for better labels
-                            chartConfig={{
-                                ...chartConfig,
-                                // Add these three lines:
-                                fromZero: true,
-                                count: 6, // Match your slice(-6) logic
-                                propsForVerticalLabels: { fontSize: 10, fontWeight: '600' },
-                            }}
+                            width={width - 50}
+                            height={220}
+                            chartConfig={{ ...chartConfig, fromZero: true, count: 6 }}
                             bezier
-                            style={[styles.chartStyle, { paddingRight: 45, marginLeft: -15 }]} // Adjust offset
+                            style={[styles.chartStyle, { paddingRight: 45, marginLeft: -15 }]}
                             withInnerLines={false}
                             withOuterLines={false}
-                            withDots={true}
-                            getDotColor={(dataPoint, dataPointIndex) => colors.primary}
-                            renderDotContent={({ x, y, index }) => (
-                                 
-                                <View key={index} style={{ position: 'absolute', top: y - 2, left: x - 2, width: 4, height: 4, borderRadius: 2, backgroundColor: colors.primary }} />
-                            )}
                         />
                     ) : (
                         <View style={styles.emptyContainer}>
                             <Ionicons name="pulse" size={40} color={colors.glassBorder} />
-                            <Text style={{ color: colors.textSecondary, marginTop: 10, fontWeight: '500' }}>Anchor an Echo to see your flow</Text>
+                            <Text style={{ color: colors.textSecondary, marginTop: 10 }}>Anchor an Echo to see your flow</Text>
                         </View>
                     )}
                 </View>
@@ -259,33 +230,62 @@ console.log("CHART DEBUG:", JSON.stringify(chartData.datasets[0].data));
                     ) : (
                         <View style={styles.emptyContainer}>
                             <Ionicons name="calendar-outline" size={40} color={colors.glassBorder} />
-                            <Text style={{ color: colors.textSecondary, marginTop: 10, fontWeight: '500' }}>No journal activity recorded</Text>
+                            <Text style={{ color: colors.textSecondary, marginTop: 10 }}>No journal activity recorded</Text>
                         </View>
                     )}
                 </View>
 
-                {/* PROFILE & RESILIENCE */}
+                {/* EMOTIONAL PROFILE WITH LOTTIE LEGEND */}
                 <Text style={[styles.sectionTitle, { color: colors.textMain }]}>Emotional Profile</Text>
                 <View style={[styles.chartCard, { backgroundColor: isDark ? colors.glass : '#FFF', borderColor: colors.glassBorder }]}>
                     {list?.length > 0 ? (
-                        <PieChart
-                            data={pieData}
-                            width={width - 50}
-                            height={180}
-                            chartConfig={chartConfig}
-                            accessor={"population"}
-                            backgroundColor={"transparent"}
-                            paddingLeft={"15"}
-                            absolute
-                        />
+                        <View style={{ width: '100%', alignItems: 'center' }}>
+                            <PieChart
+                                data={pieData}
+                                width={width}
+                                height={200}
+                                chartConfig={chartConfig}
+                                accessor={"population"}
+                                backgroundColor={"transparent"}
+                                paddingLeft={(width / 4).toString()} // Centers the Pie
+                                hasLegend={false} // Disable standard legend
+                                absolute
+                            />
+                            
+                            {/* CUSTOM LOTTIE LEGEND */}
+                            <View style={styles.lottieLegendContainer}>
+                                {pieData.map((item, index) => {
+                                    const details = getEmotionDetails(item.name);
+                                    const percentage = Math.round((item.population / stats.total) * 100);
+                                    
+                                    return (
+                                        <View key={index} style={styles.legendItem}>
+                                            <View style={[styles.colorIndicator, { backgroundColor: item.color }]} />
+                                            <LottieView 
+                                                source={details.animation} 
+                                                autoPlay 
+                                                loop 
+                                                style={styles.legendLottie} 
+                                            />
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={[styles.legendText, { color: colors.textMain }]}>{details.label}</Text>
+                                                <Text style={{ color: colors.textSecondary, fontSize: 10 }}>{item.population} recorded</Text>
+                                            </View>
+                                            <Text style={[styles.percentageText, { color: colors.primary }]}>{percentage}%</Text>
+                                        </View>
+                                    );
+                                })}
+                            </View>
+                        </View>
                     ) : (
                         <View style={styles.emptyContainer}>
                             <Ionicons name="pie-chart-outline" size={40} color={colors.glassBorder} />
-                            <Text style={{ color: colors.textSecondary, marginTop: 10, fontWeight: '500' }}>More data needed</Text>
+                            <Text style={{ color: colors.textSecondary, marginTop: 10 }}>More data needed</Text>
                         </View>
                     )}
                 </View>
 
+                {/* RESILIENCE */}
                 <Text style={[styles.sectionTitle, { color: colors.textMain }]}>Emotional Resilience</Text>
                 <View style={[styles.chartCard, { flexDirection: 'row', backgroundColor: isDark ? colors.glass : '#FFF', borderColor: colors.glassBorder, padding: 20 }]}>
                     {list?.length > 0 ? (
@@ -296,10 +296,7 @@ console.log("CHART DEBUG:", JSON.stringify(chartData.datasets[0].data));
                                 height={120}
                                 strokeWidth={10}
                                 radius={35}
-                                chartConfig={{
-                                    ...chartConfig,
-                                    color: (opacity = 1) => `rgba(34, 197, 94, ${opacity})`,
-                                }}
+                                chartConfig={{ ...chartConfig, color: (opacity = 1) => `rgba(34, 197, 94, ${opacity})` }}
                                 hideLegend={true}
                             />
                             <View style={{ flex: 1, justifyContent: 'center', marginLeft: 15 }}>
@@ -307,7 +304,7 @@ console.log("CHART DEBUG:", JSON.stringify(chartData.datasets[0].data));
                                     {Math.round(stats.stability * 100)}%
                                 </Text>
                                 <Text style={[styles.miniLabel, { color: colors.textSecondary, fontSize: 13 }]}>Stability Score</Text>
-                                <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 6, fontStyle: 'italic', lineHeight: 16 }}>
+                                <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 6, fontStyle: 'italic' }}>
                                     {stats.stability > 0.7 ? "Consistent resonance." : "Diverse emotional range."}
                                 </Text>
                             </View>
@@ -315,7 +312,7 @@ console.log("CHART DEBUG:", JSON.stringify(chartData.datasets[0].data));
                     ) : (
                         <View style={styles.emptyContainer}>
                             <Ionicons name="shield-checkmark-outline" size={40} color={colors.glassBorder} />
-                            <Text style={{ color: colors.textSecondary, marginTop: 10, fontWeight: '500' }}>Data needed</Text>
+                            <Text style={{ color: colors.textSecondary, marginTop: 10 }}>Data needed</Text>
                         </View>
                     )}
                 </View>
@@ -340,10 +337,25 @@ const styles = StyleSheet.create({
     chartCard: { borderRadius: 28, paddingVertical: 20, alignItems: 'center', overflow: 'hidden', marginBottom: 20, borderWidth: 1 },
     chartStyle: { borderRadius: 20, paddingRight: 45, marginTop: 10 },
     grid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
-    miniCard: { width: (width - 65) / 2, padding: 20, alignItems: 'center', borderRadius: 28, borderWidth: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
-    miniValue: { fontSize: 20, fontWeight: '900', marginTop: 10 },
-    miniLabel: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 },
-    emptyContainer: { height: 160, justifyContent: 'center', alignItems: 'center', width: '100%' }
+    miniCard: { width: (width - 65) / 2, padding: 20, alignItems: 'center', borderRadius: 28, borderWidth: 1 },
+    miniValue: { fontSize: 18, fontWeight: '900', marginTop: 10 },
+    miniLabel: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 },
+    emptyContainer: { height: 160, justifyContent: 'center', alignItems: 'center', width: '100%' },
+    
+    // CUSTOM LOTTIE LEGEND STYLES
+    lottieLegendContainer: { width: '100%', paddingHorizontal: 20, marginTop: 10 },
+    legendItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 10,
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        padding: 10,
+        borderRadius: 20,
+    },
+    colorIndicator: { width: 4, height: 25, borderRadius: 2, marginRight: 10 },
+    legendLottie: { width: 35, height: 35, marginRight: 10 },
+    legendText: { fontSize: 14, fontWeight: '700' },
+    percentageText: { fontSize: 16, fontWeight: '900' }
 });
 
 export default Insights;

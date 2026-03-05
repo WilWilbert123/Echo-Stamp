@@ -5,7 +5,8 @@ const {
     verifyOtpAndRegister, 
     loginUser,
     forgotPasswordRequest,
-    resetPassword 
+    resetPassword,
+    verifyOnly
 } = require('../controllers/userController');
 
 // --- Registration Flow ---
@@ -17,7 +18,7 @@ router.post('/verify-otp', verifyOtpAndRegister);
 // --- Forgot Password Flow ---
 router.post('/forgot-password', forgotPasswordRequest); 
 router.post('/reset-password', resetPassword);
-
+router.post('/verify-only', verifyOnly);
 // --- Authentication ---
 router.post('/login', loginUser);
 

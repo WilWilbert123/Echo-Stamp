@@ -4,7 +4,6 @@ import { useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    Dimensions,
     KeyboardAvoidingView,
     Platform,
     StatusBar,
@@ -20,10 +19,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { setCredentials } from '../../redux/authSlice';
 import API from '../../services/api';
 
-const { width, height } = Dimensions.get('window');
-
 const Login = ({ navigation }) => {
-    // 1. Hook into your ThemeContext
     const { colors, isDark } = useTheme();
     const dispatch = useDispatch();
 
@@ -50,13 +46,11 @@ const Login = ({ navigation }) => {
     };
 
     return (
-     
         <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
             <StatusBar barStyle={colors.status} />
 
             {/* CURVED HEADER BACKGROUND */}
             <View style={[styles.headerBackground, { backgroundColor: colors.background[0] }]}>
-           
                 <View style={[styles.blueWave, { backgroundColor: colors.primary, opacity: isDark ? 0.4 : 1 }]} />
                 <View style={[styles.darkWave, { backgroundColor: isDark ? '#1E293B' : '#637D8B', opacity: 0.6 }]} />
             </View>
@@ -75,7 +69,6 @@ const Login = ({ navigation }) => {
 
                     {/* INPUT FIELDS */}
                     <View style={styles.inputArea}>
-                     
                         <View style={[styles.inputWrapper, { backgroundColor: isDark ? colors.glass : '#F3F3F3', borderColor: colors.glassBorder, borderWidth: isDark ? 1 : 0 }]}>
                             <Ionicons name="person-outline" size={20} color={colors.textSecondary} />
                             <TextInput
@@ -128,6 +121,7 @@ const Login = ({ navigation }) => {
                     {/* SOCIAL LOGIN SECTION */}
                     <View style={styles.socialSection}>
                         <Text style={[styles.socialText, { color: colors.textSecondary }]}>Or sign up using</Text>
+                        {/* FIXED: Changed div to View */}
                         <View style={styles.socialIcons}>
                             <TouchableOpacity style={[styles.iconCircle, { backgroundColor: isDark ? colors.glass : '#FFF' }]}>
                                 <FontAwesome5 name="facebook-f" size={20} color="#1877F2" />
@@ -159,9 +153,30 @@ const Login = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     flex: { flex: 1 },
-    headerBackground: { position: 'absolute', top: 0, width: '100%', height: height * 0.25 },
-    blueWave: { position: 'absolute', top: -50, right: -50, width: width * 1.2, height: height * 0.2, borderBottomLeftRadius: 300, transform: [{ rotate: '-10deg' }] },
-    darkWave: { position: 'absolute', top: -30, right: -80, width: width * 0.8, height: height * 0.18, borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] },
+    headerBackground: { 
+        position: 'absolute', 
+        top: 0, 
+        width: '100%', 
+        height: '25%' 
+    },
+    blueWave: { 
+        position: 'absolute', 
+        top: -50, 
+        right: -50, 
+        width: '120%', 
+        height: '80%', 
+        borderBottomLeftRadius: 300, 
+        transform: [{ rotate: '-10deg' }] 
+    },
+    darkWave: { 
+        position: 'absolute', 
+        top: -30, 
+        right: -80, 
+        width: '80%', 
+        height: '70%', 
+        borderBottomLeftRadius: 200, 
+        transform: [{ rotate: '-5deg' }] 
+    },
     inner: { flex: 1, paddingHorizontal: 35, justifyContent: 'center', paddingTop: 80 },
     logoContainer: { alignItems: 'center', marginBottom: 40 },
     logoText: { fontSize: 50, fontWeight: '200', letterSpacing: 5, marginBottom: 10 },

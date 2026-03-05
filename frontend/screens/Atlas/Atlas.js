@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ResizeMode, Video } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,29 +15,40 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import GlassCard from '../../components/GlassCard';
 import { useTheme } from '../../context/ThemeContext';
 
-import { addJournalAsync, deleteJournalAsync, getJournalsAsync, removeJournalMediaAsync } from '../../redux/journalSlice';
+import {
+  addJournalAsync,
+  deleteJournalAsync,
+  getJournalsAsync,
+  removeJournalMediaAsync
+} from '../../redux/journalSlice';
 
 const { width, height } = Dimensions.get('window');
 
 const Atlas = () => {
   const dispatch = useDispatch();
+  const insets = useSafeAreaInsets();
+  const mapRef = useRef(null);
   const { colors, isDark } = useTheme();
 
   const { list } = useSelector((state) => state.journals);
   const { user } = useSelector((state) => state.auth);
 
+  // --- STATES ---
   const [modalVisible, setModalVisible] = useState(false);
   const [viewerVisible, setViewerVisible] = useState(false);
   const [selectedJournal, setSelectedJournal] = useState(null);
   const [tempCoords, setTempCoords] = useState(null);
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -53,9 +64,40 @@ const Atlas = () => {
     return (list || []).filter(j => j.location && typeof j.location.lat === 'number');
   }, [list]);
 
+  // --- SEARCH LOGIC ---
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1`,
+        { headers: { 'User-Agent': 'AtlasApp/1.0' } }
+      );
+      const data = await response.json();
+
+      if (data && data.length > 0) {
+        const { lat, lon } = data[0];
+        mapRef.current?.animateToRegion({
+          latitude: parseFloat(lat),
+          longitude: parseFloat(lon),
+          latitudeDelta: 0.015,
+          longitudeDelta: 0.015,
+        }, 1500);
+      } else {
+        Alert.alert("Location Not Found", "Try being more specific (City, Country).");
+      }
+    } catch (error) {
+      Alert.alert("Error", "Unable to reach search services.");
+    } finally {
+      setIsSearching(false);
+      setSearchQuery('');
+    }
+  };
+
+  // --- MEDIA PICKER ---
   const pickMedia = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images', 'videos'],
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsMultipleSelection: true,
       quality: 0.6,
     });
@@ -64,9 +106,10 @@ const Atlas = () => {
     }
   };
 
+  // --- SAVE JOURNAL ---
   const handleSave = async () => {
     const userId = user?._id || user?.id;
-    if (!title || !userId) return Alert.alert("Required", "Please add a title.");
+    if (!title) return Alert.alert("Wait!", "Please give this moment a title.");
 
     setLoading(true);
     const journalData = {
@@ -77,7 +120,7 @@ const Atlas = () => {
       location: {
         lat: tempCoords.latitude,
         lng: tempCoords.longitude,
-        address: "Pinned Location"
+        address: "Custom Pin"
       }
     };
 
@@ -86,7 +129,7 @@ const Atlas = () => {
       setModalVisible(false);
       resetForm();
     } catch (err) {
-      Alert.alert("Error", "Could not save to Journal.");
+      Alert.alert("Save Failed", "We couldn't pin this to your map.");
     } finally {
       setLoading(false);
     }
@@ -99,10 +142,10 @@ const Atlas = () => {
   };
 
   const handleDeleteJournal = (id) => {
-    Alert.alert("Delete Entry", "Remove this entire journal from your map?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert("Delete Memory", "This will permanently remove this pin and all its media.", [
+      { text: "Keep it", style: "cancel" },
       {
-        text: "Delete All", style: "destructive", onPress: async () => {
+        text: "Delete", style: "destructive", onPress: async () => {
           await dispatch(deleteJournalAsync(id));
           setViewerVisible(false);
         }
@@ -111,24 +154,19 @@ const Atlas = () => {
   };
 
   const handleRemoveSingleSavedMedia = (uriToRemove) => {
-    Alert.alert("Remove Photo", "Delete this photo permanently?", [
+    Alert.alert("Remove Media", "Delete this specific photo/video?", [
       { text: "Cancel", style: "cancel" },
       {
-        text: "Delete", 
+        text: "Remove", 
         style: "destructive", 
         onPress: async () => {
           try {
-            await dispatch(removeJournalMediaAsync({ 
-              id: selectedJournal._id, 
-              mediaUri: uriToRemove 
-            })).unwrap();
-
+            await dispatch(removeJournalMediaAsync({ id: selectedJournal._id, mediaUri: uriToRemove })).unwrap();
             const updatedMedia = selectedJournal.media.filter(m => m !== uriToRemove);
             setSelectedJournal({ ...selectedJournal, media: updatedMedia });
-
             if (updatedMedia.length === 0) setViewerVisible(false);
           } catch (err) {
-            Alert.alert("Error", "Could not delete from server.");
+            Alert.alert("Error", "Failed to delete media.");
           }
         }
       }
@@ -136,25 +174,23 @@ const Atlas = () => {
   };
 
   const renderMediaItem = ({ item }) => {
-    const isVideo = item.endsWith('.mp4') || item.includes('video');
+    const isVideo = item.toLowerCase().endsWith('.mp4') || item.includes('video');
     return (
       <View style={styles.mediaSlide}>
         {isVideo ? (
-          <Video
-            source={{ uri: item }}
-            style={styles.fullMedia}
-            useNativeControls
-            resizeMode={ResizeMode.CONTAIN}
+          <Video 
+            source={{ uri: item }} 
+            style={styles.fullMedia} 
+            useNativeControls 
+            resizeMode={ResizeMode.CONTAIN} 
+            isLooping 
           />
         ) : (
           <Image source={{ uri: item }} style={styles.fullMedia} resizeMode="contain" />
         )}
-        <TouchableOpacity 
-          style={styles.viewerSingleDelete} 
-          onPress={() => handleRemoveSingleSavedMedia(item)}
-        >
+        <TouchableOpacity style={styles.viewerSingleDelete} onPress={() => handleRemoveSingleSavedMedia(item)}>
           <Ionicons name="trash" size={16} color="white" />
-          <Text style={{ color: 'white', marginLeft: 5, fontWeight: '600' }}>Remove</Text>
+          <Text style={styles.deleteBtnText}>Remove</Text>
         </TouchableOpacity>
       </View>
     );
@@ -164,7 +200,23 @@ const Atlas = () => {
     <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
 
+      {/* SEARCH BAR */}
+      <View style={[styles.searchContainer, { top: insets.top + 10 }]}>
+        <GlassCard style={[styles.searchBar, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
+          {isSearching ? <ActivityIndicator size="small" color={colors.primary} /> : <Ionicons name="search" size={20} color={colors.primary} style={{ marginRight: 10 }} />}
+          <TextInput
+            style={[styles.searchInput, { color: colors.textMain }]}
+            placeholder="Where to?"
+            placeholderTextColor={colors.textSecondary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
+          />
+        </GlassCard>
+      </View>
+
       <MapView
+        ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={styles.map}
         initialRegion={{
@@ -192,7 +244,7 @@ const Atlas = () => {
                 {journal.media?.[0] ? (
                   <Image source={{ uri: journal.media[0] }} style={styles.markerImage} />
                 ) : (
-                  <Ionicons name="journal" size={16} color={colors.primary} />
+                  <Ionicons name="heart" size={16} color={colors.primary} />
                 )}
               </View>
               <View style={[styles.pinTail, { borderTopColor: colors.primary }]} />
@@ -201,24 +253,20 @@ const Atlas = () => {
         ))}
       </MapView>
 
-      {/* CREATE MODAL */}
+      {/* ADD MEMORY MODAL */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <GlassCard style={[styles.modalContent, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
-            <Text style={[styles.modalHeader, { color: colors.textMain }]}>Add to Atlas</Text>
-
+          <GlassCard style={[styles.modalContent, { backgroundColor: colors.background[1], borderColor: colors.glassBorder }]}>
+            <Text style={[styles.modalHeader, { color: colors.textMain }]}>Pin a Memory</Text>
             <View style={styles.mediaSection}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20 }}>
-                <TouchableOpacity style={[styles.addMediaBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]} onPress={pickMedia}>
-                  <Ionicons name="camera" size={30} color={colors.textSecondary} />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <TouchableOpacity style={[styles.addMediaBtn, { borderColor: colors.primary }]} onPress={pickMedia}>
+                  <Ionicons name="add" size={30} color={colors.primary} />
                 </TouchableOpacity>
                 {mediaList.map((item, i) => (
                   <View key={i} style={styles.previewContainer}>
                     <Image source={{ uri: item.uri }} style={styles.previewItem} />
-                    <TouchableOpacity
-                      style={styles.removeBadge}
-                      onPress={() => setMediaList(prev => prev.filter((_, idx) => idx !== i))}
-                    >
+                    <TouchableOpacity style={styles.removeBadge} onPress={() => setMediaList(prev => prev.filter((_, idx) => idx !== i))}>
                       <Ionicons name="close-circle" size={22} color="#ff4444" />
                     </TouchableOpacity>
                   </View>
@@ -227,15 +275,14 @@ const Atlas = () => {
             </View>
 
             <TextInput
-              style={[styles.input, { color: colors.textMain, backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.5)', borderColor: colors.glassBorder }]}
-              placeholder="Moment Title..."
+              style={[styles.input, { color: colors.textMain, borderColor: colors.glassBorder }]}
+              placeholder="Moment Title"
               placeholderTextColor={colors.textSecondary}
               value={title}
               onChangeText={setTitle}
             />
-
             <TextInput
-              style={[styles.input, { height: 80, textAlignVertical: 'top', color: colors.textMain, backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.5)', borderColor: colors.glassBorder }]}
+              style={[styles.input, { height: 80, textAlignVertical: 'top', color: colors.textMain, borderColor: colors.glassBorder }]}
               placeholder="Tell the story..."
               multiline
               placeholderTextColor={colors.textSecondary}
@@ -244,20 +291,18 @@ const Atlas = () => {
             />
 
             <View style={styles.buttonRow}>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.btnCancel}>
-                <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>Cancel</Text>
-              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setModalVisible(false)}><Text style={{ color: colors.textSecondary }}>Cancel</Text></TouchableOpacity>
               <TouchableOpacity onPress={handleSave} style={[styles.btnSave, { backgroundColor: colors.primary }]}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnSaveText}>Pin to Map</Text>}
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnSaveText}>Save to Map</Text>}
               </TouchableOpacity>
             </View>
           </GlassCard>
         </View>
       </Modal>
 
-      {/* VIEWER MODAL */}
+      {/* MEDIA VIEWER MODAL */}
       <Modal visible={viewerVisible} transparent animationType="fade">
-        <View style={[styles.viewerOverlay, { backgroundColor: 'rgba(0,0,0,0.95)' }]}>
+        <View style={styles.viewerOverlay}>
           <View style={styles.viewerHeader}>
             <TouchableOpacity onPress={() => setViewerVisible(false)} style={styles.headerCircleBtn}>
               <Ionicons name="close" size={28} color="#fff" />
@@ -278,14 +323,13 @@ const Atlas = () => {
                 onScroll={(e) => setActiveMediaIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
                 showsHorizontalScrollIndicator={false}
               />
-
               <View style={styles.paginationRow}>
                 {selectedJournal.media.map((_, i) => (
                   <View key={i} style={[styles.dot, { backgroundColor: i === activeMediaIndex ? colors.primary : '#555' }]} />
                 ))}
               </View>
 
-              <GlassCard style={[styles.enhancedDetails, { backgroundColor: isDark ? 'rgba(30,30,30,0.8)' : 'rgba(255,255,255,0.9)' }]}>
+              <GlassCard style={[styles.enhancedDetails, { backgroundColor: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)' }]}>
                 <Text style={[styles.viewerTitle, { color: isDark ? '#fff' : '#000' }]}>{selectedJournal.title}</Text>
                 <Text style={[styles.viewerDescription, { color: isDark ? '#ccc' : '#444' }]}>{selectedJournal.description}</Text>
               </GlassCard>
@@ -300,37 +344,39 @@ const Atlas = () => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { width: width, height: height },
+  searchContainer: { position: 'absolute', zIndex: 10, width: '100%', alignItems: 'center', paddingHorizontal: 20 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', width: '100%', height: 70, borderRadius: 20, paddingHorizontal: 15, borderWidth: 1 },
+  searchInput: { flex: 1, fontSize: 16, fontWeight: '500' },
   pinWrapper: { alignItems: 'center' },
-  pinCircle: { width: 34, height: 34, borderRadius: 17, borderWidth: 2, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', elevation: 5, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 3 },
+  pinCircle: { width: 30, height: 30, borderRadius: 20, borderWidth: 3, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', elevation: 5 },
   markerImage: { width: '100%', height: '100%' },
-  pinTail: { width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 8, borderLeftColor: 'transparent', borderRightColor: 'transparent', marginTop: -2 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { width: '92%', padding: 20, borderRadius: 30, borderWidth: 1 },
-  modalHeader: { fontSize: 24, fontWeight: '900', marginBottom: 15, letterSpacing: -0.5 },
-  mediaSection: { height: 100, marginBottom: 15 },
-  addMediaBtn: { width: 80, height: 80, borderRadius: 20, borderStyle: 'dashed', borderWidth: 1.5, justifyContent: 'center', alignItems: 'center', borderColor: '#888', marginRight: 10 },
-  previewContainer: { width: 80, height: 80, borderRadius: 20, marginRight: 15, position: 'relative' },
+  pinTail: { width: 0, height: 30, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 8, borderLeftColor: 'transparent', borderRightColor: 'transparent', marginTop: -2 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { width: '90%', padding: 25, borderRadius: 30, borderWidth: 1 },
+  modalHeader: { fontSize: 22, fontWeight: '800', marginBottom: 15 },
+  mediaSection: { height: 90, marginBottom: 15 },
+  addMediaBtn: { width: 80, height: 80, borderRadius: 20, borderStyle: 'dashed', borderWidth: 2, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  previewContainer: { width: 80, height: 80, borderRadius: 20, marginRight: 15 },
   previewItem: { width: '100%', height: '100%', borderRadius: 20 },
-  removeBadge: { position: 'absolute', top: 1, right: -8, backgroundColor: '#fff', borderRadius: 12, zIndex: 10 },
+  removeBadge: { position: 'absolute', top: -5, right: -5, zIndex: 10 },
   input: { width: '100%', borderRadius: 15, padding: 15, marginBottom: 12, borderWidth: 1 },
-  buttonRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginTop: 10 },
-  btnCancel: { marginRight: 20 },
-  btnSave: { paddingHorizontal: 25, paddingVertical: 12, borderRadius: 15, elevation: 2 },
+  buttonRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
+  btnSave: { paddingHorizontal: 25, paddingVertical: 12, borderRadius: 15 },
   btnSaveText: { color: '#fff', fontWeight: 'bold' },
-  viewerOverlay: { flex: 1 },
-  viewerHeader: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 50, zIndex: 10, position: 'absolute', top: 0, width: '100%' },
+  viewerOverlay: { flex: 1, backgroundColor: '#000' },
+  viewerHeader: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 50, zIndex: 100, position: 'absolute', top: 0, width: '100%' },
   headerCircleBtn: { backgroundColor: 'rgba(0,0,0,0.5)', width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  mediaSlide: {   justifyContent: 'center', alightItems: 'center',marginBottom: 40, },
-  fullMedia: { width: width, height: '100%', },
-  viewerSingleDelete: { position: 'absolute', top: 550, right: 20, backgroundColor: 'rgba(255,0,0,0.8)', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 20, flexDirection: 'row', alignItems: 'center' },
-  paginationRow: { flexDirection: 'row', justifyContent: 'center', position: 'absolute', bottom: height * 0.32, width: '100%' },
-  dot: { width: 6, height: 6, borderRadius: 3, marginHorizontal: 4 },
-  enhancedDetails: { marginHorizontal: 20, padding: 20, borderRadius: 25, position: 'absolute', bottom: 40, width: width - 40, elevation: 10 },
-  viewerTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 8 },
+  mediaSlide: { width: width, height: height, justifyContent: 'center' },
+  fullMedia: { width: width, height: '100%' },
+  viewerSingleDelete: { position: 'absolute', top: 120, right: 20, backgroundColor: 'rgba(255,0,0,0.6)', padding: 10, borderRadius: 15, flexDirection: 'row', alignItems: 'center' },
+  deleteBtnText: { color: 'white', marginLeft: 5, fontWeight: '600', fontSize: 12 },
+  paginationRow: { flexDirection: 'row', justifyContent: 'center', position: 'absolute', bottom: 210, width: '100%' },
+  dot: { width: 8, height: 8, borderRadius: 4, marginHorizontal: 5 },
+  enhancedDetails: { marginHorizontal: 20, padding: 25, borderRadius: 25, position: 'absolute', bottom: 40, width: width - 40 },
+  viewerTitle: { fontSize: 26, fontWeight: 'bold', marginBottom: 8 },
   viewerDescription: { fontSize: 16, lineHeight: 22 },
 });
 
-// COMPREHENSIVE DARK STYLE (Restores road lines and water)
 const darkMapStyle = [
   { "elementType": "geometry", "stylers": [{ "color": "#1d2c4d" }] },
   { "elementType": "labels.text.fill", "stylers": [{ "color": "#8ec3b9" }] },
