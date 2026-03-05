@@ -19,7 +19,7 @@ import { getJournalsAsync } from '../../../redux/journalSlice';
 
 const { width, height } = Dimensions.get('window');
 
-// Optimized Individual Post Component
+
 const PostItem = memo(({ item, user, colors, isDark, onOpenGallery, onOpenComments }) => {
     const mediaCount = item.media?.length || 0;
 
