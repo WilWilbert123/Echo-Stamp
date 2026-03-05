@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 
 // Import your screens
 import Atlas from '../screens/Atlas/Atlas';
+import EchoStamp from '../screens/EchoStamp/EchoStamp';
 import Home from '../screens/Home/Home';
 import Insights from '../screens/Insight/Insights';
 import Profile from '../screens/Profile/Profile';
@@ -33,22 +34,38 @@ const MainTabs = () => {
       <Tab.Screen 
         name="Home" 
         component={Home} 
-        options={{ tabBarIcon: ({ color }) => <Ionicons name="layers" size={24} color={color} /> }} 
+        options={{ tabBarIcon: ({ color }) => <Ionicons name="home-outline" size={24} color={color} /> }} 
       />
+      
       <Tab.Screen 
         name="Atlas" 
         component={Atlas} 
-        options={{ tabBarIcon: ({ color }) => <Ionicons name="map" size={24} color={color} /> }} 
+        options={{ tabBarIcon: ({ color }) => <Ionicons name="map-outline" size={24} color={color} /> }} 
       />
+
+      {/* NEW CENTER TAB: Echo Stamp */}
+      <Tab.Screen 
+        name="Echo" 
+        component={EchoStamp} 
+        options={{ 
+          tabBarLabel: 'Stamp',
+          tabBarIcon: ({ color }) => (
+            // "finger-print" or "mic" feels very 'Echo Stamp'
+            <Ionicons name="finger-print" size={32} color={color} /> 
+          ) 
+        }} 
+      />
+
       <Tab.Screen 
         name="Insights" 
         component={Insights} 
-        options={{ tabBarIcon: ({ color }) => <Ionicons name="stats-chart" size={24} color={color} /> }} 
+        options={{ tabBarIcon: ({ color }) => <Ionicons name="analytics-outline" size={24} color={color} /> }} 
       />
+      
       <Tab.Screen 
         name="Profile" 
         component={Profile} 
-        options={{ tabBarIcon: ({ color }) => <Ionicons name="person" size={24} color={color} /> }} 
+        options={{ tabBarIcon: ({ color }) => <Ionicons name="person-outline" size={24} color={color} /> }} 
       />
     </Tab.Navigator>
   );

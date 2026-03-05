@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -17,55 +17,82 @@ import { setCredentials } from '../../redux/authSlice';
 import API from '../../services/api';
 
 const OtpVerification = ({ route, navigation }) => {
-    // mode can be 'register' (default) or 'reset'
     const { email, mode = 'register' } = route.params || {}; 
     const [otp, setOtp] = useState('');
     const [loading, setLoading] = useState(false);
+    const [timer, setTimer] = useState(30); // 30-second resend cooldown
     
     const { colors, isDark } = useTheme();
     const dispatch = useDispatch();
+
+    // Handle countdown timer
+    useEffect(() => {
+        let interval = null;
+        if (timer > 0) {
+            interval = setInterval(() => {
+                setTimer((prev) => prev - 1);
+            }, 1000);
+        } else {
+            clearInterval(interval);
+        }
+        return () => clearInterval(interval);
+    }, [timer]);
 
     const handleVerify = async () => {
         const cleanOtp = otp.trim();
         const cleanEmail = email ? email.toLowerCase().trim() : "";
         
-        // Validation
         if (cleanOtp.length !== 6) {
             Alert.alert("Error", "Please enter the full 6-digit code.");
             return;
         }
 
-        // --- FORGOT PASSWORD FLOW ---
-        if (mode === 'reset') {
-            navigation.navigate('ResetPassword', { 
-                email: cleanEmail, 
-                otp: cleanOtp 
-            });
-            return;
-        }
-
-        // --- REGISTRATION FLOW ---
         setLoading(true);
         try {
-            const response = await API.post('/users/verify-otp', { 
-                email: cleanEmail, 
-                otp: cleanOtp 
-            });
+            if (mode === 'reset') {
+                // FIXED: Hits the new "verify-only" endpoint for password resets
+                await API.post('/users/verify-only', { 
+                    email: cleanEmail, 
+                    otp: cleanOtp 
+                });
 
-            const { token, user } = response.data;
+                navigation.navigate('ResetPassword', { 
+                    email: cleanEmail, 
+                    otp: cleanOtp 
+                });
+                
+            } else {
+                // REGISTRATION: Hits the endpoint that triggers user creation
+                const response = await API.post('/users/verify-otp', { 
+                    email: cleanEmail, 
+                    otp: cleanOtp 
+                });
 
-            // Update Redux state
-            dispatch(setCredentials({ token, user }));
-            
-            Alert.alert("Success", "Account verified successfully!");
-            // Navigation handled by auth state change in App.js
-  
+                const { token, user } = response.data;
+                dispatch(setCredentials({ token, user }));
+                Alert.alert("Success", "Account verified successfully!");
+            }
         } catch (error) {
-            console.error("Verification Error:", error.response?.data);
             const errorMsg = error.response?.data?.message || "Invalid or expired code.";
             Alert.alert("Verification Failed", errorMsg);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleResend = async () => {
+        if (timer > 0) return;
+        
+        try {
+            const endpoint = mode === 'reset' ? '/users/forgot-password' : '/users/request-otp';
+            // If registration, you might need to pass the full userData again 
+            // depending on how your backend handles resends.
+            await API.post(endpoint, { email: email.toLowerCase().trim() });
+            
+            setTimer(60); // Reset timer to 60s after resend
+            Alert.alert("Sent", "A new code has been sent to your email.");
+        } catch (error) {
+            Alert.alert("Error", "Could not resend code. Please try again later.");
         }
     };
 
@@ -127,30 +154,42 @@ const OtpVerification = ({ route, navigation }) => {
                     )}
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                    style={styles.resendBtn} 
-                    onPress={() => navigation.goBack()}
-                    disabled={loading}
-                >
-                    <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-                        Entered the wrong email? <Text style={{ color: colors.primary, fontWeight: 'bold' }}>Go Back</Text>
-                    </Text>
-                </TouchableOpacity>
+                <View style={styles.footerActions}>
+                    <TouchableOpacity 
+                        onPress={handleResend}
+                        disabled={timer > 0}
+                    >
+                        <Text style={[styles.footerText, { color: timer > 0 ? colors.textSecondary : colors.primary }]}>
+                            {timer > 0 ? `Resend code in ${timer}s` : "Resend Code"}
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                        style={styles.resendBtn} 
+                        onPress={() => navigation.goBack()}
+                        disabled={loading}
+                    >
+                        <Text style={[styles.footerText, { color: colors.textSecondary }]}>
+                            Wrong email? <Text style={{ color: colors.primary, fontWeight: 'bold' }}>Go Back</Text>
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </View>
         </KeyboardAvoidingView>
     );
 };
 
 const styles = StyleSheet.create({
-   container: { flex: 1 },
-inner: { flex: 1, justifyContent: 'center', padding: 40 },
-title: { fontSize: 28, fontWeight: 'bold', marginBottom: 10, textAlign: 'center', letterSpacing: -0.5 },
-subtitle: { fontSize: 16, textAlign: 'center', marginBottom: 40, lineHeight: 22 },
-input: { borderBottomWidth: 3, fontSize: 36, textAlign: 'center', letterSpacing: 10, marginBottom: 50, paddingVertical: 12, borderRadius: 8 },
-button: { height: 55, borderRadius: 15, justifyContent: 'center', alignItems: 'center', elevation: 4, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 5 },
-buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold', letterSpacing: 1 },
-resendBtn: { marginTop: 25, alignItems: 'center' },
-footerText: { fontSize: 14 }
+    container: { flex: 1 },
+    inner: { flex: 1, justifyContent: 'center', padding: 40 },
+    title: { fontSize: 28, fontWeight: 'bold', marginBottom: 10, textAlign: 'center', letterSpacing: -0.5 },
+    subtitle: { fontSize: 16, textAlign: 'center', marginBottom: 40, lineHeight: 22 },
+    input: { borderBottomWidth: 3, fontSize: 36, textAlign: 'center', letterSpacing: 10, marginBottom: 50, paddingVertical: 12, borderRadius: 8 },
+    button: { height: 55, borderRadius: 15, justifyContent: 'center', alignItems: 'center', elevation: 4, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 5 },
+    buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold', letterSpacing: 1 },
+    footerActions: { marginTop: 25, alignItems: 'center' },
+    resendBtn: { marginTop: 15 },
+    footerText: { fontSize: 14 }
 });
 
 export default OtpVerification;
