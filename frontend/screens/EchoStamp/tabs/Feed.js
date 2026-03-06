@@ -20,16 +20,7 @@ import { getJournalsAsync } from '../../../redux/journalSlice';
 
 const { width, height } = Dimensions.get('window');
 
-// Helper for "Real World" Relative Time
-const getRelativeTime = (date) => {
-    const now = new Date();
-    const then = new Date(date);
-    const diff = Math.floor((now - then) / 1000);
-    if (diff < 60) return 'Just now';
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return then.toLocaleDateString();
-};
+ 
 
 const PostItem = memo(({ item, user, colors, isDark, onOpenGallery, onOpenComments }) => {
     const [isLiked, setIsLiked] = useState(false);
