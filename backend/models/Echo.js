@@ -8,7 +8,7 @@ const EchoSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: [ 'mode'], 
+    enum: [ 'mood'], 
     required: true
   },
   title: { 

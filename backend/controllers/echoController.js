@@ -33,7 +33,7 @@ exports.createEcho = async (req, res) => {
         // Ensure type is 'mode' if it's missing from the body
         const echoData = {
             ...req.body,
-            type: req.body.type || 'mode'
+            type: req.body.type || 'mood'
         };
 
         const newEcho = await Echo.create(echoData);
