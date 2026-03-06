@@ -10,7 +10,7 @@ export const getEchoesAsync = createAsyncThunk(
       const token = getState().auth.token; 
       
       // 2. Fetch using 'mode' as the type
-      const response = await api.fetchEchoes(userId, 'mode', token);
+      const response = await api.fetchEchoes(userId, 'mood', token);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || "Error fetching echoes");
@@ -28,7 +28,7 @@ export const addEchoAsync = createAsyncThunk(
       // Force structure to match your Backend Model
       const payload = {
         userId: echoData.userId,
-        type: 'mode', 
+        type: 'mood', 
         title: echoData.title,
         description: echoData.description,
         emotion: echoData.emotion,
