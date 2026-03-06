@@ -20,7 +20,7 @@ const OtpVerification = ({ route, navigation }) => {
     const { email, mode = 'register' } = route.params || {}; 
     const [otp, setOtp] = useState('');
     const [loading, setLoading] = useState(false);
-    const [timer, setTimer] = useState(30); // 30-second resend cooldown
+    const [timer, setTimer] = useState(30); 
     
     const { colors, isDark } = useTheme();
     const dispatch = useDispatch();
@@ -50,7 +50,7 @@ const OtpVerification = ({ route, navigation }) => {
         setLoading(true);
         try {
             if (mode === 'reset') {
-                // FIXED: Hits the new "verify-only" endpoint for password resets
+                
                 await API.post('/users/verify-only', { 
                     email: cleanEmail, 
                     otp: cleanOtp 
@@ -62,7 +62,7 @@ const OtpVerification = ({ route, navigation }) => {
                 });
                 
             } else {
-                // REGISTRATION: Hits the endpoint that triggers user creation
+                
                 const response = await API.post('/users/verify-otp', { 
                     email: cleanEmail, 
                     otp: cleanOtp 
