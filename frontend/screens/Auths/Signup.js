@@ -37,7 +37,7 @@ const Signup = ({ navigation }) => {
     const [loading, setLoading] = useState(false);
 
   const handleSignup = async () => {
-    // 1. Client-side Validation
+    
     if (!firstName.trim() || !lastName.trim() || !username.trim() || !email.trim() || !password.trim()) {
         Alert.alert("Error", "Please fill in all fields.");
         return;
