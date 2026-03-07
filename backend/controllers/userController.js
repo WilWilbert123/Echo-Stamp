@@ -11,8 +11,8 @@ const generateToken = (id) => {
 // --- NODEMAILER TRANSPORTER (Production Ready for Render) ---
 const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
-    port: 465,
-    secure: true, // Use SSL/TLS
+    port: 587,
+    secure: false, // Must be false for port 587
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS, 
