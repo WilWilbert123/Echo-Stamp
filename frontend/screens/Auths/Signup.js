@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -17,15 +17,12 @@ import {
 } from 'react-native';
 
 // REDUX IMPORTS
-import { useDispatch } from 'react-redux';
-
 import { useTheme } from '../../context/ThemeContext';
-// IMPORT the named function from your api.js
+// API IMPORT
 import { requestOtp } from '../../services/api';
 
 const Signup = ({ navigation }) => {
     const { colors, isDark } = useTheme();
-    const dispatch = useDispatch();
     const { width, height } = useWindowDimensions(); 
     
     // Form State
@@ -37,21 +34,25 @@ const Signup = ({ navigation }) => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
-<<<<<<< HEAD
     const handleSignup = async () => {
-        // 1. Client-side Validation
+        // 1. Basic Presence Validation
         if (!firstName.trim() || !lastName.trim() || !username.trim() || !email.trim() || !password.trim()) {
             Alert.alert("Error", "Please fill in all fields.");
             return;
         }
-=======
-  const handleSignup = async () => {
-    
-    if (!firstName.trim() || !lastName.trim() || !username.trim() || !email.trim() || !password.trim()) {
-        Alert.alert("Error", "Please fill in all fields.");
-        return;
-    }
->>>>>>> 6cfc21c2d1f2991dc4e3ac95f4ea23d0aaa890be
+
+        // 2. Email Format Validation
+        const emailRegex = /\S+@\S+\.\S+/;
+        if (!emailRegex.test(email)) {
+            Alert.alert("Error", "Please enter a valid email address.");
+            return;
+        }
+
+        // 3. Password Strength & Match
+        if (password.length < 6) {
+            Alert.alert("Error", "Password must be at least 6 characters long.");
+            return;
+        }
 
         if (password !== confirmPassword) {
             Alert.alert("Error", "Passwords do not match.");
@@ -68,30 +69,42 @@ const Signup = ({ navigation }) => {
                 password
             };
 
-            // FIX: Using the named function. This hits https://echo-stamp.onrender.com/api/users/request-otp
+            // Hits: /users/request-otp
             const response = await requestOtp(userData);
             
+            // Success: Navigate to OTP
+            Alert.alert("Success", "Verification code sent to your email!");
             navigation.navigate('OtpVerification', { email: userData.email });
 
         } catch (error) {
-            console.log("Signup Error:", error.response?.data || error.message);
-            
-            // FIX: Handle Render "Cold Start" (Free Tier)
-            let errorMessage = "Could not send verification email. Please try again.";
-            
-            if (error.code === 'ECONNABORTED') {
-                errorMessage = "The server is taking a moment to wake up. Please tap 'CREATE' again in 10 seconds.";
+            // Detailed Logging for Debugging
+            console.log("--- Signup Error Detail ---");
+            if (error.response) {
+                // Server responded with a status code outside 2xx
+                console.log("Status:", error.response.status);
+                console.log("Data:", error.response.data);
+            } else {
+                // Network error or timeout
+                console.log("Message:", error.message);
+            }
+
+            let errorMessage = "Something went wrong. Please try again.";
+
+            if (error.message === 'Network Error') {
+                errorMessage = "Network Error: Cannot connect to server. If you are testing locally, check your IP. If on Render, the server might be starting up.";
+            } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+                errorMessage = "The server is taking too long to respond (Waking up). Please wait a moment and try again.";
             } else if (error.response?.data?.message) {
+                // This captures your backend's "Email is already registered" messages
                 errorMessage = error.response.data.message;
             }
-            
+
             Alert.alert("Signup Failed", errorMessage);
         } finally {
             setLoading(false);
         }
     };
 
-    // Dynamic styles based on window dimensions
     const dynamicStyles = {
         headerBackground: { height: height * 0.25 },
         blueWave: { width: width * 1.2, height: height * 0.2 },
@@ -100,16 +113,15 @@ const Signup = ({ navigation }) => {
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
-            <StatusBar barStyle={colors.status} />
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
             
-            {/* 1. TOP BACKGROUND SHAPES */}
             <View style={[styles.headerBackground, dynamicStyles.headerBackground, { backgroundColor: colors.background[0] }]}>
                 <View style={[styles.blueWave, dynamicStyles.blueWave, { backgroundColor: colors.primary, opacity: isDark ? 0.4 : 1 }]} />
                 <View style={[styles.darkWave, dynamicStyles.darkWave, { backgroundColor: isDark ? '#1E293B' : '#637D8B', opacity: 0.6 }]} />
             </View>
 
             <KeyboardAvoidingView 
-                behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} 
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
                 style={styles.flex}
             >
                 <ScrollView 
@@ -118,7 +130,6 @@ const Signup = ({ navigation }) => {
                     keyboardShouldPersistTaps="handled"
                 >
                     <View style={styles.inner}>
-                        {/* 2. HEADER TEXT */}
                         <View style={styles.headerArea}>
                             <Text style={[styles.title, { color: colors.textMain }]}>Let's Get Started!</Text>
                             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
@@ -126,7 +137,6 @@ const Signup = ({ navigation }) => {
                             </Text>
                         </View>
 
-                        {/* 3. FORM FIELDS */}
                         <View style={styles.formContainer}>
                             {[
                                 { icon: 'person-outline', placeholder: 'First Name', val: firstName, set: setFirstName },
@@ -160,7 +170,6 @@ const Signup = ({ navigation }) => {
                             ))}
                         </View>
 
-                        {/* 4. CREATE BUTTON */}
                         <TouchableOpacity 
                             style={styles.createBtn} 
                             onPress={handleSignup}
@@ -179,7 +188,6 @@ const Signup = ({ navigation }) => {
                             </LinearGradient>
                         </TouchableOpacity>
 
-                        {/* 5. FOOTER */}
                         <TouchableOpacity 
                             style={styles.footerLink} 
                             onPress={() => navigation.navigate('Login')}
@@ -198,7 +206,7 @@ const Signup = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     flex: { flex: 1 },
-    scrollContent: { flexGrow: 1, justifyContent: 'center' },
+    scrollContent: { flexGrow: 1, paddingTop: 60 },
     headerBackground: { position: 'absolute', top: 0, width: '100%' },
     blueWave: { position: 'absolute', top: -50, right: -50, borderBottomLeftRadius: 300, transform: [{ rotate: '-10deg' }] },
     darkWave: { position: 'absolute', top: -30, right: -80, borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] },
@@ -210,7 +218,7 @@ const styles = StyleSheet.create({
     inputWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, paddingHorizontal: 15, height: 50, marginBottom: 12 },
     inputIcon: { marginRight: 10 },
     input: { flex: 1, fontSize: 14 },
-    createBtn: { height: 50, borderRadius: 12, overflow: 'hidden', marginTop: 10, elevation: 4, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 5, shadowOffset: { width: 0, height: 4 } },
+    createBtn: { height: 50, borderRadius: 12, overflow: 'hidden', marginTop: 10, elevation: 4 },
     gradient: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     createBtnText: { color: '#FFF', fontSize: 15, fontWeight: '800', letterSpacing: 1 },
     footerLink: { marginTop: 20, marginBottom: 20, alignItems: 'center' },

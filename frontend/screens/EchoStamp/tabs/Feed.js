@@ -20,7 +20,23 @@ import { getJournalsAsync } from '../../../redux/journalSlice';
 
 const { width, height } = Dimensions.get('window');
 
- 
+// --- HELPER FUNCTION (Fixes the ReferenceError) ---
+const getRelativeTime = (date) => {
+    try {
+        const now = new Date();
+        const past = new Date(date);
+        const diffInSeconds = Math.floor((now - past) / 1000);
+
+        if (diffInSeconds < 60) return 'Just now';
+        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+        if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+        
+        return past.toLocaleDateString();
+    } catch (e) {
+        return 'Recently';
+    }
+};
 
 const PostItem = memo(({ item, user, colors, isDark, onOpenGallery, onOpenComments }) => {
     const [isLiked, setIsLiked] = useState(false);
@@ -52,7 +68,7 @@ const PostItem = memo(({ item, user, colors, isDark, onOpenGallery, onOpenCommen
                     <View style={styles.locationRow}>
                         <MapPin size={10} color={colors.primary} />
                         <Text style={[styles.timeText, { color: colors.textSecondary }]} numberOfLines={1}>
-                            {item.location?.address || 'Deep Wilderness'} • {getRelativeTime(item.createdAt || new Date())}
+                            {item.location?.address || 'Deep Wilderness'} • {getRelativeTime(item.createdAt)}
                         </Text>
                     </View>
                 </View>
@@ -69,7 +85,7 @@ const PostItem = memo(({ item, user, colors, isDark, onOpenGallery, onOpenCommen
                 </Text>
             </TouchableOpacity>
 
-            {/* Smart Media Grid - Enhanced Visuals */}
+            {/* Smart Media Grid */}
             {mediaCount > 0 && (
                 <TouchableOpacity 
                     activeOpacity={0.9} 
@@ -95,12 +111,12 @@ const PostItem = memo(({ item, user, colors, isDark, onOpenGallery, onOpenCommen
                 </TouchableOpacity>
             )}
 
-            {/* Enhanced Action Bar */}
+            {/* Action Bar */}
             <View style={styles.interactionBar}>
                 <View style={styles.stats}>
                     <TouchableOpacity style={styles.statItem} onPress={() => setIsLiked(!isLiked)}>
                         <Heart size={20} color={isLiked ? '#FF4B4B' : colors.textSecondary} fill={isLiked ? '#FF4B4B' : 'transparent'} />
-                        <Text style={[styles.statText, { color: colors.textSecondary }]}>{item.likes?.length + (isLiked ? 1 : 0) || 0}</Text>
+                        <Text style={[styles.statText, { color: colors.textSecondary }]}>{(item.likes?.length || 0) + (isLiked ? 1 : 0)}</Text>
                     </TouchableOpacity>
                     
                     <TouchableOpacity style={styles.statItem} onPress={() => onOpenComments(item)}>
@@ -137,17 +153,20 @@ const Feed = ({ filter }) => {
     const [galleryModal, setGalleryModal] = useState(false);
     const [galleryImages, setGalleryImages] = useState([]);
 
-    useEffect(() => { 
-        if (user?.id) loadData(); 
-    }, [user?.id, filter]);
+    const loadData = useCallback(() => {
+        const userId = user?.id || user?._id;
+        if (userId) dispatch(getJournalsAsync(userId));
+    }, [dispatch, user]);
 
-    const loadData = () => dispatch(getJournalsAsync(user.id));
+    useEffect(() => { 
+        loadData(); 
+    }, [loadData, filter]);
     
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         await loadData();
         setRefreshing(false);
-    }, []);
+    }, [loadData]);
 
     const openGallery = useCallback((media) => {
         setGalleryImages(media);
@@ -168,7 +187,7 @@ const Feed = ({ filter }) => {
             onOpenGallery={openGallery} 
             onOpenComments={openComments} 
         />
-    ), [user, colors, isDark]);
+    ), [user, colors, isDark, openGallery, openComments]);
 
     return (
         <View style={[styles.flex1, { backgroundColor: colors.background[0] }]}>
@@ -181,7 +200,7 @@ const Feed = ({ filter }) => {
                 <FlatList
                     data={journals}
                     renderItem={renderItem}
-                    keyExtractor={item => item._id}
+                    keyExtractor={item => item._id || Math.random().toString()}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.listPadding}
                     refreshControl={
@@ -199,7 +218,7 @@ const Feed = ({ filter }) => {
                 />
             )}
 
-            {/* --- GALLERY MODAL (FULL SCREEN) --- */}
+            {/* GALLERY MODAL */}
             <Modal visible={galleryModal} transparent animationType="fade" statusBarTranslucent>
                 <View style={styles.blackBg}>
                     <TouchableOpacity style={styles.closeGallery} onPress={() => setGalleryModal(false)}>
@@ -217,7 +236,7 @@ const Feed = ({ filter }) => {
                 </View>
             </Modal>
 
-            {/* --- COMMENT MODAL (BOTTOM SHEET STYLE) --- */}
+            {/* COMMENT MODAL */}
             <Modal visible={commentModal} transparent animationType="slide" onRequestClose={() => setCommentModal(false)}>
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalContent, { backgroundColor: isDark ? '#121212' : '#FFF' }]}>
@@ -269,7 +288,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         ...Platform.select({
             ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.1, shadowRadius: 12 },
-            android: {  }
+            android: { elevation: 3 }
         })
     },
     userInfo: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },

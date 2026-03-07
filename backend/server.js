@@ -6,7 +6,7 @@ const connectDB = require('./config/db');
 
 require('dotenv').config();  
 connectDB();  
-
+ 
 const app = express();
 
 // Middleware
@@ -19,9 +19,7 @@ app.use('/api/echoes', require('./routes/echoRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));   
 app.use('/api/journals', require('./routes/journalRoutes'));
 
-//Email sent
-app.use('/api/emails', require('./routes/emailRoutes'));
-
+ 
 // Error Middleware
 app.use(errorHandler);
 
