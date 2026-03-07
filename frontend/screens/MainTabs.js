@@ -50,7 +50,7 @@ const MainTabs = () => {
         options={{ 
           tabBarLabel: 'Stamp',
           tabBarIcon: ({ color }) => (
-            // "finger-print" or "mic" feels very 'Echo Stamp'
+            
             <Ionicons name="finger-print" size={32} color={color} /> 
           ) 
         }} 

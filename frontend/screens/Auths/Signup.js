@@ -37,12 +37,21 @@ const Signup = ({ navigation }) => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
+<<<<<<< HEAD
     const handleSignup = async () => {
         // 1. Client-side Validation
         if (!firstName.trim() || !lastName.trim() || !username.trim() || !email.trim() || !password.trim()) {
             Alert.alert("Error", "Please fill in all fields.");
             return;
         }
+=======
+  const handleSignup = async () => {
+    
+    if (!firstName.trim() || !lastName.trim() || !username.trim() || !email.trim() || !password.trim()) {
+        Alert.alert("Error", "Please fill in all fields.");
+        return;
+    }
+>>>>>>> 6cfc21c2d1f2991dc4e3ac95f4ea23d0aaa890be
 
         if (password !== confirmPassword) {
             Alert.alert("Error", "Passwords do not match.");
