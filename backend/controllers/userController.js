@@ -8,14 +8,14 @@ const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
 };
 
-// --- NODEMAILER TRANSPORTER (Production Ready for Render) ---
+// --- UPDATED: RESEND SMTP TRANSPORTER ---
 const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
+    host: "smtp.resend.com",
     port: 465,
-    secure: true, // Use SSL/TLS
+    secure: true, 
     auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS, 
+        user: "resend",  // Always "resend"
+        pass: process.env.RESEND_API_KEY, // Use your re_xxx key from Resend
     },
 });
 
@@ -50,9 +50,9 @@ exports.requestOtp = async (req, res) => {
             { upsert: true, new: true }
         );
 
-        // Send Email using the updated transporter
+        // Updated for Resend SMTP
         await transporter.sendMail({
-            from: `"Echo Stamp" <${process.env.EMAIL_USER}>`,
+            from: "Echo Stamp <onboarding@resend.dev>",  
             to: email,
             subject: 'Verify Your Account',
             html: `
@@ -167,8 +167,9 @@ exports.forgotPasswordRequest = async (req, res) => {
             { upsert: true }
         );
 
+        // Updated for Resend SMTP
         await transporter.sendMail({
-            from: `"Echo Stamp" <${process.env.EMAIL_USER}>`,
+            from: "Echo Stamp <onboarding@resend.dev>",
             to: email,
             subject: 'Password Reset Code',
             html: `<p>Your password reset code is: <b>${otp}</b></p>`,

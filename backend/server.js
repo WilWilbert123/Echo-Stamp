@@ -4,24 +4,51 @@ const cors = require('cors');
 const { errorHandler } = require('./middleware/errorMiddleware');
 const connectDB = require('./config/db');
 
+// Load environment variables
 require('dotenv').config();  
+
+// Connect to Database
 connectDB();  
  
 const app = express();
 
-// Middleware
+// --- MIDDLEWARE ---
 app.use(cors()); 
 app.use(express.json());
 app.use(morgan('dev')); 
 
-// Routes
+// --- ROOT & HEALTH CHECK ROUTES ---
+ 
+app.get('/', (req, res) => {
+    res.status(200).json({
+        success: true,
+        message: "Echo Stamp API is live and running!",
+        environment: process.env.NODE_ENV || 'development',
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Basic health check for Render's uptime monitor
+app.get('/health', (req, res) => {
+    res.status(200).send('OK');
+});
+
+// --- API ROUTES ---
 app.use('/api/echoes', require('./routes/echoRoutes'));
-app.use('/api/users', require('./routes/userRoutes'));   
+app.use('/api/users', require('./routes/userRoutes'));    
 app.use('/api/journals', require('./routes/journalRoutes'));
 
+// --- ERROR HANDLING ---
  
-// Error Middleware
 app.use(errorHandler);
 
+// --- SERVER START ---
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
+ 
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`///////////////////////////////////////////////////////////`);
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`✅ Health Check: http://localhost:${PORT}/`);
+    console.log(`///////////////////////////////////////////////////////////`);
+});
