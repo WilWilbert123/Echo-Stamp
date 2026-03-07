@@ -39,6 +39,7 @@ app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/journals', require('./routes/journalRoutes'));
 
 // --- ERROR HANDLING ---
+ 
 app.use(errorHandler);
 
 // --- SERVER START ---
