@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 const API = axios.create({
-    baseURL: 'http://192.168.0.223:5000/api', 
+   // baseURL: 'http://192.168.0.223:5000/api', 
+   baseURL: 'https://echo-stamp.onrender.com/api',
     timeout: 10000,
 });
 
@@ -52,5 +53,7 @@ export const verifyOtp = (data) => API.post('/users/verify-otp', data);
  
 export const forgotPassword = (email) => API.post('/users/forgot-password', { email });
 export const resetPassword = (data) => API.post('/users/reset-password', data);
+
+export const sendCustomEmail = (emailData) => API.post('/emails/send', emailData);
 
 export default API;

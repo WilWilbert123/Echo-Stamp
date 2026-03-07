@@ -20,7 +20,8 @@ import {
 import { useDispatch } from 'react-redux';
 
 import { useTheme } from '../../context/ThemeContext';
-import API from '../../services/api';
+// IMPORT the named function from your api.js
+import { requestOtp } from '../../services/api';
 
 const Signup = ({ navigation }) => {
     const { colors, isDark } = useTheme();
@@ -36,45 +37,50 @@ const Signup = ({ navigation }) => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
-  const handleSignup = async () => {
-    // 1. Client-side Validation
-    if (!firstName.trim() || !lastName.trim() || !username.trim() || !email.trim() || !password.trim()) {
-        Alert.alert("Error", "Please fill in all fields.");
-        return;
-    }
+    const handleSignup = async () => {
+        // 1. Client-side Validation
+        if (!firstName.trim() || !lastName.trim() || !username.trim() || !email.trim() || !password.trim()) {
+            Alert.alert("Error", "Please fill in all fields.");
+            return;
+        }
 
-    if (password !== confirmPassword) {
-        Alert.alert("Error", "Passwords do not match.");
-        return;
-    }
+        if (password !== confirmPassword) {
+            Alert.alert("Error", "Passwords do not match.");
+            return;
+        }
 
-    setLoading(true);
-    try {
-        const userData = {
-            firstName: firstName.trim(),
-            lastName: lastName.trim(),
-            username: username.trim(),
-            email: email.toLowerCase().trim(),
-            password
-        };
- 
-        const response = await API.post('/users/request-otp', userData);
-        
- 
-        navigation.navigate('OtpVerification', { email: userData.email });
+        setLoading(true);
+        try {
+            const userData = {
+                firstName: firstName.trim(),
+                lastName: lastName.trim(),
+                username: username.trim(),
+                email: email.toLowerCase().trim(),
+                password
+            };
 
-    } catch (error) {
-        // Log the error for your own debugging
-        console.log("Signup Error:", error.response?.data || error.message);
-        
-        Alert.alert(
-            "Signup Failed", 
-            error.response?.data?.message || "Could not send verification email. Please try again."
-        );
-    } finally {
-        setLoading(false);
-    }
-};
+            // FIX: Using the named function. This hits https://echo-stamp.onrender.com/api/users/request-otp
+            const response = await requestOtp(userData);
+            
+            navigation.navigate('OtpVerification', { email: userData.email });
+
+        } catch (error) {
+            console.log("Signup Error:", error.response?.data || error.message);
+            
+            // FIX: Handle Render "Cold Start" (Free Tier)
+            let errorMessage = "Could not send verification email. Please try again.";
+            
+            if (error.code === 'ECONNABORTED') {
+                errorMessage = "The server is taking a moment to wake up. Please tap 'CREATE' again in 10 seconds.";
+            } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            }
+            
+            Alert.alert("Signup Failed", errorMessage);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Dynamic styles based on window dimensions
     const dynamicStyles = {
@@ -119,7 +125,7 @@ const Signup = ({ navigation }) => {
                                 { icon: 'at-outline', placeholder: 'User Name', val: username, set: setUsername },
                                 { icon: 'mail-outline', placeholder: 'Email', val: email, set: setEmail, type: 'email-address' },
                                 { icon: 'lock-closed-outline', placeholder: 'Password', val: password, set: setPassword, secure: true },
-                               { icon: 'shield-checkmark-outline', placeholder: 'Confirm Password', val: confirmPassword, set: setConfirmPassword, secure: true },
+                                { icon: 'shield-checkmark-outline', placeholder: 'Confirm Password', val: confirmPassword, set: setConfirmPassword, secure: true },
                             ].map((item, index) => (
                                 <View key={index} style={[
                                     styles.inputWrapper, 
