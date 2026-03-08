@@ -1,0 +1,75 @@
+:root {
+  --bg-dark: #030305;
+  --bg-card: rgba(28, 28, 30, 0.4);
+  --accent-cyan: #00f2fe;
+  --accent-purple: #7000ff;
+  --text-primary: #ffffff;
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --header-height: 80px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  background-color: var(--bg-dark);
+  margin: 0;
+  padding: 0;
+  /* Fixed: Removed overflow-y hidden so you can actually scroll */
+  overflow-x: hidden; 
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: var(--text-primary);
+}
+
+/* Ensure the shell allows for a vertical flow */
+.app-shell {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+main {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Shared Premium Utilities --- */
+
+.text-gradient {
+  background: linear-gradient(135deg, #ffffff, var(--accent-cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.fade-in {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Standardized Glass Input for Auth/Forms */
+.input-field {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  padding: 16px;
+  border-radius: 14px;
+  color: white;
+  margin-bottom: 16px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--accent-cyan);
+  background: rgba(255, 255, 255, 0.07);
+}

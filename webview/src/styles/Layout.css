@@ -1,0 +1,81 @@
+.layout-wrapper {
+  position: relative;
+  min-height: 100vh;
+  width: 100vw;
+  background-color: #030305; /* Deepest black */
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.content-area {
+  position: relative;
+  z-index: 2; /* Sits above the glow orbs */
+  flex: 1;
+  width: 100%;
+}
+
+/* --- Atmospheric Glow Effects --- */
+.glow-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none; /* Allows clicking through to buttons */
+  overflow: hidden;
+}
+
+.glow-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.15;
+}
+
+.purple-glow {
+  top: -10%;
+  right: -5%;
+  width: 600px;
+  height: 600px;
+  background: var(--accent-purple, #7000ff);
+  animation: float 20s infinite alternate;
+}
+
+.blue-glow {
+  bottom: -10%;
+  left: -10%;
+  width: 500px;
+  height: 500px;
+  background: var(--accent-cyan, #00f2fe);
+  animation: float 15s infinite alternate-reverse;
+}
+
+/* Subtle Film Grain Texture */
+.grain-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0.02;
+  background-image: url("https://grainy-gradients.vercel.app/noise.svg");
+}
+
+/* Subtle floating animation for background orbs */
+@keyframes float {
+  from { transform: translate(0, 0); }
+  to { transform: translate(100px, 50px); }
+}
+
+/* Ensure children pages have proper padding-top so they aren't hidden by the floating header */
+.page-container {
+  padding-top: 100px; /* Adjust based on header height */
+  min-height: 100vh;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}

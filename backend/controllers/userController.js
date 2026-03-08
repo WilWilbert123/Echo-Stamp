@@ -52,7 +52,7 @@ exports.requestOtp = async (req, res) => {
 
         // Updated for Resend SMTP
         await transporter.sendMail({
-            from: "Echo Stamp <onboarding@resend.dev>",  
+          from: "Echo Stamp <onboarding@resend.dev>",
             to: email,
             subject: 'Verify Your Account',
             html: `
