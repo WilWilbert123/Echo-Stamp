@@ -27,12 +27,12 @@ export const ThemeProvider = ({ children }) => {
 const lightColors = {
   // Soft Arctic Palette
   background: ['#F8FAFC', '#F1F5F9', '#E2E8F0'], 
-  textMain: '#0F172A',         // Deep Slate
-  textSecondary: '#64748B',    // Muted Blue-Grey
+  textMain: '#0F172A',         
+  textSecondary: '#64748B',     
   cardText: '#1E293B',
   cardDesc: '#475569',
-  primary: '#4F46E5',          // Indigo 600
-  accent: '#F59E0B',           // Warm Amber
+  primary: '#4F46E5',         
+  accent: '#F59E0B',          
   glass: 'rgba(255, 255, 255, 0.75)', 
   glassBorder: 'rgba(0, 0, 0, 0.05)',
   shadow: '#64748B',
@@ -40,14 +40,14 @@ const lightColors = {
 };
 
 const darkColors = {
-  // Midnight Slate Palette (Better than pure black for depth)
+  
   background: ['#0F172A', '#1E293B', '#0F172A'], 
-  textMain: '#F8FAFC',         // Ghost White
-  textSecondary: '#94A3B8',    // Slate 400
+  textMain: '#F8FAFC',         
+  textSecondary: '#94A3B8',    
   cardText: '#F1F5F9',
   cardDesc: '#CBD5E1',
-  primary: '#6366F1',          // Indigo 500 (Vibrant)
-  accent: '#FACC15',           // Bright Yellow
+  primary: '#6366F1',          
+  accent: '#FACC15',           
   glass: 'rgba(30, 41, 59, 0.7)', 
   glassBorder: 'rgba(255, 255, 255, 0.12)',
   shadow: '#000000',
