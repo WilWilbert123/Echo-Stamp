@@ -52,8 +52,8 @@ const Insights = () => {
         backgroundGradientFromOpacity: 0,
         backgroundGradientToOpacity: 0,
         // Uses your primary indigo theme color
-        color: (opacity = 1) => isDark 
-            ? `rgba(99, 102, 241, ${opacity})` 
+        color: (opacity = 1) => isDark
+            ? `rgba(99, 102, 241, ${opacity})`
             : `rgba(79, 70, 229, ${opacity})`,
         labelColor: (opacity = 1) => colors.textSecondary,
         strokeWidth: 3,
@@ -87,8 +87,8 @@ const Insights = () => {
 
         return {
             labels: labels.length > 0 ? labels : ["..."],
-            datasets: [{ 
-                data: dataPoints.length > 0 ? dataPoints : [0], 
+            datasets: [{
+                data: dataPoints.length > 0 ? dataPoints : [0],
                 strokeWidth: 4,
                 color: (opacity = 1) => colors.primary // Line color matches theme
             }]
@@ -121,35 +121,53 @@ const Insights = () => {
                 population: counts[key],
                 color: details.color,
                 legendFontColor: 'transparent',
-                legendFontSize: 0 
+                legendFontSize: 0
             };
         }).sort((a, b) => b.population - a.population);
     }, [list]);
 
-    const stats = useMemo(() => {
-        const data = Array.isArray(list) ? list : [];
-        if (!data.length) return { total: 0, topEmotion: 'Calm', stability: 0 };
-        const now = new Date();
-        const filtered = data.filter(item => {
-            const itemDate = new Date(item.createdAt);
-            if (timeframe === 'Day') return itemDate.toDateString() === now.toDateString();
-            if (timeframe === 'Month') return itemDate.getMonth() === now.getMonth();
-            return true;
-        });
-        const emotionCounts = filtered.reduce((acc, item) => {
-            const emo = item.emotion || 'Calm';
-            acc[emo] = (acc[emo] || 0) + 1;
-            return acc;
-        }, {});
-        const topEmotion = Object.keys(emotionCounts).length
-            ? Object.keys(emotionCounts).reduce((a, b) => emotionCounts[a] > emotionCounts[b] ? a : b)
-            : 'Calm';
-        const weights = filtered.map(e => moodWeights[e.emotion] || 5);
+   const stats = useMemo(() => {
+    const data = Array.isArray(list) ? list : [];
+    if (!data.length) return { total: 0, topEmotion: 'Calm', stability: 0 };
+
+    const now = new Date();
+    
+    // 1. Add null-checks for createdAt
+    const filtered = data.filter(item => {
+        if (!item?.createdAt) return false;
+        const itemDate = new Date(item.createdAt);
+        if (isNaN(itemDate.getTime())) return false; // Skip invalid dates
+
+        if (timeframe === 'Day') return itemDate.toDateString() === now.toDateString();
+        if (timeframe === 'Month') return itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear();
+        return true;
+    });
+
+    // 2. Safely count emotions
+    const emotionCounts = filtered.reduce((acc, item) => {
+        const emo = item.emotion || 'Calm';
+        acc[emo] = (acc[emo] || 0) + 1;
+        return acc;
+    }, {});
+
+    // 3. Safely find the top emotion (Check if keys exist first)
+    const emotionKeys = Object.keys(emotionCounts);
+    const topEmotion = emotionKeys.length > 0
+        ? emotionKeys.reduce((a, b) => emotionCounts[a] > emotionCounts[b] ? a : b)
+        : 'Calm';
+
+    // 4. Safely calculate stability
+    const weights = filtered.map(e => moodWeights[e.emotion] || 5);
+    let stability = 0.5; // Default stability
+    
+    if (weights.length > 0) {
         const mean = weights.reduce((a, b) => a + b, 0) / weights.length;
         const variance = weights.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / weights.length;
-        const stability = Math.max(0.1, Math.min(1, 1 - (variance / 25)));
-        return { total: data.length, topEmotion, stability };
-    }, [list, timeframe]);
+        stability = Math.max(0.1, Math.min(1, 1 - (variance / 25)));
+    }
+
+    return { total: filtered.length, topEmotion, stability };
+}, [list, timeframe]);
 
     const topEmotionDetails = getEmotionDetails(stats.topEmotion);
 
@@ -157,10 +175,25 @@ const Insights = () => {
         <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
             <StatusBar barStyle={colors.status} translucent backgroundColor="transparent" />
 
-            {/* --- THEMED HEADER BACKGROUND --- */}
+
+
             <View style={styles.headerBackground}>
-                <View style={[styles.blueWave, { backgroundColor: colors.primary, opacity: isDark ? 0.15 : 0.1 }]} />
-                <View style={[styles.darkWave, { backgroundColor: colors.primary, opacity: isDark ? 0.1 : 0.05 }]} />
+                {/* Blue Wave */}
+                <View style={[
+                    styles.blueWave,
+                    {
+                        backgroundColor: colors.primary,
+                        opacity: isDark ? 0.3 : 0.8
+                    }
+                ]} />
+                {/* Secondary Wave */}
+                <View style={[
+                    styles.darkWave,
+                    {
+                        backgroundColor: isDark ? '#1E293B' : '#637D8B',
+                        opacity: isDark ? 0.6 : 0.4
+                    }
+                ]} />
             </View>
 
             <ScrollView
@@ -179,18 +212,18 @@ const Insights = () => {
                             key={item}
                             onPress={() => setTimeframe(item)}
                             style={[
-                                styles.pickerItem, 
-                                timeframe === item && { 
+                                styles.pickerItem,
+                                timeframe === item && {
                                     backgroundColor: isDark ? colors.primary : '#FFF',
                                     shadowColor: colors.primary,
                                     shadowOpacity: isDark ? 0.4 : 0.1,
                                     shadowRadius: 10,
-                                    
+
                                 }
                             ]}
                         >
                             <Text style={[
-                                styles.pickerText, 
+                                styles.pickerText,
                                 { color: timeframe === item ? (isDark ? '#FFF' : colors.primary) : colors.textSecondary }
                             ]}>{item}</Text>
                         </TouchableOpacity>
@@ -205,10 +238,10 @@ const Insights = () => {
                         <Text style={[styles.miniLabel, { color: colors.textSecondary }]}>Total Echoes</Text>
                     </View>
                     <View style={[styles.miniCard, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
-                        <LottieView 
-                            source={topEmotionDetails.animation} 
-                            autoPlay 
-                            loop 
+                        <LottieView
+                            source={topEmotionDetails.animation}
+                            autoPlay
+                            loop
                             style={{ width: 42, height: 42 }}
                         />
                         <Text style={[styles.miniValue, { color: colors.textMain, marginTop: 4 }]} numberOfLines={1}>
@@ -254,8 +287,8 @@ const Insights = () => {
                                 chartConfig={{
                                     ...chartConfig,
                                     // Custom square coloring based on theme
-                                    color: (opacity = 1) => isDark 
-                                        ? `rgba(99, 102, 241, ${opacity})` 
+                                    color: (opacity = 1) => isDark
+                                        ? `rgba(99, 102, 241, ${opacity})`
                                         : `rgba(79, 70, 229, ${opacity})`,
                                 }}
                                 squareSize={18}
@@ -286,20 +319,20 @@ const Insights = () => {
                                 hasLegend={false}
                                 absolute
                             />
-                            
+
                             <View style={styles.lottieLegendContainer}>
                                 {pieData.map((item, index) => {
                                     const details = getEmotionDetails(item.name);
                                     const percentage = Math.round((item.population / stats.total) * 100);
-                                    
+
                                     return (
                                         <View key={index} style={[styles.legendItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }]}>
                                             <View style={[styles.colorIndicator, { backgroundColor: item.color }]} />
-                                            <LottieView 
-                                                source={details.animation} 
-                                                autoPlay 
-                                                loop 
-                                                style={styles.legendLottie} 
+                                            <LottieView
+                                                source={details.animation}
+                                                autoPlay
+                                                loop
+                                                style={styles.legendLottie}
                                             />
                                             <View style={{ flex: 1 }}>
                                                 <Text style={[styles.legendText, { color: colors.textMain }]}>{details.label}</Text>
@@ -321,10 +354,10 @@ const Insights = () => {
 
                 {/* --- EMOTIONAL RESILIENCE --- */}
                 <Text style={[styles.sectionTitle, { color: colors.textMain }]}>Emotional Resilience</Text>
-                <View style={[styles.chartCard, { 
-                    flexDirection: 'row', 
-                    backgroundColor: colors.glass, 
-                    borderColor: colors.glassBorder, 
+                <View style={[styles.chartCard, {
+                    flexDirection: 'row',
+                    backgroundColor: colors.glass,
+                    borderColor: colors.glassBorder,
                     padding: 20,
                     alignItems: 'center'
                 }]}>
@@ -337,8 +370,8 @@ const Insights = () => {
                                 strokeWidth={12}
                                 radius={40}
                                 hideLegend={true}
-                                chartConfig={{ 
-                                    ...chartConfig, 
+                                chartConfig={{
+                                    ...chartConfig,
                                     color: (opacity = 1) => `rgba(34, 197, 94, ${opacity})` // Resilience stays green
                                 }}
                             />
@@ -348,8 +381,8 @@ const Insights = () => {
                                 </Text>
                                 <Text style={[styles.miniLabel, { color: colors.textSecondary, fontSize: 12 }]}>Stability Score</Text>
                                 <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 8, fontStyle: 'italic', lineHeight: 16 }}>
-                                    {stats.stability > 0.7 
-                                        ? "Your emotional state shows high consistency." 
+                                    {stats.stability > 0.7
+                                        ? "Your emotional state shows high consistency."
                                         : "You are experiencing a wide, healthy range of emotions."}
                                 </Text>
                             </View>
@@ -368,10 +401,9 @@ const Insights = () => {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    headerBackground: { position: 'absolute', top: 0, width: '100%', height: height * 0.3 },
-    blueWave: { position: 'absolute', top: -100, right: -100, width: width * 1.5, height: height * 0.3, borderRadius: 200, transform: [{ rotate: '-15deg' }] },
-    darkWave: { position: 'absolute', top: -50, right: -150, width: width * 1.2, height: height * 0.25, borderRadius: 150, transform: [{ rotate: '-10deg' }] },
-    scrollContent: { paddingHorizontal: 20 },
+    headerBackground: { position: 'absolute', top: 0, width: '100%', height: height * 0.25 },
+    blueWave: { position: 'absolute', top: -50, right: -50, width: width * 1.2, height: height * 0.2, borderBottomLeftRadius: 300, transform: [{ rotate: '-10deg' }] },
+    darkWave: { position: 'absolute', top: -30, right: -80, width: width * 0.8, height: height * 0.18, borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] }, scrollContent: { paddingHorizontal: 20 },
     header: { marginBottom: 25, marginTop: 10 },
     headerTitle: { fontSize: 38, fontWeight: '900', letterSpacing: -1.5 },
     headerSubtitle: { fontSize: 16, fontWeight: '500', opacity: 0.8 },
@@ -379,16 +411,16 @@ const styles = StyleSheet.create({
     pickerItem: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 16 },
     pickerText: { fontWeight: '800', fontSize: 14 },
     sectionTitle: { fontSize: 20, fontWeight: '800', marginBottom: 16, marginTop: 12, letterSpacing: -0.5 },
-    chartCard: { 
-        borderRadius: 32, 
-        paddingVertical: 20, 
-        alignItems: 'center', 
-        overflow: 'hidden', 
-        marginBottom: 20, 
+    chartCard: {
+        borderRadius: 32,
+        paddingVertical: 20,
+        alignItems: 'center',
+        overflow: 'hidden',
+        marginBottom: 20,
         borderWidth: 1.5,
         ...Platform.select({
             ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20 },
-            android: { }
+            android: {}
         })
     },
     chartStyle: { borderRadius: 20, paddingRight: 40, marginTop: 10, marginLeft: -10 },

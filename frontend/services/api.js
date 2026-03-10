@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 const API = axios.create({
-   baseURL: 'http://192.168.0.223:5000/api', 
-   //baseURL: 'https://echo-stamp.onrender.com/api',
+   //baseURL: 'http://192.168.0.223:5000/api', 
+   baseURL: 'https://echo-stamp.onrender.com/api',
     timeout: 60000,
 });
 
