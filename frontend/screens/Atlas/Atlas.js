@@ -22,15 +22,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import GlassCard from '../../components/GlassCard';
 import { useTheme } from '../../context/ThemeContext';
-
 import {
   addJournalAsync,
   deleteJournalAsync,
   getJournalsAsync,
   removeJournalMediaAsync
 } from '../../redux/journalSlice';
+import { uploadImageToCloudinary } from '../../services/cloudinary';
 
 const { width, height } = Dimensions.get('window');
+
+ 
 
 const Atlas = () => {
   const dispatch = useDispatch();
@@ -107,16 +109,29 @@ const Atlas = () => {
   };
 
   // --- SAVE JOURNAL ---
-  const handleSave = async () => {
-    const userId = user?._id || user?.id;
-    if (!title) return Alert.alert("Wait!", "Please give this moment a title.");
+const handleSave = async () => {
+  const userId = user?._id || user?.id;
+  if (!title) return Alert.alert("Wait!", "Please give this moment a title.");
 
-    setLoading(true);
+  setLoading(true);
+
+  try {
+    
+    const uploadedUrls = await Promise.all(
+      mediaList.map(async (item) => {
+       
+        if (item.uri.startsWith('http')) return item.uri;
+        
+        return await uploadImageToCloudinary(item.uri);
+      })
+    );
+
+    
     const journalData = {
       userId,
       title,
       description,
-      media: mediaList.map(m => m.uri),
+      media: uploadedUrls,  
       location: {
         lat: tempCoords.latitude,
         lng: tempCoords.longitude,
@@ -124,16 +139,20 @@ const Atlas = () => {
       }
     };
 
-    try {
-      await dispatch(addJournalAsync(journalData)).unwrap();
-      setModalVisible(false);
-      resetForm();
-    } catch (err) {
-      Alert.alert("Save Failed", "We couldn't pin this to your map.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    // 3. Dispatch to your backend/Redux
+    await dispatch(addJournalAsync(journalData)).unwrap();
+
+    setModalVisible(false);
+    resetForm();
+    Alert.alert("Success!", "Your moment has been pinned.");
+
+  } catch (err) {
+    console.error("Upload/Save Error:", err);
+    Alert.alert("Save Failed", "We couldn't upload your images or save the entry.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const resetForm = () => {
     setTitle('');
