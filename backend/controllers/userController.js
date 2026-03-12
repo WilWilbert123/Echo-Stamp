@@ -1,23 +1,32 @@
 const User = require('../models/User');
 const OtpEntry = require('../models/OtpEntry');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
+const Resend = require('resend');
+
+// Initialize Resend with your API key
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Helper: Generate JWT
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
 };
 
-// --- UPDATED: RESEND SMTP TRANSPORTER ---
-const transporter = nodemailer.createTransport({
-    host: "smtp.resend.com",
-    port: 465,
-    secure: true, 
-    auth: {
-        user: "resend",  // Always "resend"
-        pass: process.env.RESEND_API_KEY, // Use your re_xxx key from Resend
-    },
-});
+// Helper: Send email via Resend
+const sendEmail = async ({ to, subject, html }) => {
+    try {
+        const response = await resend.emails.send({
+            from: "Echo Stamp <onboarding@resend.dev>", // Onboarding sender
+            to,
+            subject,
+            html,
+        });
+        console.log("Email sent:", response.id);
+        return response;
+    } catch (error) {
+        console.error("Email send failed:", error);
+        throw error;
+    }
+};
 
 // --- REGISTER: Step 1 (Request OTP) ---
 exports.requestOtp = async (req, res) => {
@@ -30,7 +39,6 @@ exports.requestOtp = async (req, res) => {
         }
 
         const userExists = await User.findOne({ $or: [{ email }, { username }] });
-        
         if (userExists) {
             const conflictField = userExists.email === email ? 'Email' : 'Username';
             return res.status(400).json({ 
@@ -50,9 +58,8 @@ exports.requestOtp = async (req, res) => {
             { upsert: true, new: true }
         );
 
-        // Updated for Resend SMTP
-        await transporter.sendMail({
-          from: "Echo Stamp <onboarding@resend.dev>",
+        // Send OTP email using Resend API
+        await sendEmail({
             to: email,
             subject: 'Verify Your Account',
             html: `
@@ -85,25 +92,12 @@ exports.verifyOtpAndRegister = async (req, res) => {
         }
 
         const entry = await OtpEntry.findOne({ email, otp });
-
-        if (!entry) {
-            return res.status(400).json({ message: 'Invalid or expired OTP' });
-        }
-
-        if (!entry.userData) {
-            return res.status(400).json({ message: 'Invalid request context' });
-        }
+        if (!entry) return res.status(400).json({ message: 'Invalid or expired OTP' });
+        if (!entry.userData) return res.status(400).json({ message: 'Invalid request context' });
 
         const { firstName, lastName, username, password } = entry.userData;
 
-        const user = await User.create({
-            firstName,
-            lastName,
-            username,
-            email,
-            password 
-        });
-
+        const user = await User.create({ firstName, lastName, username, email, password });
         await OtpEntry.deleteOne({ _id: entry._id });
 
         return res.status(201).json({
@@ -156,7 +150,6 @@ exports.forgotPasswordRequest = async (req, res) => {
     try {
         const email = req.body.email ? req.body.email.toLowerCase().trim() : "";
         const user = await User.findOne({ email });
-
         if (!user) return res.status(404).json({ message: "No account found" });
 
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -167,9 +160,7 @@ exports.forgotPasswordRequest = async (req, res) => {
             { upsert: true }
         );
 
-        // Updated for Resend SMTP
-        await transporter.sendMail({
-            from: "Echo Stamp <onboarding@resend.dev>",
+        await sendEmail({
             to: email,
             subject: 'Password Reset Code',
             html: `<p>Your password reset code is: <b>${otp}</b></p>`,
@@ -195,7 +186,6 @@ exports.resetPassword = async (req, res) => {
 
         user.password = newPassword;  
         await user.save();
-
         await OtpEntry.deleteOne({ _id: entry._id });
 
         return res.status(200).json({ message: 'Password reset successful' });
