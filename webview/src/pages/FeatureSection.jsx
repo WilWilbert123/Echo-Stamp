@@ -15,7 +15,7 @@ const FeatureSection = () => {
         </p>
 
         <div className="glass-card visual-demo-box">
-          {/* The high-tech moving floor grid */}
+        
           <div className="moving-grid-bg" />
           
           <div className="stat-row">
