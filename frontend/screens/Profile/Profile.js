@@ -13,13 +13,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
-
 import { useTheme } from '../../context/ThemeContext';
 import { logout } from '../../redux/authSlice';
 
 const { width, height } = Dimensions.get('window');
 
-const Profile = () => {
+const Profile = ({navigation}) => {
     // Accessing your ThemeContext
     const { isDark, colors, toggleTheme } = useTheme();
     const insets = useSafeAreaInsets();
@@ -151,7 +150,7 @@ const Profile = () => {
                         isToggle
                     />
                     <SettingItem icon="notifications-outline" title="Notifications" value="On" />
-                    <SettingItem icon="shield-outline" title="Privacy & Security" isLast />        
+                    <SettingItem icon="shield-outline" title="Privacy & Security" isLast onPress={() => navigation.navigate('PrivacySecurity')} />        
                  
 
 
