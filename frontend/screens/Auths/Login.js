@@ -1,6 +1,6 @@
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react'; // Added useEffect
+import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -42,7 +42,6 @@ const Login = ({ navigation }) => {
         const hasHardware = await LocalAuthentication.hasHardwareAsync();
         const savedCreds = await SecureStore.getItemAsync('user_credentials');
         
-        // Only show biometric option if phone supports it AND user enabled it in settings
         if (hasHardware && savedCreds) {
             setIsBiometricAvailable(true);
         }
@@ -60,7 +59,6 @@ const Login = ({ navigation }) => {
                 const savedCreds = await SecureStore.getItemAsync('user_credentials');
                 if (savedCreds) {
                     const { email: storedEmail, password: storedPassword } = JSON.parse(savedCreds);
-                    // Automatically trigger the login logic with stored credentials
                     performLogin(storedEmail, storedPassword);
                 }
             }
@@ -76,7 +74,6 @@ const Login = ({ navigation }) => {
         performLogin(email.toLowerCase().trim(), password);
     };
 
-    // Refactored logic to be used by both manual and biometric login
     const performLogin = async (loginEmail, loginPassword) => {
         setLoading(true);
         try {
@@ -84,7 +81,19 @@ const Login = ({ navigation }) => {
                 email: loginEmail,
                 password: loginPassword
             });
-            dispatch(setCredentials(response.data));
+
+            // --- TWO FACTOR CHECK ---
+            // Check if backend flags this user as having 2FA enabled
+            if (response.data.twoFactorRequired) {
+                navigation.navigate('OtpVerification', { 
+                    email: loginEmail,
+                    mode: '2fa_login' // Passing mode to handle different OTP scenarios
+                });
+            } else {
+                // Regular Login flow
+                dispatch(setCredentials(response.data));
+            }
+
         } catch (error) {
             Alert.alert("Login Failed", error.response?.data?.error || "Check your credentials");
         } finally {
@@ -106,7 +115,6 @@ const Login = ({ navigation }) => {
                 style={styles.flex}
             >
                 <View style={styles.inner}>
-
                     <View style={styles.logoContainer}>
                         <Text style={[styles.logoText, { color: colors.primary }]}>ECHO</Text>
                         <Text style={[styles.welcomeTitle, { color: colors.textMain }]}>Welcome back!</Text>
@@ -162,7 +170,6 @@ const Login = ({ navigation }) => {
                             </LinearGradient>
                         </TouchableOpacity>
 
-                        {/* --- BIOMETRIC BUTTON --- */}
                         {isBiometricAvailable && (
                             <TouchableOpacity 
                                 style={[styles.biometricBtn, { backgroundColor: isDark ? colors.glass : '#F3F3F3', borderColor: colors.glassBorder }]} 
@@ -190,7 +197,7 @@ const Login = ({ navigation }) => {
 
                     <TouchableOpacity
                         style={styles.footer}
-                        onPress={() => navigation.navigate('Signup')}
+                        on onPress={() => navigation.navigate('Signup')}
                     >
                         <Text style={[styles.footerText, { color: colors.textSecondary }]}>
                             Don't have an account? <Text style={[styles.signUpText, { color: colors.primary }]}>Sign Up</Text>
@@ -205,30 +212,9 @@ const Login = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     flex: { flex: 1 },
-    headerBackground: { 
-        position: 'absolute', 
-        top: 0, 
-        width: '100%', 
-        height: '25%' 
-    },
-    blueWave: { 
-        position: 'absolute', 
-        top: -50, 
-        right: -50, 
-        width: '120%', 
-        height: '80%', 
-        borderBottomLeftRadius: 300, 
-        transform: [{ rotate: '-10deg' }] 
-    },
-    darkWave: { 
-        position: 'absolute', 
-        top: -30, 
-        right: -80, 
-        width: '80%', 
-        height: '70%', 
-        borderBottomLeftRadius: 200, 
-        transform: [{ rotate: '-5deg' }] 
-    },
+    headerBackground: { position: 'absolute', top: 0, width: '100%', height: '25%' },
+    blueWave: { position: 'absolute', top: -50, right: -50, width: '120%', height: '80%', borderBottomLeftRadius: 300, transform: [{ rotate: '-10deg' }] },
+    darkWave: { position: 'absolute', top: -30, right: -80, width: '80%', height: '70%', borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] },
     inner: { flex: 1, paddingHorizontal: 35, justifyContent: 'center', paddingTop: 80 },
     logoContainer: { alignItems: 'center', marginBottom: 40 },
     logoText: { fontSize: 50, fontWeight: '200', letterSpacing: 5, marginBottom: 10 },
@@ -238,12 +224,9 @@ const styles = StyleSheet.create({
     input: { flex: 1, marginLeft: 10, fontSize: 14 },
     forgotBtn: { alignSelf: 'flex-end' },
     forgotText: { fontSize: 13, fontWeight: '500' },
-    
-    // Updated for side-by-side buttons
     actionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20 },
     loginBtn: { height: 55, borderRadius: 12, overflow: 'hidden', elevation: 4 },
     biometricBtn: { width: 55, height: 55, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 1, elevation: 2 },
-    
     gradientBtn: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loginBtnText: { color: '#FFF', fontWeight: '800', fontSize: 15, letterSpacing: 1 },
     socialSection: { alignItems: 'center', marginTop: 40 },

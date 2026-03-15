@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    Dimensions, // Added Dimensions
+    Dimensions,
     KeyboardAvoidingView,
     Platform,
     StatusBar,
@@ -21,6 +21,7 @@ import API from '../../services/api';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const OtpVerification = ({ route, navigation }) => {
+    // mode can now be 'register', 'reset', '2fa' (activation), or '2fa_login' (logging in)
     const { email, mode = 'register' } = route.params || {}; 
     const [otp, setOtp] = useState('');
     const [loading, setLoading] = useState(false);
@@ -53,7 +54,7 @@ const OtpVerification = ({ route, navigation }) => {
         setLoading(true);
         try {
             if (mode === 'reset') {
- 
+                // Mode: Password Reset
                 await API.post('/users/verify-only', { 
                     email: cleanEmail, 
                     otp: cleanOtp 
@@ -64,8 +65,31 @@ const OtpVerification = ({ route, navigation }) => {
                     otp: cleanOtp 
                 });
                 
+            } else if (mode === '2fa') {
+                // Mode: Two-Factor Authentication Activation (Settings)
+                await API.post('/users/verify-only', { 
+                    email: cleanEmail, 
+                    otp: cleanOtp 
+                });
+
+                Alert.alert("Success", "Two-Factor Authentication is now enabled!", [
+                    { text: "OK", onPress: () => navigation.goBack() }
+                ]);
+
+            } else if (mode === '2fa_login') {
+                // --- NEW MODE: TWO-FACTOR LOGIN ---
+                // This completes the login process after the user enters credentials
+                const response = await API.post('/users/login-2fa-verify', { 
+                    email: cleanEmail, 
+                    otp: cleanOtp 
+                });
+
+                const { token, user } = response.data;
+                dispatch(setCredentials({ token, user }));
+                // Navigation will usually be handled by your Auth Navigator automatically
+                
             } else {
- 
+                // Mode: Registration
                 const response = await API.post('/users/verify-otp', { 
                     email: cleanEmail, 
                     otp: cleanOtp 
@@ -87,6 +111,8 @@ const OtpVerification = ({ route, navigation }) => {
         if (timer > 0) return;
         
         try {
+            // If it's 2FA Login or registration, we request a standard OTP
+            // If it's a reset, we use the forgot-password endpoint
             const endpoint = mode === 'reset' ? '/users/forgot-password' : '/users/request-otp';
             await API.post(endpoint, { email: email.toLowerCase().trim() });
             
@@ -106,7 +132,9 @@ const OtpVerification = ({ route, navigation }) => {
             >
                 <View style={styles.inner}>
                     <Text style={[styles.title, { color: colors.textMain }]}>
-                        {mode === 'reset' ? 'Reset Code' : 'Verify Your Email'}
+                        {mode === 'reset' ? 'Reset Code' : 
+                         mode === '2fa' || mode === '2fa_login' ? 'Secure Verification' : 
+                         'Verify Your Email'}
                     </Text>
                     
                     <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
@@ -150,7 +178,10 @@ const OtpVerification = ({ route, navigation }) => {
                             <ActivityIndicator color="#fff" />
                         ) : (
                             <Text style={styles.buttonText}>
-                                {mode === 'reset' ? 'CONTINUE' : 'VERIFY & REGISTER'}
+                                {mode === 'reset' ? 'CONTINUE' : 
+                                 mode === '2fa' ? 'ACTIVATE 2FA' : 
+                                 mode === '2fa_login' ? 'CONFIRM LOGIN' :
+                                 'VERIFY & REGISTER'}
                             </Text>
                         )}
                     </TouchableOpacity>
@@ -171,7 +202,8 @@ const OtpVerification = ({ route, navigation }) => {
                             disabled={loading}
                         >
                             <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-                                Wrong email? <Text style={{ color: colors.primary, fontWeight: 'bold' }}>Go Back</Text>
+                                {mode === '2fa' || mode === '2fa_login' ? 'Cancel' : 'Wrong email? '}
+                                {(mode !== '2fa' && mode !== '2fa_login') && <Text style={{ color: colors.primary, fontWeight: 'bold' }}>Go Back</Text>}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -188,7 +220,6 @@ const styles = StyleSheet.create({
         flex: 1, 
         justifyContent: 'center', 
         padding: 40,
-        // Adding minHeight prevents the "centering" logic from snapping violently
         minHeight: SCREEN_HEIGHT * 0.8 
     },
     title: { fontSize: 28, fontWeight: 'bold', marginBottom: 10, textAlign: 'center', letterSpacing: -0.5 },
