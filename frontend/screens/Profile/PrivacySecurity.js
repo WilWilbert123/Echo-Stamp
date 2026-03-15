@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // Added for persistence
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
@@ -32,22 +32,37 @@ const PrivacySecurity = ({ navigation }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
 
+  // --- FIXED: Helper to sanitize key (Replacing "@" with "_" for SecureStore) ---
+  const getBioKey = () => {
+    if (!user?.email) return "";
+    const sanitizedEmail = user.email.toLowerCase().trim().replace(/[^a-zA-Z0-9._-]/g, '_');
+    return `user_credentials_${sanitizedEmail}`;
+  };
+
   useEffect(() => {
-    checkInitialStatus();
-  }, []);
+    if (user?.email) {
+        checkInitialStatus();
+    }
+  }, [user?.email]);
 
   const checkInitialStatus = async () => {
-    // 1. Check Biometrics status
-    const saved = await SecureStore.getItemAsync('user_credentials');
-    setBiometrics(!!saved);
+    try {
+        const key = getBioKey();
+        if (!key) return;
 
-    // 2. Check 2FA Persistent status
-    // We use a unique key per user so if a different user logs in, they don't see the wrong toggle
-    const saved2FA = await AsyncStorage.getItem(`2fa_enabled_${user?.email}`);
-    if (saved2FA !== null) {
-        setTwoFactor(saved2FA === 'true');
-    } else {
-        setTwoFactor(user?.twoFactorEnabled || false);
+        // 1. Check Biometrics status using UNIQUE KEY
+        const saved = await SecureStore.getItemAsync(key);
+        setBiometrics(!!saved);
+
+        // 2. Check 2FA Persistent status
+        const saved2FA = await AsyncStorage.getItem(`2fa_enabled_${user?.email}`);
+        if (saved2FA !== null) {
+            setTwoFactor(saved2FA === 'true');
+        } else {
+            setTwoFactor(user?.twoFactorEnabled || false);
+        }
+    } catch (error) {
+        console.error("Status check error:", error);
     }
   };
 
@@ -61,27 +76,22 @@ const PrivacySecurity = ({ navigation }) => {
       }
       setModalVisible(true);
     } else {
-      await SecureStore.deleteItemAsync('user_credentials');
+      // Delete using UNIQUE KEY
+      await SecureStore.deleteItemAsync(getBioKey());
       setBiometrics(false);
     }
   };
 
-  // --- FIXED TWO FACTOR HANDLER (WITH PERSISTENCE) ---
   const handleTwoFactorToggle = async (value) => {
     try {
-      // 1. Optimistically update the UI switch
       setTwoFactor(value);
-
-      // 2. Update the backend
       await API.post('/users/update-security', {
         email: user.email, 
         twoFactorEnabled: value
       });
 
-      // 3. Save to AsyncStorage so it survives logout
       await AsyncStorage.setItem(`2fa_enabled_${user?.email}`, value.toString());
 
-      // 4. Update Redux store
       dispatch({ 
         type: 'UPDATE_USER_DATA', 
         payload: { twoFactorEnabled: value } 
@@ -92,7 +102,6 @@ const PrivacySecurity = ({ navigation }) => {
         value ? "Two-Factor Auth is now ENABLED." : "Two-Factor Auth is now DISABLED."
       );
     } catch (error) {
-      // Rollback UI switch if it fails
       setTwoFactor(!value);
       console.error("2FA Update Error:", error.response?.data);
       const msg = error.response?.data?.message || "Could not update security settings.";
@@ -116,7 +125,8 @@ const PrivacySecurity = ({ navigation }) => {
         });
 
         if (auth.success) {
-          await SecureStore.setItemAsync('user_credentials', JSON.stringify({
+          // Store using UNIQUE KEY
+          await SecureStore.setItemAsync(getBioKey(), JSON.stringify({
             email: user.email,
             password: confirmPassword,
           }));
@@ -245,8 +255,6 @@ const PrivacySecurity = ({ navigation }) => {
   );
 };
 
-export default PrivacySecurity;
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
   navBar: { paddingHorizontal: 20, paddingTop: 10, height: 50, justifyContent: 'center' },
@@ -276,3 +284,5 @@ const styles = StyleSheet.create({
   modalBtn: { flex: 1, height: 45, justifyContent: 'center', alignItems: 'center', borderRadius: 10 },
   confirmBtn: { marginLeft: 10 }
 });
+
+export default PrivacySecurity;

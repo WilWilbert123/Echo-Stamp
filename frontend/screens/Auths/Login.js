@@ -34,29 +34,54 @@ const Login = ({ navigation }) => {
     // --- BIOMETRIC STATE ---
     const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
 
+    // --- FIXED: Helper to sanitize email for SecureStore (No "@" allowed) ---
+    const getBioKey = (targetEmail) => {
+        if (!targetEmail) return "";
+        const sanitized = targetEmail.toLowerCase().trim().replace(/[^a-zA-Z0-9._-]/g, '_');
+        return `user_credentials_${sanitized}`;
+    };
+
+    // Re-check biometrics whenever the email text changes
     useEffect(() => {
         checkBiometrics();
-    }, []);
+    }, [email]);
 
     const checkBiometrics = async () => {
-        const hasHardware = await LocalAuthentication.hasHardwareAsync();
-        const savedCreds = await SecureStore.getItemAsync('user_credentials');
-        
-        if (hasHardware && savedCreds) {
-            setIsBiometricAvailable(true);
+        // Only check if email has at least an '@' to avoid premature SecureStore calls
+        if (!email.trim() || !email.includes('@')) {
+            setIsBiometricAvailable(false);
+            return;
+        }
+
+        try {
+            const hasHardware = await LocalAuthentication.hasHardwareAsync();
+            const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+            
+            // Check for the specific key belonging to the typed email
+            const key = getBioKey(email);
+            const savedCreds = await SecureStore.getItemAsync(key);
+            
+            if (hasHardware && isEnrolled && savedCreds) {
+                setIsBiometricAvailable(true);
+            } else {
+                setIsBiometricAvailable(false);
+            }
+        } catch (error) {
+            setIsBiometricAvailable(false);
         }
     };
 
     const handleBiometricLogin = async () => {
         try {
             const result = await LocalAuthentication.authenticateAsync({
-                promptMessage: 'Login with Biometrics',
+                promptMessage: `Login to ${email}`,
                 fallbackLabel: 'Use Password',
                 disableDeviceFallback: false,
             });
 
             if (result.success) {
-                const savedCreds = await SecureStore.getItemAsync('user_credentials');
+                const key = getBioKey(email);
+                const savedCreds = await SecureStore.getItemAsync(key);
                 if (savedCreds) {
                     const { email: storedEmail, password: storedPassword } = JSON.parse(savedCreds);
                     performLogin(storedEmail, storedPassword);
@@ -83,11 +108,10 @@ const Login = ({ navigation }) => {
             });
 
             // --- TWO FACTOR CHECK ---
-            // Check if backend flags this user as having 2FA enabled
             if (response.data.twoFactorRequired) {
                 navigation.navigate('OtpVerification', { 
                     email: loginEmail,
-                    mode: '2fa_login' // Passing mode to handle different OTP scenarios
+                    mode: '2fa_login' 
                 });
             } else {
                 // Regular Login flow
@@ -156,7 +180,7 @@ const Login = ({ navigation }) => {
 
                     <View style={styles.actionRow}>
                         <TouchableOpacity
-                            style={[styles.loginBtn, { flex: isBiometricAvailable ? 0.85 : 1 }]}
+                            style={[styles.loginBtn, { flex: isBiometricAvailable ? 0.82 : 1 }]}
                             onPress={handleLogin}
                             disabled={loading}
                         >
@@ -197,7 +221,7 @@ const Login = ({ navigation }) => {
 
                     <TouchableOpacity
                         style={styles.footer}
-                        on onPress={() => navigation.navigate('Signup')}
+                        onPress={() => navigation.navigate('Signup')}
                     >
                         <Text style={[styles.footerText, { color: colors.textSecondary }]}>
                             Don't have an account? <Text style={[styles.signUpText, { color: colors.primary }]}>Sign Up</Text>
