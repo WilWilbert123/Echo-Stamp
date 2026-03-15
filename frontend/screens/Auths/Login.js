@@ -1,6 +1,6 @@
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
+import { useEffect, useState } from 'react'; // Added useEffect
 import {
     ActivityIndicator,
     Alert,
@@ -15,6 +15,10 @@ import {
 } from 'react-native';
 import { useDispatch } from 'react-redux';
 
+// --- BIOMETRIC IMPORTS ---
+import * as LocalAuthentication from 'expo-local-authentication';
+import * as SecureStore from 'expo-secure-store';
+
 import { useTheme } from '../../context/ThemeContext';
 import { setCredentials } from '../../redux/authSlice';
 import API from '../../services/api';
@@ -26,16 +30,59 @@ const Login = ({ navigation }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    
+    // --- BIOMETRIC STATE ---
+    const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
 
-    const handleLogin = async () => {
+    useEffect(() => {
+        checkBiometrics();
+    }, []);
+
+    const checkBiometrics = async () => {
+        const hasHardware = await LocalAuthentication.hasHardwareAsync();
+        const savedCreds = await SecureStore.getItemAsync('user_credentials');
+        
+        // Only show biometric option if phone supports it AND user enabled it in settings
+        if (hasHardware && savedCreds) {
+            setIsBiometricAvailable(true);
+        }
+    };
+
+    const handleBiometricLogin = async () => {
+        try {
+            const result = await LocalAuthentication.authenticateAsync({
+                promptMessage: 'Login with Biometrics',
+                fallbackLabel: 'Use Password',
+                disableDeviceFallback: false,
+            });
+
+            if (result.success) {
+                const savedCreds = await SecureStore.getItemAsync('user_credentials');
+                if (savedCreds) {
+                    const { email: storedEmail, password: storedPassword } = JSON.parse(savedCreds);
+                    // Automatically trigger the login logic with stored credentials
+                    performLogin(storedEmail, storedPassword);
+                }
+            }
+        } catch (error) {
+            Alert.alert("Error", "Biometric authentication failed");
+        }
+    };
+
+    const handleLogin = () => {
         if (!email.trim() || !password.trim()) {
             return Alert.alert("Error", "Please fill in all fields");
         }
+        performLogin(email.toLowerCase().trim(), password);
+    };
+
+    // Refactored logic to be used by both manual and biometric login
+    const performLogin = async (loginEmail, loginPassword) => {
         setLoading(true);
         try {
             const response = await API.post('/users/login', {
-                email: email.toLowerCase().trim(),
-                password
+                email: loginEmail,
+                password: loginPassword
             });
             dispatch(setCredentials(response.data));
         } catch (error) {
@@ -49,7 +96,6 @@ const Login = ({ navigation }) => {
         <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
             <StatusBar barStyle={colors.status} />
 
-            {/* CURVED HEADER BACKGROUND */}
             <View style={[styles.headerBackground, { backgroundColor: colors.background[0] }]}>
                 <View style={[styles.blueWave, { backgroundColor: colors.primary, opacity: isDark ? 0.4 : 1 }]} />
                 <View style={[styles.darkWave, { backgroundColor: isDark ? '#1E293B' : '#637D8B', opacity: 0.6 }]} />
@@ -61,18 +107,16 @@ const Login = ({ navigation }) => {
             >
                 <View style={styles.inner}>
 
-                    {/* LOGO SECTION */}
                     <View style={styles.logoContainer}>
                         <Text style={[styles.logoText, { color: colors.primary }]}>ECHO</Text>
                         <Text style={[styles.welcomeTitle, { color: colors.textMain }]}>Welcome back!</Text>
                     </View>
 
-                    {/* INPUT FIELDS */}
                     <View style={styles.inputArea}>
                         <View style={[styles.inputWrapper, { backgroundColor: isDark ? colors.glass : '#F3F3F3', borderColor: colors.glassBorder, borderWidth: isDark ? 1 : 0 }]}>
                             <Ionicons name="person-outline" size={20} color={colors.textSecondary} />
                             <TextInput
-                                placeholder="Username"
+                                placeholder="Username/Email"
                                 placeholderTextColor={isDark ? '#64748B' : '#999'}
                                 style={[styles.input, { color: colors.textMain }]}
                                 value={email}
@@ -102,26 +146,35 @@ const Login = ({ navigation }) => {
                         </TouchableOpacity>
                     </View>
 
-                    {/* LOGIN BUTTON */}
-                    <TouchableOpacity
-                        style={styles.loginBtn}
-                        onPress={handleLogin}
-                        disabled={loading}
-                    >
-                        <LinearGradient
-                            colors={isDark ? [colors.primary, '#0369A1'] : ['#8ECCE3', '#6AB8D2']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.gradientBtn}
+                    <View style={styles.actionRow}>
+                        <TouchableOpacity
+                            style={[styles.loginBtn, { flex: isBiometricAvailable ? 0.85 : 1 }]}
+                            onPress={handleLogin}
+                            disabled={loading}
                         >
-                            {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.loginBtnText}>LOG IN</Text>}
-                        </LinearGradient>
-                    </TouchableOpacity>
+                            <LinearGradient
+                                colors={isDark ? [colors.primary, '#0369A1'] : ['#8ECCE3', '#6AB8D2']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.gradientBtn}
+                            >
+                                {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.loginBtnText}>LOG IN</Text>}
+                            </LinearGradient>
+                        </TouchableOpacity>
 
-                    {/* SOCIAL LOGIN SECTION */}
+                        {/* --- BIOMETRIC BUTTON --- */}
+                        {isBiometricAvailable && (
+                            <TouchableOpacity 
+                                style={[styles.biometricBtn, { backgroundColor: isDark ? colors.glass : '#F3F3F3', borderColor: colors.glassBorder }]} 
+                                onPress={handleBiometricLogin}
+                            >
+                                <Ionicons name="finger-print" size={28} color={colors.primary} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+
                     <View style={styles.socialSection}>
                         <Text style={[styles.socialText, { color: colors.textSecondary }]}>Or sign up using</Text>
-                        {/* FIXED: Changed div to View */}
                         <View style={styles.socialIcons}>
                             <TouchableOpacity style={[styles.iconCircle, { backgroundColor: isDark ? colors.glass : '#FFF' }]}>
                                 <FontAwesome5 name="facebook-f" size={20} color="#1877F2" />
@@ -135,7 +188,6 @@ const Login = ({ navigation }) => {
                         </View>
                     </View>
 
-                    {/* FOOTER */}
                     <TouchableOpacity
                         style={styles.footer}
                         onPress={() => navigation.navigate('Signup')}
@@ -186,7 +238,12 @@ const styles = StyleSheet.create({
     input: { flex: 1, marginLeft: 10, fontSize: 14 },
     forgotBtn: { alignSelf: 'flex-end' },
     forgotText: { fontSize: 13, fontWeight: '500' },
-    loginBtn: { width: '100%', height: 55, borderRadius: 12, overflow: 'hidden', marginTop: 20, elevation: 4 },
+    
+    // Updated for side-by-side buttons
+    actionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20 },
+    loginBtn: { height: 55, borderRadius: 12, overflow: 'hidden', elevation: 4 },
+    biometricBtn: { width: 55, height: 55, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 1, elevation: 2 },
+    
     gradientBtn: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loginBtnText: { color: '#FFF', fontWeight: '800', fontSize: 15, letterSpacing: 1 },
     socialSection: { alignItems: 'center', marginTop: 40 },

@@ -9,7 +9,7 @@ import Signup from "../screens/Auths/Signup";
 import CreateEcho from "../screens/Home/CreateEcho";
 import Intro from "../screens/Intro";
 import MainTabs from "../screens/MainTabs";
-
+import PrivacySecurity from "../screens/Profile/PrivacySecurity";
 
 const Stack = createNativeStackNavigator();
 
@@ -23,14 +23,8 @@ const HomeStackNavigator = () => {
                 // --- AUTHENTICATED STACK ---
                 <>
                     <Stack.Screen name="MainTabsRoot" component={MainTabs} />
-                    <Stack.Screen 
-                        name="Create" 
-                        component={CreateEcho} 
-                        options={{ 
-                            animation: 'slide_from_bottom',
-                            presentation: 'modal' 
-                        }} 
-                    /> 
+                    <Stack.Screen  name="Create"   component={CreateEcho}  options={{  animation: 'slide_from_bottom',  presentation: 'modal'   }}   /> 
+                     <Stack.Screen name="PrivacySecurity" component={PrivacySecurity} />  
                 </>
             ) : (
                 // --- UNAUTHENTICATED STACK ---
@@ -41,6 +35,7 @@ const HomeStackNavigator = () => {
                       <Stack.Screen   name="ForgotPassword"  component={ForgotPassword}  />   
                       <Stack.Screen name="OtpVerification" component={OtpVerification} />  
                        <Stack.Screen name="ResetPassword" component={ResetPassword} />   
+                       
                 </>
             )}
         </Stack.Navigator>
