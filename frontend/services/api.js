@@ -54,6 +54,8 @@ export const verifyOtp = (data) => API.post('/users/verify-otp', data);
 export const forgotPassword = (email) => API.post('/users/forgot-password', { email });
 export const resetPassword = (data) => API.post('/users/reset-password', data);
 
- 
+// --- Security & 2FA ---
+export const updateSecurity = (data) => API.post('/users/update-security', data);
+export const verify2faLogin = (data) => API.post('/users/login-2fa-verify', data);
 
 export default API;

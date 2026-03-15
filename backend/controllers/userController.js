@@ -2,8 +2,8 @@ const User = require('../models/User');
 const OtpEntry = require('../models/OtpEntry');
 const jwt = require('jsonwebtoken');
 const { Resend } = require('resend');
-// Initialize Resend with your API key
 
+// Initialize Resend with your API key
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Helper: Generate JWT
@@ -15,7 +15,7 @@ const generateToken = (id) => {
 const sendEmail = async ({ to, subject, html }) => {
     try {
         const response = await resend.emails.send({
-            from: "Echo Stamp <onboarding@resend.dev>", // Onboarding sender
+            from: "Echo Stamp <onboarding@resend.dev>", 
             to,
             subject,
             html,
@@ -58,7 +58,6 @@ exports.requestOtp = async (req, res) => {
             { upsert: true, new: true }
         );
 
-        // Send OTP email using Resend API
         await sendEmail({
             to: email,
             subject: 'Verify Your Account',
@@ -110,14 +109,13 @@ exports.verifyOtpAndRegister = async (req, res) => {
                 email: user.email
             }
         });
-
     } catch (error) {
         console.error("Registration Error:", error);
         return res.status(500).json({ message: 'Server error during verification', error: error.message });
     }
 };
 
-// --- LOGIN ---
+// --- LOGIN (Modified for 2FA) ---
 exports.loginUser = async (req, res) => {
     try {
         const email = req.body.email ? req.body.email.toLowerCase().trim() : "";
@@ -126,6 +124,27 @@ exports.loginUser = async (req, res) => {
         const user = await User.findOne({ email });
 
         if (user && (await user.matchPassword(password))) {
+            if (user.twoFactorEnabled) {
+                const otp = Math.floor(100000 + Math.random() * 900000).toString();
+                
+                await OtpEntry.findOneAndUpdate(
+                    { email },
+                    { otp, userData: null, createdAt: new Date() },
+                    { upsert: true }
+                );
+
+                await sendEmail({
+                    to: email,
+                    subject: 'Login Verification Code',
+                    html: `<p>Your secure login code is: <b>${otp}</b></p>`,
+                });
+
+                return res.status(200).json({ 
+                    twoFactorRequired: true, 
+                    email: user.email 
+                });
+            }
+
             return res.json({
                 token: generateToken(user._id),
                 user: { 
@@ -204,6 +223,70 @@ exports.verifyOnly = async (req, res) => {
         if (!entry) return res.status(400).json({ message: 'Invalid code' });
 
         return res.status(200).json({ message: 'OTP verified' });
+    } catch (error) {
+        return res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+// --- FIXED: UPDATE SECURITY (Toggle 2FA) ---
+exports.updateSecurity = async (req, res) => {
+    try {
+        // Use req.user.id (from your 'protect' middleware) or the email from the body
+        // If your frontend sends the email, use this. If not, use req.user.id
+        const email = req.body.email ? req.body.email.toLowerCase().trim() : null;
+        const { twoFactorEnabled } = req.body;
+
+        let query = {};
+        if (email) {
+            query = { email };
+        } else if (req.user && req.user.id) {
+            query = { _id: req.user.id };
+        } else {
+            return res.status(400).json({ message: "User identification missing" });
+        }
+
+        const user = await User.findOneAndUpdate(
+            query,
+            { twoFactorEnabled },
+            { new: true }
+        );
+
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        return res.status(200).json({ 
+            message: "Security settings updated", 
+            twoFactorEnabled: user.twoFactorEnabled 
+        });
+    } catch (error) {
+        console.error("UPDATE SECURITY ERROR:", error);
+        return res.status(500).json({ message: "Server error", error: error.message });
+    }
+};
+
+// --- VERIFY 2FA LOGIN ---
+exports.verify2faLogin = async (req, res) => {
+    try {
+        const email = req.body.email ? req.body.email.toLowerCase().trim() : "";
+        const otp = req.body.otp ? req.body.otp.trim() : "";
+
+        const entry = await OtpEntry.findOne({ email, otp });
+        if (!entry) return res.status(400).json({ message: 'Invalid or expired code' });
+
+        const user = await User.findOne({ email });
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        await OtpEntry.deleteOne({ _id: entry._id });
+
+        return res.status(200).json({
+            token: generateToken(user._id),
+            user: {
+                id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                username: user.username,
+                email: user.email
+            }
+        });
     } catch (error) {
         return res.status(500).json({ message: 'Server error', error: error.message });
     }

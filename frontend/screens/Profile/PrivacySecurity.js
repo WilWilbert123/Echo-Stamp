@@ -15,18 +15,18 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useTheme } from '../../context/ThemeContext';
-import API from '../../services/api'; // Ensure this path is correct
+import API from '../../services/api';
 
 const PrivacySecurity = ({ navigation }) => {
   const { colors, isDark } = useTheme();
   const { user } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
 
   const [biometrics, setBiometrics] = useState(false);
-  const [twoFactor, setTwoFactor] = useState(false);
+  const [twoFactor, setTwoFactor] = useState(user?.twoFactorEnabled || false);
   
-  // Modal States
   const [isModalVisible, setModalVisible] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
@@ -42,19 +42,48 @@ const PrivacySecurity = ({ navigation }) => {
 
   const handleTogglePress = async (value) => {
     if (value) {
-      // Check device capability first
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
 
       if (!hasHardware || !isEnrolled) {
         return Alert.alert("Not Supported", "Please enable FaceID/Fingerprint in your device settings first.");
       }
-
-      // Show the password confirmation modal
       setModalVisible(true);
     } else {
       await SecureStore.deleteItemAsync('user_credentials');
       setBiometrics(false);
+    }
+  };
+
+  // --- FIXED TWO FACTOR HANDLER ---
+  const handleTwoFactorToggle = async (value) => {
+    try {
+      // 1. Optimistically update the UI switch
+      setTwoFactor(value);
+
+      // 2. Update the backend - ADDED EMAIL to match your controller
+      await API.post('/users/update-security', {
+        email: user.email, // CRITICAL: Your backend needs this to find the user
+        twoFactorEnabled: value
+      });
+
+      // 3. Update Redux store
+      // Note: Ensure your reducer handles 'UPDATE_USER_DATA'
+      dispatch({ 
+        type: 'UPDATE_USER_DATA', 
+        payload: { twoFactorEnabled: value } 
+      });
+
+      Alert.alert(
+        "Security Updated", 
+        value ? "Two-Factor Auth is now ENABLED." : "Two-Factor Auth is now DISABLED."
+      );
+    } catch (error) {
+      // Rollback UI switch if it fails
+      setTwoFactor(!value);
+      console.error("2FA Update Error:", error.response?.data);
+      const msg = error.response?.data?.message || "Could not update security settings.";
+      Alert.alert("Error", msg);
     }
   };
 
@@ -63,20 +92,17 @@ const PrivacySecurity = ({ navigation }) => {
 
     setIsVerifying(true);
     try {
-      // 1. Verify with backend
       const response = await API.post('/users/login', {
         email: user.email.toLowerCase().trim(),
         password: confirmPassword,
       });
 
       if (response.data.token) {
-        // 2. Double-check with phone's biometrics sensor
         const auth = await LocalAuthentication.authenticateAsync({
           promptMessage: 'Confirm Biometrics',
         });
 
         if (auth.success) {
-          // 3. Save to vault
           await SecureStore.setItemAsync('user_credentials', JSON.stringify({
             email: user.email,
             password: confirmPassword,
@@ -147,7 +173,7 @@ const PrivacySecurity = ({ navigation }) => {
             description="Secure your account with 2FA"
             type="toggle"
             value={twoFactor}
-            onValueChange={setTwoFactor}
+            onValueChange={handleTwoFactorToggle}
           />
           <SettingItem
             icon="key-outline"
@@ -168,7 +194,6 @@ const PrivacySecurity = ({ navigation }) => {
         </View>
       </ScrollView>
 
-      {/* PASSWORD CONFIRMATION MODAL */}
       <Modal visible={isModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: isDark ? '#1E293B' : '#FFF' }]}>
@@ -223,17 +248,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     marginBottom: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
     elevation: 2
   },
   iconContainer: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   textContainer: { flex: 1, marginLeft: 12 },
   title: { fontSize: 16, fontWeight: '600' },
   description: { fontSize: 12, marginTop: 2 },
-  // Modal Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { width: '85%', padding: 25, borderRadius: 24, alignItems: 'center' },
   modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 8 },
