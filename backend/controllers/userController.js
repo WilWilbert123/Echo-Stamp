@@ -12,31 +12,23 @@ const generateToken = (id) => {
 };
 
 // Helper: Send email via Resend
- 
 const sendEmail = async ({ to, subject, html }) => {
     try {
-        const { data, error } = await resend.emails.send({
+        const response = await resend.emails.send({
             from: "Echo Stamp <onboarding@resend.dev>", 
             to,
             subject,
             html,
         });
-
-        if (error) {
-            // This is the "WHY" - if Resend blocks the email, it will show up here
-            console.error("Resend API Error:", error.message);
-            throw new Error(error.message);
-        }
-
-        console.log("Email sent successfully! ID:", data.id);
-        return data;
+        console.log("Email sent:", response.id);
+        return response;
     } catch (error) {
         console.error("Email send failed:", error);
         throw error;
     }
 };
 
-// --- 2. REGISTER: Step 1 (Request OTP) - UPDATED ---
+// --- REGISTER: Step 1 (Request OTP) ---
 exports.requestOtp = async (req, res) => {
     try {
         const { firstName, lastName, username, password } = req.body;
@@ -46,16 +38,16 @@ exports.requestOtp = async (req, res) => {
             return res.status(400).json({ message: 'Please add all fields' });
         }
 
-        // Check if user exists
         const userExists = await User.findOne({ $or: [{ email }, { username }] });
         if (userExists) {
             const conflictField = userExists.email === email ? 'Email' : 'Username';
-            return res.status(400).json({ message: `${conflictField} is already registered.` });
+            return res.status(400).json({ 
+                message: `${conflictField} is already registered.` 
+            });
         }
 
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-        // Use returnDocument: 'after' to remove the deprecation warning
         await OtpEntry.findOneAndUpdate(
             { email },
             { 
@@ -63,10 +55,9 @@ exports.requestOtp = async (req, res) => {
                 userData: { firstName, lastName, username, email, password },
                 createdAt: new Date() 
             },
-            { upsert: true, returnDocument: 'after' } 
+            { upsert: true, new: true }
         );
 
-        // Send the email
         await sendEmail({
             to: email,
             subject: 'Verify Your Account',
@@ -77,6 +68,7 @@ exports.requestOtp = async (req, res) => {
                     <div style="background: #f3f4f6; padding: 15px; font-size: 24px; font-weight: bold; text-align: center; letter-spacing: 5px; color: #1e293b;">
                         ${otp}
                     </div>
+                    <p style="margin-top: 20px; color: #64748b; font-size: 12px;">This code expires in 10 minutes.</p>
                 </div>
             `,
         });
@@ -84,8 +76,7 @@ exports.requestOtp = async (req, res) => {
         return res.status(200).json({ message: 'OTP sent to email' });
     } catch (error) {
         console.error("OTP REQUEST ERROR:", error);
-        // We now pass the error message back so you can see it in your App's Alert
-        return res.status(500).json({ message: 'Email service error', error: error.message });
+        return res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
 
