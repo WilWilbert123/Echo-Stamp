@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // Added for persistence
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
@@ -36,8 +37,18 @@ const PrivacySecurity = ({ navigation }) => {
   }, []);
 
   const checkInitialStatus = async () => {
+    // 1. Check Biometrics status
     const saved = await SecureStore.getItemAsync('user_credentials');
     setBiometrics(!!saved);
+
+    // 2. Check 2FA Persistent status
+    // We use a unique key per user so if a different user logs in, they don't see the wrong toggle
+    const saved2FA = await AsyncStorage.getItem(`2fa_enabled_${user?.email}`);
+    if (saved2FA !== null) {
+        setTwoFactor(saved2FA === 'true');
+    } else {
+        setTwoFactor(user?.twoFactorEnabled || false);
+    }
   };
 
   const handleTogglePress = async (value) => {
@@ -55,20 +66,22 @@ const PrivacySecurity = ({ navigation }) => {
     }
   };
 
-  // --- FIXED TWO FACTOR HANDLER ---
+  // --- FIXED TWO FACTOR HANDLER (WITH PERSISTENCE) ---
   const handleTwoFactorToggle = async (value) => {
     try {
       // 1. Optimistically update the UI switch
       setTwoFactor(value);
 
-      // 2. Update the backend - ADDED EMAIL to match your controller
+      // 2. Update the backend
       await API.post('/users/update-security', {
-        email: user.email, // CRITICAL: Your backend needs this to find the user
+        email: user.email, 
         twoFactorEnabled: value
       });
 
-      // 3. Update Redux store
-      // Note: Ensure your reducer handles 'UPDATE_USER_DATA'
+      // 3. Save to AsyncStorage so it survives logout
+      await AsyncStorage.setItem(`2fa_enabled_${user?.email}`, value.toString());
+
+      // 4. Update Redux store
       dispatch({ 
         type: 'UPDATE_USER_DATA', 
         payload: { twoFactorEnabled: value } 
