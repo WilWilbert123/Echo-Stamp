@@ -14,14 +14,22 @@ const generateToken = (id) => {
 // Helper: Send email via Resend
 const sendEmail = async ({ to, subject, html }) => {
     try {
-        const response = await resend.emails.send({
-            from: "Echo Stamp <onboarding@resend.dev>", 
+        const { data, error } = await resend.emails.send({
+            
+            from: "Echo Stamp <verification@echostamp.online>", 
             to,
             subject,
             html,
         });
-        console.log("Email sent:", response.id);
-        return response;
+
+        if (error) {
+            console.error("Resend API Error:", error);
+            throw new Error(error.message);
+        }
+
+        
+        console.log("Email sent successfully! ID:", data.id);
+        return data;
     } catch (error) {
         console.error("Email send failed:", error);
         throw error;

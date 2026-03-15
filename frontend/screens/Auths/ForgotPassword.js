@@ -15,7 +15,7 @@ import {
     View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../../context/ThemeContext'; // Connected to your context
+import { useTheme } from '../../context/ThemeContext';
 import API from '../../services/api';
 
 const { width, height } = Dimensions.get('window');
@@ -29,7 +29,6 @@ const ForgotPassword = ({ navigation }) => {
     const [isFocused, setIsFocused] = useState(false);
 
     const handleResetPassword = async () => {
-        // 1. Basic Validation
         const cleanEmail = email.toLowerCase().trim();
         if (!cleanEmail || !cleanEmail.includes('@')) {
             Alert.alert("Invalid Email", "Please enter a valid email address.");
@@ -38,26 +37,39 @@ const ForgotPassword = ({ navigation }) => {
 
         setLoading(true);
         try {   
-            // 2. Call the backend forgot-password endpoint
-            // Note: Ensure your backend route is '/users/forgot-password'
             await API.post('/users/forgot-password', { 
                 email: cleanEmail 
             });
  
             Alert.alert("Success", "A reset code has been sent to your email.");
             
-            // Navigate to OTP with mode: 'reset' to tell the next screen what to do
             navigation.navigate('OtpVerification', { 
                 email: cleanEmail, 
                 mode: 'reset' 
             });
             
         } catch (error) {
-            console.error("Forgot Password Error:", error);
-            Alert.alert(
-                "Error", 
-                error.response?.data?.message || "Could not send reset code. Please try again."
-            );
+            // CHANGED: Use console.log instead of console.error to avoid the Red Screen
+            console.log("Forgot Password Request Info:", error.response?.status);
+
+            let errorMessage = "Could not send reset code. Please try again.";
+
+            if (error.response) {
+                // Handle 404 - Email not registered
+                if (error.response.status === 404) {
+                    errorMessage = "This email is not registered in our system.";
+                } 
+                // Handle 500 - Resend Testing Limit / Server Error
+                else if (error.response.status === 500) {
+                    errorMessage = "Email service restricted. Testing mode only allows sending to your own email.";
+                }
+                else {
+                    errorMessage = error.response.data?.message || errorMessage;
+                }
+            }
+
+            Alert.alert("Reset Failed", errorMessage);
+
         } finally {
             setLoading(false);
         }
@@ -67,7 +79,7 @@ const ForgotPassword = ({ navigation }) => {
         <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
             <StatusBar barStyle={colors.status} />
 
-            {/* BRANDED WAVY HEADER - Adapted to Theme */}
+            {/* BRANDED WAVY HEADER */}
             <View style={[styles.headerBackground, { backgroundColor: colors.background[0] }]}>
                 <View 
                     style={[
@@ -118,12 +130,11 @@ const ForgotPassword = ({ navigation }) => {
                         </Text>
                     </View>
 
-                    {/* Main Card - Glassmorphism applied */}
+                    {/* Main Card */}
                     <View style={[styles.card, {
                         backgroundColor: isDark ? colors.glass : '#FFFFFF',
                         borderColor: colors.glassBorder,
                         borderWidth: isDark ? 1.5 : 0,
-                        // Custom shadow for light mode
                         shadowColor: isDark ? 'transparent' : '#000',
                     }]}>
                         <View style={styles.inputContainer}>
@@ -163,7 +174,6 @@ const ForgotPassword = ({ navigation }) => {
                             disabled={loading}
                         >
                             <LinearGradient
-                                // Using your context colors for the gradient
                                 colors={isDark ? [colors.primary, '#0ea5e9'] : [colors.primary, '#475569']}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
