@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ResizeMode, Video } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -32,7 +32,34 @@ import { uploadImageToCloudinary } from '../../services/cloudinary';
 
 const { width, height } = Dimensions.get('window');
 
- 
+// --- SUB-COMPONENT FOR MODERN VIDEO ---
+const VideoPlayerItem = ({ uri, isVisible }) => {
+  const player = useVideoPlayer(uri, (player) => {
+    player.loop = true;
+    player.muted = false;
+    if (isVisible) {
+      player.play();
+    }
+  });
+
+  useEffect(() => {
+    if (isVisible) {
+      player.play();
+    } else {
+      player.pause();
+    }
+  }, [isVisible, player]);
+
+  return (
+    <VideoView
+      style={styles.fullMedia}
+      player={player}
+      // FIXED: Use nativeControls instead of deprecated allowsFullscreen
+      nativeControls={true}
+      contentFit="contain"
+    />
+  );
+};
 
 const Atlas = () => {
   const dispatch = useDispatch();
@@ -65,6 +92,18 @@ const Atlas = () => {
   const markers = useMemo(() => {
     return (list || []).filter(j => j.location && typeof j.location.lat === 'number');
   }, [list]);
+
+  // --- VIDEO CHECK LOGIC ---
+  const checkIsVideo = (uri) => {
+    if (!uri || typeof uri !== 'string') return false;
+    const url = uri.toLowerCase();
+    return (
+      url.includes('/video/upload/') || 
+      url.endsWith('.mp4') || 
+      url.endsWith('.mov') || 
+      url.endsWith('.m4v')
+    );
+  };
 
   // --- SEARCH LOGIC ---
   const handleSearch = async () => {
@@ -109,50 +148,45 @@ const Atlas = () => {
   };
 
   // --- SAVE JOURNAL ---
-const handleSave = async () => {
-  const userId = user?._id || user?.id;
-  if (!title) return Alert.alert("Wait!", "Please give this moment a title.");
+  const handleSave = async () => {
+    const userId = user?._id || user?.id;
+    if (!title) return Alert.alert("Wait!", "Please give this moment a title.");
 
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    
-    const uploadedUrls = await Promise.all(
-      mediaList.map(async (item) => {
-       
-        if (item.uri.startsWith('http')) return item.uri;
-        
-        return await uploadImageToCloudinary(item.uri);
-      })
-    );
+    try {
+      const uploadedUrls = await Promise.all(
+        mediaList.map(async (item) => {
+          if (item.uri.startsWith('http')) return item.uri;
+          return await uploadImageToCloudinary(item.uri);
+        })
+      );
 
-    
-    const journalData = {
-      userId,
-      title,
-      description,
-      media: uploadedUrls,  
-      location: {
-        lat: tempCoords.latitude,
-        lng: tempCoords.longitude,
-        address: "Custom Pin"
-      }
-    };
+      const journalData = {
+        userId,
+        title,
+        description,
+        media: uploadedUrls,  
+        location: {
+          lat: tempCoords.latitude,
+          lng: tempCoords.longitude,
+          address: "Custom Pin"
+        }
+      };
 
-    // 3. Dispatch to your backend/Redux
-    await dispatch(addJournalAsync(journalData)).unwrap();
+      await dispatch(addJournalAsync(journalData)).unwrap();
 
-    setModalVisible(false);
-    resetForm();
-    Alert.alert("Success!", "Your moment has been pinned.");
+      setModalVisible(false);
+      resetForm();
+      Alert.alert("Success!", "Your moment has been pinned.");
 
-  } catch (err) {
-    console.error("Upload/Save Error:", err);
-    Alert.alert("Save Failed", "We couldn't upload your images or save the entry.");
-  } finally {
-    setLoading(false);
-  }
-};
+    } catch (err) {
+      console.error("Upload/Save Error:", err);
+      Alert.alert("Save Failed", "We couldn't upload your images or save the entry.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const resetForm = () => {
     setTitle('');
@@ -192,18 +226,14 @@ const handleSave = async () => {
     ]);
   };
 
-  const renderMediaItem = ({ item }) => {
-    const isVideo = item.toLowerCase().endsWith('.mp4') || item.includes('video');
+  const renderMediaItem = ({ item, index }) => {
+    const isVid = checkIsVideo(item);
+    const isCurrentlyVisible = viewerVisible && activeMediaIndex === index;
+    
     return (
       <View style={styles.mediaSlide}>
-        {isVideo ? (
-          <Video 
-            source={{ uri: item }} 
-            style={styles.fullMedia} 
-            useNativeControls 
-            resizeMode={ResizeMode.CONTAIN} 
-            isLooping 
-          />
+        {isVid ? (
+          <VideoPlayerItem uri={item} isVisible={isCurrentlyVisible} />
         ) : (
           <Image source={{ uri: item }} style={styles.fullMedia} resizeMode="contain" />
         )}
@@ -248,28 +278,37 @@ const handleSave = async () => {
         }}
         customMapStyle={isDark ? darkMapStyle : []}
       >
-        {markers.map((journal) => (
-          <Marker
-            key={journal._id}
-            coordinate={{ latitude: Number(journal.location.lat), longitude: Number(journal.location.lng) }}
-            onPress={() => {
-              setSelectedJournal(journal);
-              setActiveMediaIndex(0);
-              setViewerVisible(true);
-            }}
-          >
-            <View style={styles.pinWrapper}>
-              <View style={[styles.pinCircle, { borderColor: colors.primary, backgroundColor: isDark ? '#1a1a1a' : '#fff' }]}>
-                {journal.media?.[0] ? (
-                  <Image source={{ uri: journal.media[0] }} style={styles.markerImage} />
-                ) : (
-                  <Ionicons name="heart" size={16} color={colors.primary} />
-                )}
+        {markers.map((journal) => {
+          const firstMedia = journal.media?.[0];
+          const isVid = checkIsVideo(firstMedia);
+
+          return (
+            <Marker
+              key={journal._id}
+              coordinate={{ latitude: Number(journal.location.lat), longitude: Number(journal.location.lng) }}
+              onPress={() => {
+                setSelectedJournal(journal);
+                setActiveMediaIndex(0);
+                setViewerVisible(true);
+              }}
+            >
+              <View style={styles.pinWrapper}>
+                <View style={[styles.pinCircle, { borderColor: colors.primary, backgroundColor: isDark ? '#1a1a1a' : '#fff' }]}>
+                  {firstMedia ? (
+                    isVid ? (
+                      <Ionicons name="play" size={18} color={colors.primary} />
+                    ) : (
+                      <Image source={{ uri: firstMedia }} style={styles.markerImage} />
+                    )
+                  ) : (
+                    <Ionicons name="heart" size={16} color={colors.primary} />
+                  )}
+                </View>
+                <View style={[styles.pinTail, { borderTopColor: colors.primary }]} />
               </View>
-              <View style={[styles.pinTail, { borderTopColor: colors.primary }]} />
-            </View>
-          </Marker>
-        ))}
+            </Marker>
+          );
+        })}
       </MapView>
 
       {/* ADD MEMORY MODAL */}
@@ -277,21 +316,27 @@ const handleSave = async () => {
         <View style={styles.modalOverlay}>
           <GlassCard style={[styles.modalContent, { backgroundColor: colors.background[1], borderColor: colors.glassBorder }]}>
             <Text style={[styles.modalHeader, { color: colors.textMain }]}>Pin a Memory</Text>
-            <View style={styles.mediaSection}>
+            <div style={styles.mediaSection}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <TouchableOpacity style={[styles.addMediaBtn, { borderColor: colors.primary }]} onPress={pickMedia}>
                   <Ionicons name="add" size={30} color={colors.primary} />
                 </TouchableOpacity>
                 {mediaList.map((item, i) => (
                   <View key={i} style={styles.previewContainer}>
-                    <Image source={{ uri: item.uri }} style={styles.previewItem} />
+                    {item.type === 'video' ? (
+                       <View style={[styles.previewItem, { backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }]}>
+                          <Ionicons name="videocam" size={24} color="white" />
+                       </View>
+                    ) : (
+                      <Image source={{ uri: item.uri }} style={styles.previewItem} />
+                    )}
                     <TouchableOpacity style={styles.removeBadge} onPress={() => setMediaList(prev => prev.filter((_, idx) => idx !== i))}>
                       <Ionicons name="close-circle" size={22} color="#ff4444" />
                     </TouchableOpacity>
                   </View>
                 ))}
               </ScrollView>
-            </View>
+            </div>
 
             <TextInput
               style={[styles.input, { color: colors.textMain, borderColor: colors.glassBorder }]}
@@ -359,6 +404,8 @@ const handleSave = async () => {
     </View>
   );
 };
+
+ 
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
