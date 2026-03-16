@@ -10,11 +10,9 @@ import CreateEcho from "../screens/Home/CreateEcho";
 import Intro from "../screens/Intro";
 import MainTabs from "../screens/MainTabs";
 import PrivacySecurity from "../screens/Profile/PrivacySecurity";
-
 const Stack = createNativeStackNavigator();
 
 const HomeStackNavigator = () => {
-    // Access authentication state from Redux
     const { isAuthenticated } = useSelector((state) => state.auth);
 
     return (
@@ -24,18 +22,21 @@ const HomeStackNavigator = () => {
                 <>
                     <Stack.Screen name="MainTabsRoot" component={MainTabs} />
                     <Stack.Screen  name="Create"   component={CreateEcho}  options={{  animation: 'slide_from_bottom',  presentation: 'modal'   }}   /> 
-                     <Stack.Screen name="PrivacySecurity" component={PrivacySecurity} />  
+                    <Stack.Screen name="PrivacySecurity" component={PrivacySecurity} />  
+                    
+                    <Stack.Screen name="SecurityOtpVerify" component={OtpVerification} />
+                    <Stack.Screen name="ResetPassword" component={ResetPassword} />   
+                    
                 </>
             ) : (
                 // --- UNAUTHENTICATED STACK ---
                 <>
-                <Stack.Screen name="Intro" component={Intro} />
+                    <Stack.Screen name="Intro" component={Intro} />
                     <Stack.Screen name="Login"   component={Login}  options={{  animationTypeForReplace: isAuthenticated ? 'pop' : 'push',  }}  />
                     <Stack.Screen   name="Signup"  component={Signup}  />
-                      <Stack.Screen   name="ForgotPassword"  component={ForgotPassword}  />   
-                      <Stack.Screen name="OtpVerification" component={OtpVerification} />  
-                       <Stack.Screen name="ResetPassword" component={ResetPassword} />   
-                       
+                    <Stack.Screen   name="ForgotPassword"  component={ForgotPassword}  />   
+                    <Stack.Screen name="OtpVerification" component={OtpVerification} />  
+                    <Stack.Screen name="ResetPassword" component={ResetPassword} />   
                 </>
             )}
         </Stack.Navigator>

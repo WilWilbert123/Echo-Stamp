@@ -24,7 +24,7 @@ const MainTabs = () => {
         tabBarStyle: {
           backgroundColor: isDark ? '#0a1929' : '#fff',
           borderTopWidth: 0,
-          height: Platform.OS === 'ios' ? 90 : 70,
+          height: Platform.OS === 'ios' ? 70 : 70,
           paddingBottom: Platform.OS === 'ios' ? 30 : 10,
           position: 'absolute', 
           elevation: 0,

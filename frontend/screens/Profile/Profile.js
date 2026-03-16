@@ -89,7 +89,7 @@ const Profile = ({navigation}) => {
                             <View style={[styles.darkWave, { backgroundColor: isDark ? '#1E293B' : '#637D8B' }]} />
                         </View>
             <ScrollView 
-                contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20, paddingBottom: 120 }]}
+                contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top - 20, paddingBottom: 120 }]}
                 showsVerticalScrollIndicator={false}
             >
                 {/* Profile Identity */}

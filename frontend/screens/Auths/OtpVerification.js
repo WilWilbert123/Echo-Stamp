@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    Dimensions,
     KeyboardAvoidingView,
     Platform,
+    ScrollView,
     StatusBar,
     StyleSheet,
     Text,
@@ -17,16 +17,14 @@ import { useTheme } from '../../context/ThemeContext';
 import { setCredentials } from '../../redux/authSlice';
 import API from '../../services/api';
 
-// Get fixed screen height
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+ 
 
 const OtpVerification = ({ route, navigation }) => {
-    // mode can now be 'register', 'reset', '2fa' (activation), or '2fa_login' (logging in)
-    const { email, mode = 'register' } = route.params || {}; 
+    const { email, mode = 'register' } = route.params || {};
     const [otp, setOtp] = useState('');
     const [loading, setLoading] = useState(false);
-    const [timer, setTimer] = useState(30); 
-    
+    const [timer, setTimer] = useState(30);
+
     const { colors, isDark } = useTheme();
     const dispatch = useDispatch();
 
@@ -45,7 +43,7 @@ const OtpVerification = ({ route, navigation }) => {
     const handleVerify = async () => {
         const cleanOtp = otp.trim();
         const cleanEmail = email ? email.toLowerCase().trim() : "";
-        
+
         if (cleanOtp.length !== 6) {
             Alert.alert("Error", "Please enter the full 6-digit code.");
             return;
@@ -54,22 +52,20 @@ const OtpVerification = ({ route, navigation }) => {
         setLoading(true);
         try {
             if (mode === 'reset') {
-                // Mode: Password Reset
-                await API.post('/users/verify-only', { 
-                    email: cleanEmail, 
-                    otp: cleanOtp 
+                await API.post('/users/verify-only', {
+                    email: cleanEmail,
+                    otp: cleanOtp
                 });
 
-                navigation.navigate('ResetPassword', { 
-                    email: cleanEmail, 
-                    otp: cleanOtp 
+                navigation.navigate('ResetPassword', {
+                    email: cleanEmail,
+                    otp: cleanOtp
                 });
-                
+
             } else if (mode === '2fa') {
-                // Mode: Two-Factor Authentication Activation (Settings)
-                await API.post('/users/verify-only', { 
-                    email: cleanEmail, 
-                    otp: cleanOtp 
+                await API.post('/users/verify-only', {
+                    email: cleanEmail,
+                    otp: cleanOtp
                 });
 
                 Alert.alert("Success", "Two-Factor Authentication is now enabled!", [
@@ -77,27 +73,33 @@ const OtpVerification = ({ route, navigation }) => {
                 ]);
 
             } else if (mode === '2fa_login') {
-                // --- NEW MODE: TWO-FACTOR LOGIN ---
-                // This completes the login process after the user enters credentials
-                const response = await API.post('/users/login-2fa-verify', { 
-                    email: cleanEmail, 
-                    otp: cleanOtp 
+                const response = await API.post('/users/login-2fa-verify', {
+                    email: cleanEmail,
+                    otp: cleanOtp
                 });
 
                 const { token, user } = response.data;
                 dispatch(setCredentials({ token, user }));
-                // Navigation will usually be handled by your Auth Navigator automatically
-                
+
             } else {
                 // Mode: Registration
-                const response = await API.post('/users/verify-otp', { 
-                    email: cleanEmail, 
-                    otp: cleanOtp 
+                const response = await API.post('/users/verify-otp', {
+                    email: cleanEmail,
+                    otp: cleanOtp
                 });
 
                 const { token, user } = response.data;
-                dispatch(setCredentials({ token, user }));
-                Alert.alert("Success", "Account verified successfully!");
+
+
+                Alert.alert("Success", "Account verified successfully!", [
+                    {
+                        text: "OK",
+                        onPress: () => {
+
+                            dispatch(setCredentials({ token, user }));
+                        }
+                    }
+                ]);
             }
         } catch (error) {
             const errorMsg = error.response?.data?.message || "Invalid or expired code.";
@@ -109,14 +111,10 @@ const OtpVerification = ({ route, navigation }) => {
 
     const handleResend = async () => {
         if (timer > 0) return;
-        
         try {
-            // If it's 2FA Login or registration, we request a standard OTP
-            // If it's a reset, we use the forgot-password endpoint
             const endpoint = mode === 'reset' ? '/users/forgot-password' : '/users/request-otp';
             await API.post(endpoint, { email: email.toLowerCase().trim() });
-            
-            setTimer(60); 
+            setTimer(60);
             Alert.alert("Sent", "A new code has been sent to your email.");
         } catch (error) {
             Alert.alert("Error", "Could not resend code. Please try again later.");
@@ -125,89 +123,97 @@ const OtpVerification = ({ route, navigation }) => {
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
-            <StatusBar barStyle={colors.status} />
-            <KeyboardAvoidingView 
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : null}
                 style={styles.flex}
             >
-                <View style={styles.inner}>
-                    <Text style={[styles.title, { color: colors.textMain }]}>
-                        {mode === 'reset' ? 'Reset Code' : 
-                         mode === '2fa' || mode === '2fa_login' ? 'Secure Verification' : 
-                         'Verify Your Email'}
-                    </Text>
-                    
-                    <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                        Enter the 6-digit code sent to{"\n"}
-                        <Text style={{ fontWeight: 'bold', color: colors.primary }}>{email}</Text>
-                    </Text>
-                    
-                    <TextInput
-                        style={[
-                            styles.input, 
-                            { 
-                                color: colors.textMain, 
-                                borderBottomColor: colors.primary,
-                                backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'
-                            }
-                        ]}
-                        placeholder="000000"
-                        placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "#94A3B8"}
-                        keyboardType="number-pad"
-                        maxLength={6}
-                        value={otp}
-                        onChangeText={setOtp}
-                        autoFocus={true}
-                        selectionColor={colors.primary}
-                    />
+              
+                <ScrollView
+                    contentContainerStyle={styles.scrollGrow}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
+                    <View style={styles.inner}>
+                        <Text style={[styles.title, { color: colors.textMain }]}>
+                            {mode === 'reset' ? 'Reset Code' :
+                                mode === '2fa' || mode === '2fa_login' ? 'Secure Verification' :
+                                    'Verify Your Email'}
+                        </Text>
 
-                    <TouchableOpacity 
-                        style={[
-                            styles.button, 
-                            { 
-                                backgroundColor: colors.primary, 
-                                opacity: loading ? 0.7 : 1,
-                                shadowColor: colors.primary 
-                            }
-                        ]} 
-                        onPress={handleVerify}
-                        disabled={loading}
-                        activeOpacity={0.8}
-                    >
-                        {loading ? (
-                            <ActivityIndicator color="#fff" />
-                        ) : (
-                            <Text style={styles.buttonText}>
-                                {mode === 'reset' ? 'CONTINUE' : 
-                                 mode === '2fa' ? 'ACTIVATE 2FA' : 
-                                 mode === '2fa_login' ? 'CONFIRM LOGIN' :
-                                 'VERIFY & REGISTER'}
-                            </Text>
-                        )}
-                    </TouchableOpacity>
+                        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                            Enter the 6-digit code sent to{"\n"}
+                            <Text style={{ fontWeight: 'bold', color: colors.primary }}>{email}</Text>
+                        </Text>
 
-                    <View style={styles.footerActions}>
-                        <TouchableOpacity 
-                            onPress={handleResend}
-                            disabled={timer > 0}
-                        >
-                            <Text style={[styles.footerText, { color: timer > 0 ? colors.textSecondary : colors.primary }]}>
-                                {timer > 0 ? `Resend code in ${timer}s` : "Resend Code"}
-                            </Text>
-                        </TouchableOpacity>
+                        <TextInput
+                            style={[
+                                styles.input,
+                                {
+                                    color: colors.textMain,
+                                    borderBottomColor: colors.primary,
+                                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'
+                                }
+                            ]}
+                            placeholder="000000"
+                            placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "#94A3B8"}
+                            keyboardType="number-pad"
+                            maxLength={6}
+                            value={otp}
+                            onChangeText={setOtp}
+                            autoFocus={true}
+                            selectionColor={colors.primary}
+                        />
 
-                        <TouchableOpacity 
-                            style={styles.resendBtn} 
-                            onPress={() => navigation.goBack()}
+                        <TouchableOpacity
+                            style={[
+                                styles.button,
+                                {
+                                    backgroundColor: colors.primary,
+                                    opacity: loading ? 0.7 : 1,
+                                    shadowColor: colors.primary
+                                }
+                            ]}
+                            onPress={handleVerify}
                             disabled={loading}
+                            activeOpacity={0.8}
                         >
-                            <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-                                {mode === '2fa' || mode === '2fa_login' ? 'Cancel' : 'Wrong email? '}
-                                {(mode !== '2fa' && mode !== '2fa_login') && <Text style={{ color: colors.primary, fontWeight: 'bold' }}>Go Back</Text>}
-                            </Text>
+                            {loading ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <Text style={styles.buttonText}>
+                                    {mode === 'reset' ? 'CONTINUE' :
+                                        mode === '2fa' ? 'ACTIVATE 2FA' :
+                                            mode === '2fa_login' ? 'CONFIRM LOGIN' :
+                                                'VERIFY & REGISTER'}
+                                </Text>
+                            )}
                         </TouchableOpacity>
+
+                        <View style={styles.footerActions}>
+                            <TouchableOpacity
+                                onPress={handleResend}
+                                disabled={timer > 0}
+                            >
+                                <Text style={[styles.footerText, { color: timer > 0 ? colors.textSecondary : colors.primary }]}>
+                                    {timer > 0 ? `Resend code in ${timer}s` : "Resend Code"}
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.resendBtn}
+                                onPress={() => navigation.goBack()}
+                                disabled={loading}
+                            >
+                                <Text style={[styles.footerText, { color: colors.textSecondary }]}>
+                                    {mode === '2fa' || mode === '2fa_login' ? 'Cancel' : 'Wrong email? '}
+                                    {(mode !== '2fa' && mode !== '2fa_login') && <Text style={{ color: colors.primary, fontWeight: 'bold' }}>Go Back</Text>}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                </View>
+                </ScrollView>
             </KeyboardAvoidingView>
         </View>
     );
@@ -216,11 +222,13 @@ const OtpVerification = ({ route, navigation }) => {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     flex: { flex: 1 },
-    inner: { 
-        flex: 1, 
-        justifyContent: 'center', 
-        padding: 40,
-        minHeight: SCREEN_HEIGHT * 0.8 
+    scrollGrow: {
+        flexGrow: 1,
+        justifyContent: 'center'  
+    },
+    inner: {
+        paddingHorizontal: 40,
+        paddingVertical: 30,
     },
     title: { fontSize: 28, fontWeight: 'bold', marginBottom: 10, textAlign: 'center', letterSpacing: -0.5 },
     subtitle: { fontSize: 16, textAlign: 'center', marginBottom: 40, lineHeight: 22 },

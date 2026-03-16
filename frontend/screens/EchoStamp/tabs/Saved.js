@@ -13,7 +13,6 @@ import {
     View
 } from 'react-native';
 import { useTheme } from '../../../context/ThemeContext';
-
 const { width, height } = Dimensions.get('window');
 
 const Saved = () => {
@@ -38,7 +37,7 @@ const Saved = () => {
                 setCollections([
                     { id: '1', title: 'Summer Trip 2024', count: 12, icon: 'sunny', color: '#FACC15' },
                     { id: '2', title: 'Dream Cafes', count: 8, icon: 'cafe', color: '#A78BFA' },
-                    { id: '3', title: 'Hiking Trails', count: 5, icon: 'mountain', color: '#4ADE80' },
+                    { id: '3', title: 'Hiking Trails', count: 5, icon: 'earth', color: '#4ADE80' },
                     { id: '4', title: 'Hidden Gems', count: 24, icon: 'diamond', color: '#F472B6' },
                 ]);
 

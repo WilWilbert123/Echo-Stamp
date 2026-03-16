@@ -34,20 +34,20 @@ const Login = ({ navigation }) => {
     // --- BIOMETRIC STATE ---
     const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
 
-    // --- FIXED: Helper to sanitize email for SecureStore (No "@" allowed) ---
+ 
     const getBioKey = (targetEmail) => {
         if (!targetEmail) return "";
         const sanitized = targetEmail.toLowerCase().trim().replace(/[^a-zA-Z0-9._-]/g, '_');
         return `user_credentials_${sanitized}`;
     };
 
-    // Re-check biometrics whenever the email text changes
+   
     useEffect(() => {
         checkBiometrics();
     }, [email]);
 
     const checkBiometrics = async () => {
-        // Only check if email has at least an '@' to avoid premature SecureStore calls
+        
         if (!email.trim() || !email.includes('@')) {
             setIsBiometricAvailable(false);
             return;

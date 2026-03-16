@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Switch,
@@ -16,6 +15,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTheme } from '../../context/ThemeContext';
 import API from '../../services/api';
@@ -27,7 +27,7 @@ const PrivacySecurity = ({ navigation }) => {
 
   const [biometrics, setBiometrics] = useState(false);
   const [twoFactor, setTwoFactor] = useState(user?.twoFactorEnabled || false);
-  
+
   const [isModalVisible, setModalVisible] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
@@ -41,28 +41,28 @@ const PrivacySecurity = ({ navigation }) => {
 
   useEffect(() => {
     if (user?.email) {
-        checkInitialStatus();
+      checkInitialStatus();
     }
   }, [user?.email]);
 
   const checkInitialStatus = async () => {
     try {
-        const key = getBioKey();
-        if (!key) return;
+      const key = getBioKey();
+      if (!key) return;
 
-        // 1. Check Biometrics status using UNIQUE KEY
-        const saved = await SecureStore.getItemAsync(key);
-        setBiometrics(!!saved);
+      // 1. Check Biometrics status using UNIQUE KEY
+      const saved = await SecureStore.getItemAsync(key);
+      setBiometrics(!!saved);
 
-        // 2. Check 2FA Persistent status
-        const saved2FA = await AsyncStorage.getItem(`2fa_enabled_${user?.email}`);
-        if (saved2FA !== null) {
-            setTwoFactor(saved2FA === 'true');
-        } else {
-            setTwoFactor(user?.twoFactorEnabled || false);
-        }
+      // 2. Check 2FA Persistent status
+      const saved2FA = await AsyncStorage.getItem(`2fa_enabled_${user?.email}`);
+      if (saved2FA !== null) {
+        setTwoFactor(saved2FA === 'true');
+      } else {
+        setTwoFactor(user?.twoFactorEnabled || false);
+      }
     } catch (error) {
-        console.error("Status check error:", error);
+      console.error("Status check error:", error);
     }
   };
 
@@ -86,19 +86,19 @@ const PrivacySecurity = ({ navigation }) => {
     try {
       setTwoFactor(value);
       await API.post('/users/update-security', {
-        email: user.email, 
+        email: user.email,
         twoFactorEnabled: value
       });
 
       await AsyncStorage.setItem(`2fa_enabled_${user?.email}`, value.toString());
 
-      dispatch({ 
-        type: 'UPDATE_USER_DATA', 
-        payload: { twoFactorEnabled: value } 
+      dispatch({
+        type: 'UPDATE_USER_DATA',
+        payload: { twoFactorEnabled: value }
       });
 
       Alert.alert(
-        "Security Updated", 
+        "Security Updated",
         value ? "Two-Factor Auth is now ENABLED." : "Two-Factor Auth is now DISABLED."
       );
     } catch (error) {
@@ -143,6 +143,9 @@ const PrivacySecurity = ({ navigation }) => {
     }
   };
 
+
+
+
   const SettingItem = ({ icon, title, description, type, value, onValueChange, onPress }) => (
     <TouchableOpacity
       style={[styles.item, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}
@@ -169,16 +172,56 @@ const PrivacySecurity = ({ navigation }) => {
     </TouchableOpacity>
   );
 
+  const handleChangePassword = async () => {
+    Alert.alert(
+      "Security Check",
+      "We need to verify your email before you can change your password.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Send Code",
+          onPress: async () => {
+            try {
+
+              await API.post('/users/forgot-password', {
+                email: user.email.toLowerCase().trim()
+              });
+
+
+              navigation.navigate('SecurityOtpVerify', {
+                email: user.email,
+                mode: 'reset'
+              });
+            } catch (err) {
+              Alert.alert("Error", "Could not send verification code.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background[0] }]}>
       <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+      
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
           <Ionicons name="arrow-back" size={24} color={colors.textMain} />
         </TouchableOpacity>
+ 
+        <View style={styles.titleContainer} pointerEvents="none">
+          <Text style={[styles.navTitle, { color: colors.textMain }]}>
+            Privacy & Security
+          </Text>
+        </View>
       </View>
-
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={[styles.header, { color: colors.textMain }]}>Privacy & Security</Text>
+
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.primary }]}>SECURITY PREFERENCES</Text>
@@ -201,14 +244,15 @@ const PrivacySecurity = ({ navigation }) => {
           <SettingItem
             icon="key-outline"
             title="Change Password"
-            onPress={() => {}}
+            description="Update your account password"
+            onPress={handleChangePassword}
           />
         </View>
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.primary }]}>PRIVACY</Text>
-          <SettingItem icon="eye-off-outline" title="Profile Visibility" onPress={() => {}} />
-          <SettingItem icon="document-text-outline" title="Data Usage" onPress={() => {}} />
+          <SettingItem icon="eye-off-outline" title="Profile Visibility" onPress={() => { }} />
+          <SettingItem icon="document-text-outline" title="Data Usage" onPress={() => { }} />
           <SettingItem
             icon="trash-outline"
             title="Delete Account"
@@ -222,7 +266,7 @@ const PrivacySecurity = ({ navigation }) => {
           <View style={[styles.modalContent, { backgroundColor: isDark ? '#1E293B' : '#FFF' }]}>
             <Text style={[styles.modalTitle, { color: colors.textMain }]}>Enable Biometrics</Text>
             <Text style={[styles.modalSub, { color: colors.textSecondary }]}>Enter password to link your account</Text>
-            
+
             <TextInput
               style={[styles.modalInput, { color: colors.textMain, backgroundColor: isDark ? colors.glass : '#F3F3F3' }]}
               placeholder="Password"
@@ -234,15 +278,15 @@ const PrivacySecurity = ({ navigation }) => {
             />
 
             <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={styles.modalBtn} 
+              <TouchableOpacity
+                style={styles.modalBtn}
                 onPress={() => { setModalVisible(false); setConfirmPassword(''); }}
               >
                 <Text style={{ color: colors.textSecondary }}>Cancel</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.modalBtn, styles.confirmBtn, { backgroundColor: colors.primary }]} 
+
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.confirmBtn, { backgroundColor: colors.primary }]}
                 onPress={verifyAndEnableBiometrics}
               >
                 {isVerifying ? <ActivityIndicator color="#FFF" /> : <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Confirm</Text>}
@@ -256,9 +300,13 @@ const PrivacySecurity = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  navBar: { paddingHorizontal: 20, paddingTop: 10, height: 50, justifyContent: 'center' },
-  content: { paddingTop: 20, paddingHorizontal: 20, paddingBottom: 40 },
+  container: { flex: 1, paddingTop: -30 },
+ navBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, height: 50, width: '100%' },
+backButton: { zIndex: 10 },
+titleContainer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
+navTitle: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
+content: { paddingTop: 15, paddingHorizontal: 20, paddingBottom: 40 },
+ 
   header: { fontSize: 28, fontWeight: '800', marginBottom: 30, letterSpacing: -0.5 },
   section: { marginBottom: 25 },
   sectionTitle: { fontSize: 12, fontWeight: '700', letterSpacing: 1.2, marginBottom: 12, marginLeft: 4 },
