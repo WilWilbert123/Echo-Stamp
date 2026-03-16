@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
     Dimensions,
-    SafeAreaView,
     StatusBar,
     StyleSheet,
     Text,
@@ -9,6 +8,7 @@ import {
     useWindowDimensions,
     View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { SceneMap, TabBar, TabView } from 'react-native-tab-view';
 import { useTheme } from '../../context/ThemeContext';
 
