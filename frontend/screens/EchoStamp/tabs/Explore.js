@@ -17,12 +17,12 @@ import {
     View
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import thisisit from "../../../config/config";
 import { useTheme } from '../../../context/ThemeContext';
-
 const { width, height } = Dimensions.get('window');
 
-// Pulling the key from Expo Environment Variables
-const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+ 
+const GOOGLE_API_KEY = thisisit  
 
 const Explore = () => {
     const { colors, isDark } = useTheme();
@@ -64,7 +64,7 @@ const Explore = () => {
                 longitudeDelta: 0.05,
             };
             setUserLocation(coords);
-            // Initial fetch
+            // Default: Fetch nearby Nature spots on load
             fetchNearbyGoogle(loc.coords.latitude, loc.coords.longitude, categories[0]);
         } catch (e) {
             console.error("Location error", e);
@@ -92,7 +92,7 @@ const Explore = () => {
             lon: item.geometry.location.lng,
             image: item.photos 
                 ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${item.photos[0].photo_reference}&key=${GOOGLE_API_KEY}`
-                : `https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&q=80&w=400`, // Better fallback image
+                : `https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&q=80&w=400`,
             categoryIcon: icon,
             categoryColor: color
         }));
@@ -100,33 +100,8 @@ const Explore = () => {
         updateMapRegion(formatted);
     };
 
-    const handleSearch = async () => {
-        if (!searchQuery || isFetching || !userLocation) return;
-        setLoading(true);
-        setIsFetching(true);
-        try {
-            const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&location=${userLocation.latitude},${userLocation.longitude}&radius=5000&key=${GOOGLE_API_KEY}`;
-            const response = await fetch(url);
-            const data = await response.json();
-
-            if (data.status === "OK") {
-                mapGoogleResults(data.results, colors.primary, 'location');
-            } else if (data.status === "REQUEST_DENIED") {
-                console.error("API Denied Message:", data.error_message);
-                Alert.alert("API Error", "The Places API is not enabled or the key is restricted in your Google Console.");
-            } else {
-                setPlaces([]);
-            }
-        } catch (error) {
-            Alert.alert("Search Error", "Check connection or API key.");
-        } finally {
-            setLoading(false);
-            setIsFetching(false);
-        }
-    };
-
     const fetchNearbyGoogle = async (lat, lon, category) => {
-        if (isFetching) return;
+        if (isFetching || !GOOGLE_API_KEY) return;
         setLoading(true);
         setIsFetching(true);
         setSelectedCategory(category);
@@ -135,18 +110,10 @@ const Explore = () => {
             const response = await fetch(url);
             const data = await response.json();
 
-            console.log("SENDING REQUEST TO:", url);
-
-            if (data.status === "REQUEST_DENIED") {
-                console.error("API Denied Message:", data.error_message);
-                Alert.alert("Places API Disabled", "Go to Google Cloud Console and enable the 'Places API'. Maps SDK alone is not enough.");
-                return;
-            }
-
-            if (data.results && data.results.length > 0) {
+            if (data.status === "OK" && data.results.length > 0) {
                 mapGoogleResults(data.results, category.color, category.icon);
             } else {
-                // Category type search returned nothing, trying Text Search backup
+                // Fallback to text search if specific type yields no results
                 const backupUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${category.name}&location=${lat},${lon}&radius=5000&key=${GOOGLE_API_KEY}`;
                 const backupRes = await fetch(backupUrl);
                 const backupData = await backupRes.json();
@@ -165,6 +132,28 @@ const Explore = () => {
         }
     };
 
+    const handleSearch = async () => {
+        if (!searchQuery || isFetching || !userLocation) return;
+        setLoading(true);
+        setIsFetching(true);
+        try {
+            const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&location=${userLocation.latitude},${userLocation.longitude}&radius=5000&key=${GOOGLE_API_KEY}`;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.status === "OK") {
+                mapGoogleResults(data.results, colors.primary, 'location');
+            } else {
+                setPlaces([]);
+            }
+        } catch (error) {
+            Alert.alert("Search Error", "Check your connection.");
+        } finally {
+            setLoading(false);
+            setIsFetching(false);
+        }
+    };
+
     const openInMaps = (lat, lon, label) => {
         const url = Platform.select({
             ios: `maps:0,0?q=${encodeURIComponent(label)}@${lat},${lon}`,
@@ -175,6 +164,7 @@ const Explore = () => {
 
     return (
         <View style={{ flex: 1, backgroundColor: colors.background[0] }}>
+            {/* Header / Search Area */}
             <View style={styles.headerPadding}>
                 <View style={[styles.searchWrapper, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
                     <Ionicons name="search" size={20} color={colors.textSecondary} />
@@ -194,13 +184,7 @@ const Explore = () => {
                         <TouchableOpacity 
                             key={cat.id} 
                             disabled={isFetching}
-                            onPress={() => {
-                                if (userLocation) {
-                                    fetchNearbyGoogle(userLocation.latitude, userLocation.longitude, cat);
-                                } else {
-                                    Alert.alert("Location needed", "Still searching for your GPS signal...");
-                                }
-                            }}
+                            onPress={() => userLocation && fetchNearbyGoogle(userLocation.latitude, userLocation.longitude, cat)}
                             style={[styles.categoryCard, { 
                                 backgroundColor: colors.glass, 
                                 borderColor: selectedCategory?.id === cat.id ? cat.color : colors.glassBorder,
@@ -218,6 +202,7 @@ const Explore = () => {
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                {/* Map View */}
                 <View style={[styles.mapContainer, { borderColor: colors.glassBorder }]}>
                     <MapView
                         ref={mapRef}
@@ -245,6 +230,7 @@ const Explore = () => {
                     </TouchableOpacity>
                 </View>
 
+                {/* Results List */}
                 <Text style={[styles.sectionTitle, { color: colors.textMain }]}>
                     {searchQuery ? 'Results' : `Places Near You`}
                 </Text>
@@ -275,6 +261,7 @@ const Explore = () => {
                 )}
             </ScrollView>
 
+            {/* Place Details Modal */}
             <Modal visible={isModalVisible} animationType="slide" transparent={true} onRequestClose={() => setModalVisible(false)}>
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalContent, { backgroundColor: isDark ? '#0F172A' : '#FFF' }]}>
@@ -287,6 +274,7 @@ const Explore = () => {
                         </View>
                         <Text style={[styles.modalTitle, { color: colors.textMain }]}>{selectedPlace?.name}</Text>
                         <Text style={[styles.modalSub, { color: colors.textSecondary }]}>{selectedPlace?.address}</Text>
+                        
                         <TouchableOpacity 
                             style={[styles.actionBtn, { backgroundColor: colors.primary }]}
                             onPress={() => openInMaps(selectedPlace.lat, selectedPlace.lon, selectedPlace.name)}
@@ -294,6 +282,7 @@ const Explore = () => {
                             <Ionicons name="navigate-circle" size={24} color="white" style={{marginRight: 8}} />
                             <Text style={styles.actionBtnText}>Get Directions</Text>
                         </TouchableOpacity>
+                        
                         <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
                             <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>Close</Text>
                         </TouchableOpacity>
