@@ -20,7 +20,9 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useTheme } from '../../../context/ThemeContext';
 
 const { width, height } = Dimensions.get('window');
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Pulling the key from Expo Environment Variables
+const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 const Explore = () => {
     const { colors, isDark } = useTheme();
@@ -36,10 +38,10 @@ const Explore = () => {
     const [isModalVisible, setModalVisible] = useState(false);
 
     const categories = [
-        { id: '1', name: 'Nature', icon: 'leaf', color: '#4ADE80', osmTag: 'leisure=park' },
-        { id: '2', name: 'Cities', icon: 'business', color: '#60A5FA', osmTag: 'tourism=attraction' },
-        { id: '3', name: 'Food', icon: 'restaurant', color: '#FB923C', osmTag: 'amenity=restaurant' },
-        { id: '4', name: 'Hidden', icon: 'map', color: '#A855F7', osmTag: 'historic=monument' },
+        { id: '1', name: 'Nature', icon: 'leaf', color: '#4ADE80', type: 'park' },
+        { id: '2', name: 'Cities', icon: 'business', color: '#60A5FA', type: 'tourist_attraction' },
+        { id: '3', name: 'Food', icon: 'restaurant', color: '#FB923C', type: 'restaurant' },
+        { id: '4', name: 'Museums', icon: 'map', color: '#A855F7', type: 'museum' },
     ];
 
     useEffect(() => {
@@ -50,10 +52,11 @@ const Explore = () => {
         try {
             let { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
+                Alert.alert("Permission Denied", "Location access is needed to find places nearby.");
                 setLoading(false);
                 return;
             }
-            let loc = await Location.getCurrentPositionAsync({});
+            let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
             const coords = {
                 latitude: loc.coords.latitude,
                 longitude: loc.coords.longitude,
@@ -61,8 +64,10 @@ const Explore = () => {
                 longitudeDelta: 0.05,
             };
             setUserLocation(coords);
-            fetchNearbyByTag(loc.coords.latitude, loc.coords.longitude, categories[0]);
+            // Initial fetch
+            fetchNearbyGoogle(loc.coords.latitude, loc.coords.longitude, categories[0]);
         } catch (e) {
+            console.error("Location error", e);
             setLoading(false);
         }
     };
@@ -70,92 +75,90 @@ const Explore = () => {
     const updateMapRegion = (newPlaces) => {
         if (newPlaces.length > 0 && mapRef.current) {
             mapRef.current.animateToRegion({
-                latitude: parseFloat(newPlaces[0].lat),
-                longitude: parseFloat(newPlaces[0].lon),
-                latitudeDelta: 0.03,
-                longitudeDelta: 0.03,
+                latitude: newPlaces[0].lat,
+                longitude: newPlaces[0].lon,
+                latitudeDelta: 0.04,
+                longitudeDelta: 0.04,
             }, 1000);
         }
     };
 
-    const safeFetch = async (url, retries = 2, backoff = 1500) => {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 12000);
-        try {
-            const response = await fetch(url, { 
-                signal: controller.signal,
-                headers: { 'User-Agent': 'EchoStamp_v2_Stable' } 
-            });
-            clearTimeout(timeoutId);
-            if ((response.status === 429 || response.status === 504) && retries > 0) {
-                await sleep(backoff);
-                return safeFetch(url, retries - 1, backoff * 2);
-            }
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return await response.json();
-        } catch (error) {
-            clearTimeout(timeoutId);
-            if (retries > 0 && error.name !== 'AbortError') {
-                await sleep(backoff);
-                return safeFetch(url, retries - 1, backoff * 2);
-            }
-            throw error;
-        }
+    const mapGoogleResults = (results, color, icon) => {
+        const formatted = results.map(item => ({
+            id: item.place_id,
+            name: item.name,
+            address: item.vicinity || item.formatted_address || "Address unavailable",
+            lat: item.geometry.location.lat,
+            lon: item.geometry.location.lng,
+            image: item.photos 
+                ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${item.photos[0].photo_reference}&key=${GOOGLE_API_KEY}`
+                : `https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&q=80&w=400`, // Better fallback image
+            categoryIcon: icon,
+            categoryColor: color
+        }));
+        setPlaces(formatted);
+        updateMapRegion(formatted);
     };
 
     const handleSearch = async () => {
-        if (!searchQuery || isFetching) return;
+        if (!searchQuery || isFetching || !userLocation) return;
         setLoading(true);
         setIsFetching(true);
         try {
-            const data = await safeFetch(
-                `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=10`
-            );
-            const results = data.map(item => ({
-                id: item.place_id.toString(),
-                name: item.display_name.split(',')[0],
-                address: item.display_name,
-                lat: parseFloat(item.lat),
-                lon: parseFloat(item.lon),
-                image: `https://static-maps.yandex.ru/1.x/?ll=${item.lon},${item.lat}&z=15&l=map&size=450,450`,
-                categoryIcon: 'location',
-                categoryColor: colors.primary
-            }));
-            setPlaces(results);
-            updateMapRegion(results);
+            const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&location=${userLocation.latitude},${userLocation.longitude}&radius=5000&key=${GOOGLE_API_KEY}`;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.status === "OK") {
+                mapGoogleResults(data.results, colors.primary, 'location');
+            } else if (data.status === "REQUEST_DENIED") {
+                console.error("API Denied Message:", data.error_message);
+                Alert.alert("API Error", "The Places API is not enabled or the key is restricted in your Google Console.");
+            } else {
+                setPlaces([]);
+            }
         } catch (error) {
-            Alert.alert("Search Error", "Could not find location.");
+            Alert.alert("Search Error", "Check connection or API key.");
         } finally {
             setLoading(false);
             setIsFetching(false);
         }
     };
 
-    const fetchNearbyByTag = async (lat, lon, category) => {
+    const fetchNearbyGoogle = async (lat, lon, category) => {
         if (isFetching) return;
         setLoading(true);
         setIsFetching(true);
         setSelectedCategory(category);
         try {
-            const query = `[out:json][timeout:15];node["${category.osmTag.split('=')[0]}"="${category.osmTag.split('=')[1]}"](around:3000,${lat},${lon});out qt 15;`;
-            const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
-            const data = await safeFetch(url);
-            if (data?.elements) {
-                const results = data.elements.map(item => ({
-                    id: item.id.toString(),
-                    name: item.tags.name || "Local Spot",
-                    address: item.tags["addr:street"] || "Nearby Location",
-                    lat: item.lat,
-                    lon: item.lon,
-                    image: `https://static-maps.yandex.ru/1.x/?ll=${item.lon},${item.lat}&z=15&l=map&size=450,450`,
-                    categoryIcon: category.icon,
-                    categoryColor: category.color
-                }));
-                setPlaces(results);
-                updateMapRegion(results);
+            const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lon}&radius=5000&type=${category.type}&key=${GOOGLE_API_KEY}`;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            console.log("SENDING REQUEST TO:", url);
+
+            if (data.status === "REQUEST_DENIED") {
+                console.error("API Denied Message:", data.error_message);
+                Alert.alert("Places API Disabled", "Go to Google Cloud Console and enable the 'Places API'. Maps SDK alone is not enough.");
+                return;
+            }
+
+            if (data.results && data.results.length > 0) {
+                mapGoogleResults(data.results, category.color, category.icon);
+            } else {
+                // Category type search returned nothing, trying Text Search backup
+                const backupUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${category.name}&location=${lat},${lon}&radius=5000&key=${GOOGLE_API_KEY}`;
+                const backupRes = await fetch(backupUrl);
+                const backupData = await backupRes.json();
+                
+                if (backupData.status === "OK") {
+                    mapGoogleResults(backupData.results || [], category.color, category.icon);
+                } else {
+                    setPlaces([]);
+                }
             }
         } catch (error) {
-            Alert.alert("Server Busy", "Try again in a few seconds.");
+            console.error("Fetch Error:", error);
         } finally {
             setLoading(false);
             setIsFetching(false);
@@ -163,10 +166,9 @@ const Explore = () => {
     };
 
     const openInMaps = (lat, lon, label) => {
-        const scheme = Platform.select({ ios: 'maps:0,0?q=', android: 'geo:0,0?q=' });
         const url = Platform.select({
-            ios: `${scheme}${encodeURIComponent(label)}@${lat},${lon}`,
-            android: `${scheme}${lat},${lon}(${encodeURIComponent(label)})`
+            ios: `maps:0,0?q=${encodeURIComponent(label)}@${lat},${lon}`,
+            android: `geo:0,0?q=${lat},${lon}(${encodeURIComponent(label)})`
         });
         Linking.openURL(url);
     };
@@ -192,7 +194,13 @@ const Explore = () => {
                         <TouchableOpacity 
                             key={cat.id} 
                             disabled={isFetching}
-                            onPress={() => userLocation && fetchNearbyByTag(userLocation.latitude, userLocation.longitude, cat)}
+                            onPress={() => {
+                                if (userLocation) {
+                                    fetchNearbyGoogle(userLocation.latitude, userLocation.longitude, cat);
+                                } else {
+                                    Alert.alert("Location needed", "Still searching for your GPS signal...");
+                                }
+                            }}
                             style={[styles.categoryCard, { 
                                 backgroundColor: colors.glass, 
                                 borderColor: selectedCategory?.id === cat.id ? cat.color : colors.glassBorder,
@@ -210,21 +218,19 @@ const Explore = () => {
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                
-                {/* INTERACTIVE MAP */}
                 <View style={[styles.mapContainer, { borderColor: colors.glassBorder }]}>
                     <MapView
                         ref={mapRef}
                         provider={PROVIDER_GOOGLE}
                         style={styles.map}
-                        region={userLocation}
+                        initialRegion={userLocation}
                         showsUserLocation={true}
                         customMapStyle={isDark ? darkMapStyle : []}
                     >
                         {places.map((place) => (
                             <Marker
                                 key={place.id}
-                                coordinate={{ latitude: parseFloat(place.lat), longitude: parseFloat(place.lon) }}
+                                coordinate={{ latitude: place.lat, longitude: place.lon }}
                                 title={place.name}
                                 pinColor={place.categoryColor}
                                 onPress={() => { setSelectedPlace(place); setModalVisible(true); }}
@@ -253,18 +259,12 @@ const Explore = () => {
                             onPress={() => { setSelectedPlace(item); setModalVisible(true); }}
                         >
                             <View style={[styles.imgContainer, { backgroundColor: isDark ? '#121b2e' : '#eee' }]}>
-                                <Image 
-                                    source={{ uri: item.image }} 
-                                    style={[styles.placeImg, isDark && styles.darkenedImage]} 
-                                />
-                                {/* THE TINT LAYER: This "paints" the image dark */}
+                                <Image source={{ uri: item.image }} style={[styles.placeImg, isDark && styles.darkenedImage]} />
                                 {isDark && <View style={styles.imageThemeOverlay} />}
-                                
                                 <View style={[styles.miniIcon, { backgroundColor: item.categoryColor || colors.primary }]}>
                                     <Ionicons name={item.categoryIcon || 'location'} size={12} color="white" />
                                 </View>
                             </View>
-
                             <View style={styles.placeInfo}>
                                 <Text style={[styles.placeName, { color: colors.textMain }]} numberOfLines={1}>{item.name}</Text>
                                 <Text style={[styles.placeAddress, { color: colors.textSecondary }]} numberOfLines={1}>{item.address}</Text>
@@ -275,12 +275,14 @@ const Explore = () => {
                 )}
             </ScrollView>
 
-            <Modal visible={isModalVisible} animationType="slide" transparent={true}>
+            <Modal visible={isModalVisible} animationType="slide" transparent={true} onRequestClose={() => setModalVisible(false)}>
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalContent, { backgroundColor: isDark ? '#0F172A' : '#FFF' }]}>
                         <View style={styles.modalHandle} />
                         <View style={styles.modalHeroContainer}>
-                            <Image source={{ uri: selectedPlace?.image }} style={[styles.modalHeroImg, isDark && styles.darkenedImage]} />
+                            {selectedPlace?.image && (
+                                <Image source={{ uri: selectedPlace.image }} style={[styles.modalHeroImg, isDark && styles.darkenedImage]} />
+                            )}
                             {isDark && <View style={styles.imageThemeOverlay} />}
                         </View>
                         <Text style={[styles.modalTitle, { color: colors.textMain }]}>{selectedPlace?.name}</Text>
@@ -302,7 +304,6 @@ const Explore = () => {
     );
 };
 
-// Dark Mode styling for MapView
 const darkMapStyle = [
   { "elementType": "geometry", "stylers": [{ "color": "#1d2c4d" }] },
   { "elementType": "labels.text.fill", "stylers": [{ "color": "#8ec3b9" }] },
@@ -320,8 +321,6 @@ const darkMapStyle = [
   { "featureType": "water", "elementType": "labels.text.fill", "stylers": [{ "color": "#4e6d70" }] }
 ];
 
-export default Explore;
-
 const styles = StyleSheet.create({
     headerPadding: { paddingHorizontal: 20, paddingTop: 10 },
     scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
@@ -331,29 +330,19 @@ const styles = StyleSheet.create({
     categoryCard: { width: (width - 60) / 4, paddingVertical: 12, alignItems: 'center', borderRadius: 20 },
     iconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 5 },
     categoryName: { fontSize: 10, fontWeight: '800' },
-    
     mapContainer: { width: '100%', height: 220, borderRadius: 30, overflow: 'hidden', marginBottom: 20, borderWidth: 1 },
     map: { width: '100%', height: '100%' },
     recenterBtn: { position: 'absolute', bottom: 15, right: 15, padding: 10, borderRadius: 12, elevation: 5 },
-
     sectionTitle: { fontSize: 18, fontWeight: '900', marginBottom: 15, marginLeft: 5 },
     placeCard: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 24, borderWidth: 1, marginBottom: 12 },
-    
-    // --- DARK MODE IMAGE LOGIC ---
     imgContainer: { width: 60, height: 60, borderRadius: 15, overflow: 'hidden', position: 'relative' },
     placeImg: { width: '100%', height: '100%' },
-    darkenedImage: { opacity: 0.5 }, // Dim the light image
-    imageThemeOverlay: { 
-        ...StyleSheet.absoluteFillObject, 
-        backgroundColor: '#1d2c4d', // Use the dark geometry color from your map style
-        opacity: 0.4 
-    },
-
+    darkenedImage: { opacity: 0.5 },
+    imageThemeOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: '#1d2c4d', opacity: 0.4 },
     miniIcon: { position: 'absolute', bottom: 0, right: 0, width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'white' },
     placeInfo: { flex: 1, marginLeft: 15 },
     placeName: { fontWeight: '800', fontSize: 15, marginBottom: 2 },
     placeAddress: { fontSize: 12, opacity: 0.6 },
-    
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
     modalContent: { height: height * 0.75, borderTopLeftRadius: 35, borderTopRightRadius: 35, padding: 25, alignItems: 'center' },
     modalHandle: { width: 40, height: 4, backgroundColor: '#444', borderRadius: 2, marginBottom: 20 },
@@ -365,3 +354,5 @@ const styles = StyleSheet.create({
     actionBtnText: { color: 'white', fontWeight: '900', fontSize: 17 },
     closeBtn: { marginTop: 20, padding: 10 }
 });
+
+export default Explore;

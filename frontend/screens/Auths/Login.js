@@ -1,4 +1,4 @@
-import { FontAwesome5, Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import {
@@ -204,20 +204,7 @@ const Login = ({ navigation }) => {
                         )}
                     </View>
 
-                    <View style={styles.socialSection}>
-                        <Text style={[styles.socialText, { color: colors.textSecondary }]}>Or sign up using</Text>
-                        <View style={styles.socialIcons}>
-                            <TouchableOpacity style={[styles.iconCircle, { backgroundColor: isDark ? colors.glass : '#FFF' }]}>
-                                <FontAwesome5 name="facebook-f" size={20} color="#1877F2" />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.iconCircle, { backgroundColor: isDark ? colors.glass : '#FFF' }]}>
-                                <FontAwesome5 name="google" size={20} color="#EA4335" />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.iconCircle, { backgroundColor: isDark ? colors.glass : '#FFF' }]}>
-                                <FontAwesome5 name="apple" size={20} color={isDark ? "#FFF" : "#000"} />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
+                     
 
                     <TouchableOpacity
                         style={styles.footer}
@@ -253,11 +240,8 @@ const styles = StyleSheet.create({
     biometricBtn: { width: 55, height: 55, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 1, elevation: 2 },
     gradientBtn: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loginBtnText: { color: '#FFF', fontWeight: '800', fontSize: 15, letterSpacing: 1 },
-    socialSection: { alignItems: 'center', marginTop: 40 },
-    socialText: { fontSize: 13, marginBottom: 20, fontWeight: '500' },
-    socialIcons: { flexDirection: 'row', justifyContent: 'space-around', width: '70%' },
-    iconCircle: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
-    footer: { marginTop: 50, alignItems: 'center' },
+     
+    footer: { marginTop: 20, alignItems: 'center' },
     footerText: { fontSize: 14 },
     signUpText: { fontWeight: 'bold' },
 });
