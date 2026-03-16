@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -54,7 +55,6 @@ const VideoPlayerItem = ({ uri, isVisible }) => {
     <VideoView
       style={styles.fullMedia}
       player={player}
-      // FIXED: Use nativeControls instead of deprecated allowsFullscreen
       nativeControls={true}
       contentFit="contain"
     />
@@ -148,13 +148,14 @@ const Atlas = () => {
   };
 
   // --- SAVE JOURNAL ---
-  const handleSave = async () => {
+ const handleSave = async () => {
     const userId = user?._id || user?.id;
     if (!title) return Alert.alert("Wait!", "Please give this moment a title.");
 
     setLoading(true);
 
     try {
+      // 1. Handle Media Uploads
       const uploadedUrls = await Promise.all(
         mediaList.map(async (item) => {
           if (item.uri.startsWith('http')) return item.uri;
@@ -162,6 +163,34 @@ const Atlas = () => {
         })
       );
 
+      // 2. Get FULL Address details
+      let finalAddress = "Unknown Location";
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const [result] = await Location.reverseGeocodeAsync({
+            latitude: tempCoords.latitude,
+            longitude: tempCoords.longitude,
+          });
+
+          if (result) {
+            // result.street = Street name
+            // result.district = Barangay (usually)
+            // result.city = City (Taguig/Quezon City)
+            const street = result.street || "";
+            const brgy = result.district || "";
+            const city = result.city || result.subregion || "";
+            
+            // Build: "Street, Barangay, City"
+            const addressParts = [street, brgy, city].filter(part => part.length > 0);
+            finalAddress = addressParts.join(', ') || "Pinned Location";
+          }
+        }
+      } catch (geoErr) {
+        finalAddress = "Pinned Location";
+      }
+
+      // 3. Construct the Final Data
       const journalData = {
         userId,
         title,
@@ -170,7 +199,7 @@ const Atlas = () => {
         location: {
           lat: tempCoords.latitude,
           lng: tempCoords.longitude,
-          address: "Custom Pin"
+          address: finalAddress 
         }
       };
 
@@ -316,7 +345,9 @@ const Atlas = () => {
         <View style={styles.modalOverlay}>
           <GlassCard style={[styles.modalContent, { backgroundColor: colors.background[1], borderColor: colors.glassBorder }]}>
             <Text style={[styles.modalHeader, { color: colors.textMain }]}>Pin a Memory</Text>
-            <div style={styles.mediaSection}>
+            
+            {/* FIXED: Changed <div> to <View> */}
+            <View style={styles.mediaSection}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <TouchableOpacity style={[styles.addMediaBtn, { borderColor: colors.primary }]} onPress={pickMedia}>
                   <Ionicons name="add" size={30} color={colors.primary} />
@@ -336,7 +367,7 @@ const Atlas = () => {
                   </View>
                 ))}
               </ScrollView>
-            </div>
+            </View>
 
             <TextInput
               style={[styles.input, { color: colors.textMain, borderColor: colors.glassBorder }]}
@@ -404,8 +435,6 @@ const Atlas = () => {
     </View>
   );
 };
-
- 
 
 const styles = StyleSheet.create({
   container: { flex: 1 },

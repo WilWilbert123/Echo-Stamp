@@ -1,4 +1,6 @@
-import { Eye, Heart, MapPin, MessageCircle, MoreHorizontal, Share2, X } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native'; // Import navigation
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { Eye, Heart, MapPin, MessageCircle, MoreHorizontal, Play, Share2, X } from 'lucide-react-native';
 import React, { memo, useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -20,32 +22,80 @@ import { getJournalsAsync } from '../../../redux/journalSlice';
 
 const { width, height } = Dimensions.get('window');
 
-// --- HELPER FUNCTION (Fixes the ReferenceError) ---
+// --- VIDEO CHECK LOGIC ---
+const checkIsVideo = (uri) => {
+    if (!uri || typeof uri !== 'string') return false;
+    const url = uri.toLowerCase();
+    return (
+        url.includes('/video/upload/') || 
+        url.endsWith('.mp4') || 
+        url.endsWith('.mov') || 
+        url.endsWith('.m4v')
+    );
+};
+
+// --- RELATIVE TIME HELPER ---
 const getRelativeTime = (date) => {
     try {
         const now = new Date();
         const past = new Date(date);
         const diffInSeconds = Math.floor((now - past) / 1000);
-
         if (diffInSeconds < 60) return 'Just now';
         if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
         if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
         if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
-        
         return past.toLocaleDateString();
     } catch (e) {
         return 'Recently';
     }
 };
 
+// --- VIDEO ITEM FOR GALLERY ---
+const GalleryVideoItem = ({ uri, isVisible }) => {
+    const player = useVideoPlayer(uri, (player) => {
+        player.loop = true;
+        if (isVisible) player.play();
+    });
+
+    useEffect(() => {
+        if (isVisible) {
+            player.play();
+        } else {
+            player.pause();
+        }
+    }, [isVisible, player]);
+
+    return (
+        <VideoView
+            style={styles.fullImg} 
+            player={player}
+            nativeControls
+            contentFit="contain"
+        />
+    );
+};
+
 const PostItem = memo(({ item, user, colors, isDark, onOpenGallery, onOpenComments }) => {
+    const navigation = useNavigation(); // Hook for navigation
     const [isLiked, setIsLiked] = useState(false);
     const mediaCount = item.media?.length || 0;
+    const isMainVid = checkIsVideo(item.media?.[0]);
 
     const handleShare = async () => {
         try {
             await Share.share({ message: `Check out this Echo: ${item.title}` });
         } catch (error) { console.log(error); }
+    };
+
+    // Navigate to Atlas and zoom
+    const handleViewEcho = () => {
+        navigation.navigate('Atlas', {
+            zoomTo: {
+                latitude: item.location.lat,
+                longitude: item.location.lng,
+                journalId: item._id
+            }
+        });
     };
 
     return (
@@ -66,8 +116,8 @@ const PostItem = memo(({ item, user, colors, isDark, onOpenGallery, onOpenCommen
                 <View style={{ flex: 1 }}>
                     <Text style={[styles.userName, { color: colors.textMain }]}>{user?.username || 'Explorer'}</Text>
                     <View style={styles.locationRow}>
-                        <MapPin size={10} color={colors.primary} />
-                        <Text style={[styles.timeText, { color: colors.textSecondary }]} numberOfLines={1}>
+                        <MapPin size={10} color={colors.primary} style={{ marginTop: 2 }} />
+                        <Text style={[styles.timeText, { color: colors.textSecondary }]}>
                             {item.location?.address || 'Deep Wilderness'} • {getRelativeTime(item.createdAt)}
                         </Text>
                     </View>
@@ -92,7 +142,15 @@ const PostItem = memo(({ item, user, colors, isDark, onOpenGallery, onOpenCommen
                     style={styles.imageGrid} 
                     onPress={() => onOpenGallery(item.media)}
                 >
-                    <Image source={{ uri: item.media[0] }} style={styles.gridImageMain} />
+                    <View style={styles.gridImageMain}>
+                        <Image source={{ uri: item.media[0] }} style={StyleSheet.absoluteFill} />
+                        {isMainVid && (
+                            <View style={styles.overlay}>
+                                <Play size={32} color="white" fill="white" />
+                            </View>
+                        )}
+                    </View>
+                    
                     {mediaCount > 1 && (
                         <View style={styles.sideImages}>
                             <Image source={{ uri: item.media[1] }} style={styles.sideImg} />
@@ -131,7 +189,7 @@ const PostItem = memo(({ item, user, colors, isDark, onOpenGallery, onOpenCommen
                 
                 <TouchableOpacity 
                     style={[styles.reactBtn, { backgroundColor: colors.primary }]} 
-                    onPress={() => onOpenComments(item)}
+                    onPress={handleViewEcho} // Logic to navigate to Atlas
                 >
                     <Eye size={14} color="#FFF" style={{ marginRight: 6 }} />
                     <Text style={styles.reactBtnText}>View Echo</Text>
@@ -152,6 +210,7 @@ const Feed = ({ filter }) => {
     const [commentModal, setCommentModal] = useState(false);
     const [galleryModal, setGalleryModal] = useState(false);
     const [galleryImages, setGalleryImages] = useState([]);
+    const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
 
     const loadData = useCallback(() => {
         const userId = user?.id || user?._id;
@@ -170,12 +229,8 @@ const Feed = ({ filter }) => {
 
     const openGallery = useCallback((media) => {
         setGalleryImages(media);
+        setActiveGalleryIndex(0);
         setGalleryModal(true);
-    }, []);
-
-    const openComments = useCallback((post) => {
-        setSelectedPost(post);
-        setCommentModal(true);
     }, []);
 
     const renderItem = useCallback(({ item }) => (
@@ -185,9 +240,12 @@ const Feed = ({ filter }) => {
             colors={colors} 
             isDark={isDark} 
             onOpenGallery={openGallery} 
-            onOpenComments={openComments} 
+            onOpenComments={(post) => {
+                setSelectedPost(post);
+                setCommentModal(true);
+            }} 
         />
-    ), [user, colors, isDark, openGallery, openComments]);
+    ), [user, colors, isDark, openGallery]);
 
     return (
         <View style={[styles.flex1, { backgroundColor: colors.background[0] }]}>
@@ -206,15 +264,6 @@ const Feed = ({ filter }) => {
                     refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
                     }
-                    ListEmptyComponent={
-                        <View style={styles.emptyContainer}>
-                            <Image 
-                                source={{ uri: 'https://cdn-icons-png.flaticon.com/512/7486/7486744.png' }} 
-                                style={{ width: 100, height: 100, opacity: 0.2, marginBottom: 20 }} 
-                            />
-                            <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>No journals found yet.{"\n"}The world is waiting for your story!</Text>
-                        </View>
-                    }
                 />
             )}
 
@@ -224,14 +273,23 @@ const Feed = ({ filter }) => {
                     <TouchableOpacity style={styles.closeGallery} onPress={() => setGalleryModal(false)}>
                         <X color="white" size={28} />
                     </TouchableOpacity>
+                    
                     <FlatList
                         data={galleryImages}
                         horizontal
                         pagingEnabled
+                        onScroll={(e) => setActiveGalleryIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
                         keyExtractor={(_, index) => index.toString()}
-                        renderItem={({ item }) => (
-                            <Image source={{ uri: item }} style={styles.fullImg} resizeMode="contain" />
+                        renderItem={({ item, index }) => (
+                            <View style={styles.gallerySlide}>
+                                {checkIsVideo(item) ? (
+                                    <GalleryVideoItem uri={item} isVisible={galleryModal && activeGalleryIndex === index} />
+                                ) : (
+                                    <Image source={{ uri: item }} style={styles.fullImg} resizeMode="contain" />
+                                )}
+                            </View>
                         )}
+                        showsHorizontalScrollIndicator={false}
                     />
                 </View>
             </Modal>
@@ -244,7 +302,6 @@ const Feed = ({ filter }) => {
                             <View style={styles.modalHandle} />
                             <Text style={[styles.modalTitle, { color: colors.textMain }]}>Reflections</Text>
                         </View>
-                        
                         <FlatList
                             data={selectedPost?.comments || []}
                             keyExtractor={(_, index) => index.toString()}
@@ -257,12 +314,6 @@ const Feed = ({ filter }) => {
                                     </View>
                                 </View>
                             )}
-                            ListEmptyComponent={
-                                <View style={styles.emptyCommentState}>
-                                    <MessageCircle size={40} color={colors.textSecondary} style={{ opacity: 0.3, marginBottom: 10 }} />
-                                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No responses yet. Start the conversation!</Text>
-                                </View>
-                            }
                         />
                         <TouchableOpacity style={[styles.modalClose, { backgroundColor: colors.primary }]} onPress={() => setCommentModal(false)}>
                             <Text style={{ color: '#FFF', fontWeight: '800' }}>CLOSE</Text>
@@ -291,21 +342,32 @@ const styles = StyleSheet.create({
             android: { elevation: 3 }
         })
     },
-    userInfo: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
-    locationRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2, paddingRight: 20 },
+    userInfo: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 15 }, // Changed to flex-start
+    locationRow: { 
+        flexDirection: 'row', 
+        alignItems: 'flex-start', // Align icon with top of address
+        marginTop: 2, 
+        paddingRight: 10 
+    },
     avatar: { width: 42, height: 42, borderRadius: 12, marginRight: 12, justifyContent: 'center', alignItems: 'center' },
     avatarLetter: { fontWeight: '800', fontSize: 16 },
     userName: { fontWeight: '800', fontSize: 15, letterSpacing: -0.3 },
-    timeText: { fontSize: 11, marginLeft: 4, fontWeight: '500' },
+    timeText: { 
+        fontSize: 11, 
+        marginLeft: 4, 
+        fontWeight: '500', 
+        flex: 1, // Allows text to wrap instead of staying on one line
+        lineHeight: 14 
+    },
     contentArea: { marginBottom: 15 },
     postTitle: { fontWeight: '900', fontSize: 20, marginBottom: 8, letterSpacing: -0.6 },
     postContent: { fontSize: 14, lineHeight: 22, opacity: 0.9 },
     imageGrid: { flexDirection: 'row', height: 220, gap: 10, borderRadius: 24, overflow: 'hidden' },
-    gridImageMain: { flex: 2, height: '100%', backgroundColor: '#222' },
+    gridImageMain: { flex: 2, height: '100%', backgroundColor: '#222', position: 'relative' },
     sideImages: { flex: 1, gap: 10 },
     sideImg: { flex: 1, width: '100%', backgroundColor: '#222' },
     sideImgContainer: { flex: 1, position: 'relative' },
-    overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
+    overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
     overlayText: { color: '#fff', fontSize: 20, fontWeight: '900' },
     interactionBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(128,128,128,0.08)' },
     stats: { flexDirection: 'row', gap: 18, alignItems: 'center' },
@@ -313,18 +375,24 @@ const styles = StyleSheet.create({
     statText: { fontSize: 14, fontWeight: '700' },
     reactBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 18 },
     reactBtnText: { color: '#FFF', fontWeight: '900', fontSize: 13 },
-    blackBg: { flex: 1, backgroundColor: '#000', justifyContent: 'center' },
+    blackBg: { flex: 1, backgroundColor: '#000' }, 
+    gallerySlide: { 
+        width: width, 
+        height: height, 
+        justifyContent: 'center', 
+        alignItems: 'center' 
+    },
+    fullImg: { 
+        width: width, 
+        height: height * 0.8 
+    },
     closeGallery: { position: 'absolute', top: 60, right: 25, zIndex: 20, backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 25 },
-    fullImg: { width: width, height: height * 0.8 },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-    modalContent: { borderTopLeftRadius: 40, borderTopRightRadius: 40, padding: 24, height: '75%', shadowColor: '#000', shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.2, shadowRadius: 15 },
+    modalContent: { borderTopLeftRadius: 40, borderTopRightRadius: 40, padding: 24, height: '75%' },
     modalHeader: { alignItems: 'center', marginBottom: 25 },
     modalHandle: { width: 50, height: 5, borderRadius: 3, backgroundColor: 'rgba(128,128,128,0.3)', marginBottom: 15 },
     modalTitle: { fontSize: 22, fontWeight: '900' },
-    commentRow: { flexDirection: 'row', gap: 15, paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: 'rgba(128,128,128,0.05)' },
+    commentRow: { flexDirection: 'row', gap: 15, paddingVertical: 18 },
     commentAvatar: { width: 36, height: 36, borderRadius: 12 },
-    emptyCommentState: { alignItems: 'center', marginTop: 60 },
-    modalClose: { marginVertical: 20, paddingVertical: 18, borderRadius: 20, alignItems: 'center' },
-    emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 100 },
-    emptyText: { textAlign: 'center', fontSize: 14, lineHeight: 20, opacity: 0.6 }
+    modalClose: { marginVertical: 20, paddingVertical: 18, borderRadius: 20, alignItems: 'center' }
 });
