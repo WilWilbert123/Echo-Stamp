@@ -19,12 +19,12 @@ const Events = () => {
     const { colors, isDark } = useTheme();
 
     // --- STATE MANAGEMENT ---
-    const [upcomingEvents, setUpcomingEvents] = useState([]); // Real data will live here
-    const [isLoading, setIsLoading] = useState(true);        // Loading state
-    const [showSoon, setShowSoon] = useState(false);         // Modal state
+    const [upcomingEvents, setUpcomingEvents] = useState([]);  
+    const [isLoading, setIsLoading] = useState(true);         
+    const [showSoon, setShowSoon] = useState(false);      
 
     // --- DATA FETCHING SIMULATION ---
-    // In a real app, this is where you'd call Firebase or your API
+  
     const fetchEvents = async () => {
         try {
             setIsLoading(true);

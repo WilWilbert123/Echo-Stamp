@@ -157,7 +157,7 @@ const Home = () => {
         <View style={[styles.darkWave, { backgroundColor: isDark ? '#1E293B' : '#637D8B', opacity: 0.6 }]} />
       </View>
 
-      <View style={[styles.contentWrapper, { paddingTop: insets.top + 10 }]}>
+      <View style={[styles.contentWrapper, { paddingTop: insets.top - 20}]}>
         
         {/* 2. HEADER TOP AREA */}
         <View style={styles.headerContainer}>

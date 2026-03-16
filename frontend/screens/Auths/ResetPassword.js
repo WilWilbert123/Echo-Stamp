@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Dimensions,
     KeyboardAvoidingView,
     Platform,
     StatusBar,
@@ -14,15 +15,20 @@ import {
     View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSelector } from 'react-redux';
 import { useTheme } from '../../context/ThemeContext';
 import API from '../../services/api';
+
+const { height: WINDOW_HEIGHT } = Dimensions.get('window');
 
 const ResetPassword = ({ route, navigation }) => {
     const { isDark, colors } = useTheme();
     const insets = useSafeAreaInsets();
-    
-    const { email, otp } = route.params || {}; 
 
+    // Memoize params to prevent unnecessary logical re-renders
+    const { email, otp, mode } = useMemo(() => route.params || {}, [route.params]);
+    
+    const { isAuthenticated } = useSelector((state) => state.auth);
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -46,13 +52,26 @@ const ResetPassword = ({ route, navigation }) => {
         setLoading(true);
         try {
             await API.post('/users/reset-password', {
-                email: email.toLowerCase().trim(),
+                email: email?.toLowerCase().trim(),
                 otp,
                 newPassword: password
             });
 
             Alert.alert("Success", "Your password has been updated!", [
-                { text: "Login Now", onPress: () => navigation.navigate('Login') }
+                {
+                    text: "Continue",
+                    onPress: () => {
+                        if (mode === 'reset' || isAuthenticated) {
+                            navigation.navigate('PrivacySecurity');
+                        } else {
+                          
+                            navigation.reset({
+                                index: 0,
+                                routes: [{ name: 'Login' }],
+                            });
+                        }
+                    }
+                }
             ]);
         } catch (error) {
             Alert.alert("Reset Failed", error.response?.data?.message || "Something went wrong.");
@@ -63,19 +82,18 @@ const ResetPassword = ({ route, navigation }) => {
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
-            <StatusBar barStyle={colors.status} />
-            
-            {/* BRANDED WAVY HEADER - Percentages used to stop flickering */}
-            <View style={[styles.headerBackground, { backgroundColor: colors.background[0] }]}>
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+ 
+            <View style={[styles.headerBackground, { backgroundColor: colors.background[0] }]} pointerEvents="none">
                 <View style={[styles.blueWave, { backgroundColor: colors.primary, opacity: isDark ? 0.2 : 0.8 }]} />
                 <View style={[styles.darkWave, { backgroundColor: isDark ? colors.textSecondary : colors.primary, opacity: 0.15 }]} />
             </View>
 
-            <KeyboardAvoidingView 
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : null}
                 style={styles.flex}
             >
-                <View style={[styles.content, { paddingTop: insets.top + 10 }]}>
+                <View style={[styles.content, { paddingTop: insets.top + 20 }]}>
                     
                     <View style={styles.navHeader}>
                         <TouchableOpacity
@@ -94,33 +112,32 @@ const ResetPassword = ({ route, navigation }) => {
                         </Text>
                     </View>
 
-                    <View style={[styles.card, { 
+                    <View style={[styles.card, {
                         backgroundColor: isDark ? colors.glass : '#FFF',
                         borderColor: colors.glassBorder,
                         borderWidth: isDark ? 1.5 : 0,
-                        shadowColor: isDark ? 'transparent' : '#000',
+                         shadowColor: isDark ? 'transparent' : '#000',
                     }]}>
-                        
+
                         <View style={styles.inputContainer}>
                             <Text style={[styles.label, { color: colors.textSecondary }]}>NEW PASSWORD</Text>
                             <View style={[
-                                styles.inputWrapper, 
-                                { 
+                                styles.inputWrapper,
+                                {
                                     backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : '#F1F5F9',
                                     borderColor: focusedField === 'pass' ? colors.primary : 'transparent',
-                                    borderWidth: 1.5
                                 }
                             ]}>
-                                <Ionicons 
-                                    name="lock-closed-outline" 
-                                    size={20} 
-                                    color={focusedField === 'pass' ? colors.primary : colors.textSecondary} 
-                                    style={styles.inputIcon} 
+                                <Ionicons
+                                    name="lock-closed-outline"
+                                    size={20}
+                                    color={focusedField === 'pass' ? colors.primary : colors.textSecondary}
+                                    style={styles.inputIcon}
                                 />
                                 <TextInput
                                     style={[styles.input, { color: colors.textMain }]}
                                     placeholder="••••••••"
-                                    placeholderTextColor={isDark ? "rgba(255,255,255,0.2)" : "#94A3B8"}
+                                    placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "#94A3B8"}
                                     secureTextEntry={!showPassword}
                                     value={password}
                                     onFocus={() => setFocusedField('pass')}
@@ -128,10 +145,10 @@ const ResetPassword = ({ route, navigation }) => {
                                     onChangeText={setPassword}
                                 />
                                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                                    <Ionicons 
-                                        name={showPassword ? "eye-off" : "eye"} 
-                                        size={20} 
-                                        color={colors.textSecondary} 
+                                    <Ionicons
+                                        name={showPassword ? "eye-off" : "eye"}
+                                        size={20}
+                                        color={colors.textSecondary}
                                     />
                                 </TouchableOpacity>
                             </View>
@@ -140,18 +157,17 @@ const ResetPassword = ({ route, navigation }) => {
                         <View style={styles.inputContainer}>
                             <Text style={[styles.label, { color: colors.textSecondary }]}>CONFIRM PASSWORD</Text>
                             <View style={[
-                                styles.inputWrapper, 
-                                { 
+                                styles.inputWrapper,
+                                {
                                     backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : '#F1F5F9',
                                     borderColor: focusedField === 'confirm' ? colors.primary : 'transparent',
-                                    borderWidth: 1.5
                                 }
                             ]}>
-                                <Ionicons 
-                                    name="checkmark-done-outline" 
-                                    size={20} 
-                                    color={focusedField === 'confirm' ? colors.primary : colors.textSecondary} 
-                                    style={styles.inputIcon} 
+                                <Ionicons
+                                    name="checkmark-done-outline"
+                                    size={20}
+                                    color={focusedField === 'confirm' ? colors.primary : colors.textSecondary}
+                                    style={styles.inputIcon}
                                 />
                                 <TextInput
                                     style={[styles.input, { color: colors.textMain }]}
@@ -166,14 +182,14 @@ const ResetPassword = ({ route, navigation }) => {
                             </View>
                         </View>
 
-                        <TouchableOpacity 
-                            style={styles.mainButton} 
-                            onPress={handleUpdatePassword} 
+                        <TouchableOpacity
+                            style={styles.mainButton}
+                            onPress={handleUpdatePassword}
                             disabled={loading}
                             activeOpacity={0.8}
                         >
-                            <LinearGradient 
-                                colors={isDark ? [colors.primary, '#0ea5e9'] : [colors.primary, '#475569']} 
+                            <LinearGradient
+                                colors={isDark ? [colors.primary, '#0ea5e9'] : [colors.primary, '#475569']}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
                                 style={styles.buttonGradient}
@@ -194,25 +210,25 @@ const ResetPassword = ({ route, navigation }) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    flex: { flex: 1 },
-    headerBackground: { position: 'absolute', top: 0, width: '100%', height: '25%' },
-    blueWave: { position: 'absolute', top: -50, right: -50, width: '120%', height: '100%', borderBottomLeftRadius: 300, transform: [{ rotate: '-10deg' }] },
-    darkWave: { position: 'absolute', top: -30, right: -80, width: '90%', height: '80%', borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] },
-    content: { flex: 1, paddingHorizontal: 25 },
-    navHeader: { marginBottom: 15 },
-    backButton: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center' },
-    titleSection: { marginBottom: 30 },
-    mainTitle: { fontSize: 32, fontWeight: '900', marginBottom: 10 },
-    subtitle: { fontSize: 15, lineHeight: 22, fontWeight: '500' },
-    card: { padding: 24, borderRadius: 30, ...Platform.select({ ios: { shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20 }, android: { elevation: 5 } }) },
-    inputContainer: { marginBottom: 20 },
-    label: { fontSize: 11, fontWeight: '800', letterSpacing: 1.5, marginBottom: 10 },
-    inputWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 15, paddingHorizontal: 15, height: 55 },
-    inputIcon: { marginRight: 12 },
-    input: { flex: 1, fontSize: 16, fontWeight: '600' },
-    mainButton: { height: 55, borderRadius: 15, overflow: 'hidden', marginTop: 10 },
-    buttonGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    buttonText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+flex: { flex: 1 },
+headerBackground: { position: 'absolute', top: 0, width: '100%', height: WINDOW_HEIGHT * 0.3, zIndex: -1 },
+blueWave: { position: 'absolute', top: -WINDOW_HEIGHT * 0.1, right: -50, width: '120%', height: '100%', borderBottomLeftRadius: 300, transform: [{ rotate: '-10deg' }] },
+darkWave: { position: 'absolute', top: -WINDOW_HEIGHT * 0.05, right: -80, width: '90%', height: '80%', borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] },
+content: { flex: 1, paddingHorizontal: 25 },
+navHeader: { marginBottom: 15 },
+backButton: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center' },
+titleSection: { marginBottom: 30 },
+mainTitle: { fontSize: 32, fontWeight: '900', marginBottom: 10 },
+subtitle: { fontSize: 15, lineHeight: 22, fontWeight: '500' },
+card: { padding: 24, borderRadius: 30, ...Platform.select({ ios: { shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20 }, android: { elevation: 5 } }) },
+inputContainer: { marginBottom: 20 },
+label: { fontSize: 11, fontWeight: '800', letterSpacing: 1.5, marginBottom: 10 },
+inputWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 15, paddingHorizontal: 15, height: 55, borderWidth: 1.5 },
+inputIcon: { marginRight: 12 },
+input: { flex: 1, fontSize: 16, fontWeight: '600' },
+mainButton: { height: 55, borderRadius: 15, overflow: 'hidden', marginTop: 10 },
+buttonGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+buttonText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
 });
 
 export default ResetPassword;

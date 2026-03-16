@@ -49,7 +49,7 @@ const ForgotPassword = ({ navigation }) => {
             });
             
         } catch (error) {
-            // CHANGED: Use console.log instead of console.error to avoid the Red Screen
+           
             console.log("Forgot Password Request Info:", error.response?.status);
 
             let errorMessage = "Could not send reset code. Please try again.";
