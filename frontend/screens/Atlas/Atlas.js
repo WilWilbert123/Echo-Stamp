@@ -9,6 +9,7 @@ import {
   Dimensions,
   FlatList,
   Image,
+  Linking,
   Modal,
   ScrollView,
   StatusBar,
@@ -93,6 +94,20 @@ const Atlas = () => {
     return (list || []).filter(j => j.location && typeof j.location.lat === 'number');
   }, [list]);
 
+  // --- CLEAN STREET VIEW LOGIC ---
+  const openStreetView = (lat, lng) => {
+    // This is the universal Google Maps URL that handles Street View correctly
+    const url = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`;
+    
+    Linking.canOpenURL(url).then((supported) => {
+      if (supported) {
+        Linking.openURL(url);
+      } else {
+        Alert.alert("Error", "Could not open Google Maps.");
+      }
+    });
+  };
+
   // --- VIDEO CHECK LOGIC ---
   const checkIsVideo = (uri) => {
     if (!uri || typeof uri !== 'string') return false;
@@ -112,7 +127,7 @@ const Atlas = () => {
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1`,
-        { headers: { 'User-Agent': 'AtlasApp/1.0' } }
+        { headers: { 'User-Agent': 'EchoStamp-App' } }
       );
       const data = await response.json();
 
@@ -125,7 +140,7 @@ const Atlas = () => {
           longitudeDelta: 0.015,
         }, 1500);
       } else {
-        Alert.alert("Location Not Found", "Try being more specific (City, Country).");
+        Alert.alert("Location Not Found", "Try being more specific.");
       }
     } catch (error) {
       Alert.alert("Error", "Unable to reach search services.");
@@ -148,14 +163,13 @@ const Atlas = () => {
   };
 
   // --- SAVE JOURNAL ---
- const handleSave = async () => {
+  const handleSave = async () => {
     const userId = user?._id || user?.id;
     if (!title) return Alert.alert("Wait!", "Please give this moment a title.");
 
     setLoading(true);
 
     try {
-      // 1. Handle Media Uploads
       const uploadedUrls = await Promise.all(
         mediaList.map(async (item) => {
           if (item.uri.startsWith('http')) return item.uri;
@@ -163,8 +177,7 @@ const Atlas = () => {
         })
       );
 
-      // 2. Get FULL Address details
-      let finalAddress = "Unknown Location";
+      let finalAddress = "Pinned Location";
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
@@ -174,14 +187,9 @@ const Atlas = () => {
           });
 
           if (result) {
-            // result.street = Street name
-            // result.district = Barangay (usually)
-            // result.city = City (Taguig/Quezon City)
             const street = result.street || "";
             const brgy = result.district || "";
             const city = result.city || result.subregion || "";
-            
-            // Build: "Street, Barangay, City"
             const addressParts = [street, brgy, city].filter(part => part.length > 0);
             finalAddress = addressParts.join(', ') || "Pinned Location";
           }
@@ -190,7 +198,6 @@ const Atlas = () => {
         finalAddress = "Pinned Location";
       }
 
-      // 3. Construct the Final Data
       const journalData = {
         userId,
         title,
@@ -211,7 +218,7 @@ const Atlas = () => {
 
     } catch (err) {
       console.error("Upload/Save Error:", err);
-      Alert.alert("Save Failed", "We couldn't upload your images or save the entry.");
+      Alert.alert("Save Failed", "We couldn't save the entry.");
     } finally {
       setLoading(false);
     }
@@ -224,7 +231,7 @@ const Atlas = () => {
   };
 
   const handleDeleteJournal = (id) => {
-    Alert.alert("Delete Memory", "This will permanently remove this pin and all its media.", [
+    Alert.alert("Delete Memory", "This will permanently remove this pin.", [
       { text: "Keep it", style: "cancel" },
       {
         text: "Delete", style: "destructive", onPress: async () => {
@@ -236,7 +243,7 @@ const Atlas = () => {
   };
 
   const handleRemoveSingleSavedMedia = (uriToRemove) => {
-    Alert.alert("Remove Media", "Delete this specific photo/video?", [
+    Alert.alert("Remove Media", "Delete this specific file?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Remove", 
@@ -346,7 +353,6 @@ const Atlas = () => {
           <GlassCard style={[styles.modalContent, { backgroundColor: colors.background[1], borderColor: colors.glassBorder }]}>
             <Text style={[styles.modalHeader, { color: colors.textMain }]}>Pin a Memory</Text>
             
-            {/* FIXED: Changed <div> to <View> */}
             <View style={styles.mediaSection}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <TouchableOpacity style={[styles.addMediaBtn, { borderColor: colors.primary }]} onPress={pickMedia}>
@@ -402,6 +408,15 @@ const Atlas = () => {
             <TouchableOpacity onPress={() => setViewerVisible(false)} style={styles.headerCircleBtn}>
               <Ionicons name="close" size={28} color="#fff" />
             </TouchableOpacity>
+
+            {/* STREET VIEW BUTTON */}
+            <TouchableOpacity 
+              onPress={() => openStreetView(selectedJournal.location.lat, selectedJournal.location.lng)} 
+              style={[styles.headerCircleBtn, { backgroundColor: colors.primary }]}
+            >
+              <Ionicons name="navigate-circle-outline" size={26} color="#fff" />
+            </TouchableOpacity>
+
             <TouchableOpacity onPress={() => handleDeleteJournal(selectedJournal?._id)} style={styles.headerCircleBtn}>
               <Ionicons name="trash-outline" size={22} color="#ff4444" />
             </TouchableOpacity>
@@ -427,6 +442,7 @@ const Atlas = () => {
               <GlassCard style={[styles.enhancedDetails, { backgroundColor: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)' }]}>
                 <Text style={[styles.viewerTitle, { color: isDark ? '#fff' : '#000' }]}>{selectedJournal.title}</Text>
                 <Text style={[styles.viewerDescription, { color: isDark ? '#ccc' : '#444' }]}>{selectedJournal.description}</Text>
+                <Text style={{ fontSize: 12, color: colors.primary, marginTop: 5 }}>📍 {selectedJournal.location.address}</Text>
               </GlassCard>
             </View>
           )}
