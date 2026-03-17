@@ -111,7 +111,7 @@ export default EchoStamp;
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    flex1: { flex: 1 ,paddingTop:-20},
+    flex1: { flex: 1 ,paddingTop:20},
     // Branded Wave Styles
     headerBackground: { 
         position: 'absolute', 
