@@ -1,67 +1,88 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     Dimensions,
     Image,
+    Linking,
     Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import thisisit from "../../../config/config"; // Your API Key
 import { useTheme } from '../../../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
+const GOOGLE_API_KEY = thisisit;
 
 const Events = () => {
     const { colors, isDark } = useTheme();
 
-    // --- STATE MANAGEMENT ---
-    const [upcomingEvents, setUpcomingEvents] = useState([]);  
+    const [places, setPlaces] = useState([]);  
     const [isLoading, setIsLoading] = useState(true);         
     const [showSoon, setShowSoon] = useState(false);      
+    const [userLoc, setUserLoc] = useState(null);
 
-    // --- DATA FETCHING SIMULATION ---
-  
-    const fetchEvents = async () => {
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    const loadData = async () => {
         try {
             setIsLoading(true);
+            // 1. Get Permission & Location
+            let { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert("Permission Denied", "We need location to find nearby trending spots.");
+                setIsLoading(false);
+                return;
+            }
+
+            let location = await Location.getCurrentPositionAsync({});
+            setUserLoc(location.coords);
+
+          
+            const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${location.coords.latitude},${location.coords.longitude}&radius=5000&type=restaurant|cafe|park&key=${GOOGLE_API_KEY}`;
             
-            // Simulating a 1.5s network delay
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            const response = await fetch(url);
+            const data = await response.json();
 
-            const realData = [
-                {
-                    id: '1',
-                    title: 'Manila Sunset Photowalk',
-                    date: 'OCT 24',
-                    time: '4:30 PM',
-                    location: 'Baywalk, Roxas Blvd',
-                    joined: 42,
-                    totalSlots: 50,
-                    isHot: true,
-                    organizer: 'Manila Photo Club',
-                    image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800',
-                    avatars: ['https://i.pravatar.cc/150?u=1', 'https://i.pravatar.cc/150?u=2', 'https://i.pravatar.cc/150?u=3']
-                },
-                {
-                    id: '2',
-                    title: 'Hidden Cafe Discovery',
-                    date: 'OCT 26',
-                    time: '10:00 AM',
-                    location: 'Binondo, Manila',
-                    joined: 15,
-                    totalSlots: 20,
-                    isHot: false,
-                    organizer: 'Coffee Explorers',
-                    image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800',
-                    avatars: ['https://i.pravatar.cc/150?u=4', 'https://i.pravatar.cc/150?u=5', 'https://i.pravatar.cc/150?u=6']
-                }
-            ];
-
-            setUpcomingEvents(realData);
+            if (data.status === "OK") {
+              
+                const formatted = data.results.map((item, index) => {
+                   
+                    const activityCount = Math.floor((item.user_ratings_total || 10) / 10);
+                    const capacity = 100;
+                    
+                    return {
+                        id: item.place_id,
+                        title: item.name,
+                        date: 'NOW', // Live spots
+                        location: item.vicinity,
+                        joined: activityCount > capacity ? capacity - 5 : activityCount,
+                        totalSlots: capacity,
+                        isHot: item.rating >= 4.5,
+                        organizer: item.types[0].replace('_', ' '),
+                        image: item.photos 
+                            ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${item.photos[0].photo_reference}&key=${GOOGLE_API_KEY}`
+                            : 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
+                        avatars: [
+                            `https://i.pravatar.cc/150?u=${item.place_id}1`,
+                            `https://i.pravatar.cc/150?u=${item.place_id}2`,
+                            `https://i.pravatar.cc/150?u=${item.place_id}3`
+                        ],
+                        lat: item.geometry.location.lat,
+                        lng: item.geometry.location.lng
+                    };
+                });
+                setPlaces(formatted);
+            }
         } catch (error) {
             console.error("Fetch Error:", error);
         } finally {
@@ -69,18 +90,20 @@ const Events = () => {
         }
     };
 
-    // Run fetch on mount
-    useEffect(() => {
-        fetchEvents();
-    }, []);
+    const openInMaps = (lat, lon, label) => {
+        const url = Platform.select({
+            ios: `maps:0,0?q=${encodeURIComponent(label)}@${lat},${lon}`,
+            android: `geo:0,0?q=${lat},${lon}(${encodeURIComponent(label)})`
+        });
+        Linking.openURL(url);
+    };
 
-    // --- LOADING RENDER ---
     if (isLoading) {
         return (
             <View style={[styles.loaderContainer, { backgroundColor: colors.background[0] }]}>
                 <ActivityIndicator size="large" color={colors.primary} />
                 <Text style={{ color: colors.textSecondary, marginTop: 12, fontWeight: '600' }}>
-                    Syncing with the world...
+                    Scanning nearby buzz...
                 </Text>
             </View>
         );
@@ -88,10 +111,8 @@ const Events = () => {
 
     return (
         <View style={{ flex: 1, backgroundColor: colors.background[0] }}>
-            <ScrollView 
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-            >
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                
                 {/* --- Spotlight Banner --- */}
                 <TouchableOpacity 
                     activeOpacity={0.9}
@@ -101,55 +122,51 @@ const Events = () => {
                     <View style={styles.spotlightTextContent}>
                         <View style={styles.liveBadge}>
                             <View style={styles.dot} />
-                            <Text style={styles.liveText}>LIVE NOW</Text>
+                            <Text style={styles.liveText}>TRENDING NEARBY</Text>
                         </View>
-                        <Text style={[styles.spotlightTitle, { color: isDark ? '#000' : '#FFF' }]}>Global Echo Day</Text>
-                        <Text style={[styles.spotlightSub, { color: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.8)' }]}>
-                            Join 5,000+ explorers today!
+                        <Text style={[styles.spotlightTitle, { color: '#FFF' }]}>Local Echo Hotspots</Text>
+                        <Text style={[styles.spotlightSub, { color: 'rgba(255,255,255,0.8)' }]}>
+                            Discover where people are gathering right now!
                         </Text>
                     </View>
-                    <Ionicons name="sparkles" size={50} color={isDark ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.2)'} />
+                    <Ionicons name="flame" size={50} color={'rgba(255,255,255,0.2)'} />
                 </TouchableOpacity>
 
                 <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionLabel, { color: colors.textMain }]}>Upcoming Meetups</Text>
-                    <TouchableOpacity onPress={() => setShowSoon(true)}>
-                        <Text style={{ color: colors.primary, fontWeight: '700' }}>See all</Text>
+                    <Text style={[styles.sectionLabel, { color: colors.textMain }]}>Popular Gatherings</Text>
+                    <TouchableOpacity onPress={loadData}>
+                        <Ionicons name="refresh" size={20} color={colors.primary} />
                     </TouchableOpacity>
                 </View>
 
-                {/* --- Dynamic Event Cards --- */}
-                {upcomingEvents.map((event) => {
+                {/* --- Dynamic Place Cards --- */}
+                {places.map((event) => {
                     const occupancy = (event.joined / event.totalSlots) * 100;
                     return (
                         <TouchableOpacity 
                             key={event.id} 
                             activeOpacity={0.9}
+                            onPress={() => openInMaps(event.lat, event.lng, event.title)}
                             style={[styles.eventCard, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}
                         >
                             <View style={styles.imageWrapper}>
-                                <Image source={{ uri: event.image }} style={[styles.eventImage, isDark && { opacity: 0.7 }]} />
-                                {isDark && <View style={styles.darkImageOverlay} />}
+                                <Image source={{ uri: event.image }} style={[styles.eventImage, isDark && { opacity: 0.8 }]} />
                                 {event.isHot && (
                                     <View style={styles.hotBadge}>
-                                        <Ionicons name="flame" size={12} color="#FFF" />
-                                        <Text style={styles.hotText}>POPULAR</Text>
+                                        <Ionicons name="trending-up" size={12} color="#FFF" />
+                                        <Text style={styles.hotText}>TOP RATED</Text>
                                     </View>
                                 )}
-                                <View style={styles.priceTag}><Text style={styles.priceText}>FREE</Text></View>
+                                <View style={styles.priceTag}><Text style={styles.priceText}>OPEN</Text></View>
                             </View>
                             
                             <View style={styles.eventDetails}>
-                                <View style={styles.dateBadge}>
-                                    <Text style={[styles.dateText, { color: colors.primary }]}>{event.date.split(' ')[0]}</Text>
-                                    <Text style={[styles.dayText, { color: colors.textMain }]}>{event.date.split(' ')[1]}</Text>
-                                </View>
                                 <View style={styles.infoContent}>
                                     <Text style={[styles.organizerText, { color: colors.primary }]}>{event.organizer}</Text>
                                     <Text style={[styles.eventTitle, { color: colors.textMain }]} numberOfLines={1}>{event.title}</Text>
                                     <View style={styles.row}>
                                         <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-                                        <Text style={[styles.infoText, { color: colors.textSecondary }]}>{event.location}</Text>
+                                        <Text style={[styles.infoText, { color: colors.textSecondary }]} numberOfLines={1}>{event.location}</Text>
                                     </View>
                                 </View>
                             </View>
@@ -158,20 +175,20 @@ const Events = () => {
                                 <View style={[styles.progressBarBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#eee' }]}>
                                     <View style={[styles.progressBarFill, { width: `${occupancy}%`, backgroundColor: colors.primary }]} />
                                 </View>
-                                <Text style={[styles.progressText, { color: colors.textSecondary }]}>{event.totalSlots - event.joined} spots left</Text>
+                                <Text style={[styles.progressText, { color: colors.textSecondary }]}>High activity detected</Text>
                             </View>
 
                             <View style={[styles.footer, { borderTopColor: colors.glassBorder }]}>
                                 <View style={styles.attendees}>
                                     <View style={styles.avatarStack}>
                                         {event.avatars.map((url, index) => (
-                                            <Image key={index} source={{ uri: url }} style={[styles.avatar, { left: index * -8, borderColor: isDark ? '#1d2c4d' : '#FFF', zIndex: 10 - index }]} />
+                                            <Image key={index} source={{ uri: url }} style={[styles.avatar, { left: index * -8, borderColor: isDark ? '#1E293B' : '#FFF', zIndex: 10 - index }]} />
                                         ))}
                                     </View>
-                                    <Text style={[styles.attendeeText, { color: colors.textSecondary, marginLeft: 5 }]}> +{event.joined} joining</Text>
+                                    <Text style={[styles.attendeeText, { color: colors.textSecondary, marginLeft: 10 }]}>{event.joined} people exploring</Text>
                                 </View>
-                                <TouchableOpacity style={[styles.joinBtn, { backgroundColor: colors.primary }]} onPress={() => setShowSoon(true)}>
-                                    <Text style={[styles.joinBtnText, { color: isDark ? '#000' : '#FFF' }]}>RSVP</Text>
+                                <TouchableOpacity style={[styles.joinBtn, { backgroundColor: colors.primary }]} onPress={() => openInMaps(event.lat, event.lng, event.title)}>
+                                    <Text style={[styles.joinBtnText, { color: '#FFF' }]}>GET THERE</Text>
                                 </TouchableOpacity>
                             </View>
                         </TouchableOpacity>
@@ -187,19 +204,14 @@ const Events = () => {
                         <Ionicons name="add" size={24} color={colors.primary} />
                     </View>
                     <View>
-                        <Text style={[styles.createText, { color: colors.textMain }]}>Host your own Echo Event</Text>
-                        <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Create a meetup for the community</Text>
+                        <Text style={[styles.createText, { color: colors.textMain }]}>Host a Community Meetup</Text>
+                        <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Invite others to join you at a spot</Text>
                     </View>
                 </TouchableOpacity>
             </ScrollView>
 
-            {/* --- COMING SOON MODAL --- */}
-            <Modal
-                transparent={true}
-                visible={showSoon}
-                animationType="fade"
-                onRequestClose={() => setShowSoon(false)}
-            >
+            {/* Modal remains the same... */}
+            <Modal transparent={true} visible={showSoon} animationType="fade" onRequestClose={() => setShowSoon(false)}>
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalBox, { backgroundColor: isDark ? '#1E293B' : '#FFF' }]}>
                         <View style={[styles.soonIcon, { backgroundColor: colors.primary + '20' }]}>
@@ -209,11 +221,8 @@ const Events = () => {
                         <Text style={[styles.soonSub, { color: colors.textSecondary }]}>
                             We're currently preparing the Echo Engine for personal hosting. You'll be able to create events soon!
                         </Text>
-                        <TouchableOpacity 
-                            style={[styles.soonBtn, { backgroundColor: colors.primary }]}
-                            onPress={() => setShowSoon(false)}
-                        >
-                            <Text style={[styles.soonBtnText, { color: isDark ? '#000' : '#FFF' }]}>Got it!</Text>
+                        <TouchableOpacity style={[styles.soonBtn, { backgroundColor: colors.primary }]} onPress={() => setShowSoon(false)}>
+                            <Text style={[styles.soonBtnText, { color: '#FFF' }]}>Got it!</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -224,51 +233,46 @@ const Events = () => {
 
 export default Events;
 
+// Styles remain largely the same, but ensure avatarStack has enough width
 const styles = StyleSheet.create({
     loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     scrollContent: { paddingHorizontal: 20, paddingBottom: 120, paddingTop: 10 },
     spotlightCard: { padding: 25, borderRadius: 30, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 25 },
     spotlightTextContent: { flex: 1 },
     liveBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, alignSelf: 'flex-start', marginBottom: 10 },
-    dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FF4B4B', marginRight: 6 },
+    dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#4ADE80', marginRight: 6 },
     liveText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
-    spotlightTitle: { fontSize: 24, fontWeight: '900' },
+    spotlightTitle: { fontSize: 22, fontWeight: '900', marginBottom: 4 },
     spotlightSub: { fontSize: 13, fontWeight: '600' },
     sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
     sectionLabel: { fontSize: 20, fontWeight: '900' },
     eventCard: { borderRadius: 30, borderWidth: 1, marginBottom: 20, overflow: 'hidden' },
-    imageWrapper: { width: '100%', height: 160, position: 'relative', backgroundColor: '#000' },
+    imageWrapper: { width: '100%', height: 180, position: 'relative' },
     eventImage: { width: '100%', height: '100%' },
-    darkImageOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: '#1d2c4d', opacity: 0.3 },
-    hotBadge: { position: 'absolute', top: 15, left: 15, backgroundColor: '#FF4B4B', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
+    hotBadge: { position: 'absolute', top: 15, left: 15, backgroundColor: '#FB923C', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
     hotText: { color: '#FFF', fontSize: 10, fontWeight: '900', marginLeft: 4 },
-    priceTag: { position: 'absolute', top: 15, right: 15, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
+    priceTag: { position: 'absolute', top: 15, right: 15, backgroundColor: 'rgba(74, 222, 128, 0.9)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
     priceText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
-    eventDetails: { flexDirection: 'row', paddingHorizontal: 20, paddingTop: 20, alignItems: 'center' },
-    dateBadge: { alignItems: 'center', paddingRight: 15, marginRight: 15, borderRightWidth: 1, borderRightColor: 'rgba(128,128,128,0.2)' },
-    dateText: { fontSize: 12, fontWeight: '900' },
-    dayText: { fontSize: 18, fontWeight: '900' },
+    eventDetails: { paddingHorizontal: 20, paddingTop: 20 },
     infoContent: { flex: 1 },
     organizerText: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', marginBottom: 2 },
-    eventTitle: { fontSize: 18, fontWeight: '800', marginBottom: 4 },
+    eventTitle: { fontSize: 20, fontWeight: '900', marginBottom: 4 },
     row: { flexDirection: 'row', alignItems: 'center' },
-    infoText: { fontSize: 12, marginLeft: 5, fontWeight: '500' },
+    infoText: { fontSize: 12, marginLeft: 5, fontWeight: '500', flex: 1 },
     progressSection: { paddingHorizontal: 20, marginVertical: 15 },
     progressBarBg: { width: '100%', height: 6, borderRadius: 3, overflow: 'hidden' },
     progressBarFill: { height: '100%', borderRadius: 3 },
     progressText: { fontSize: 11, fontWeight: '700', marginTop: 6 },
     footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 15, borderTopWidth: 1 },
-    attendees: { flexDirection: 'row', alignItems: 'center' },
-    avatarStack: { flexDirection: 'row', width: 40 },
-    avatar: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, position: 'absolute' },
+    attendees: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+    avatarStack: { flexDirection: 'row', width: 45 },
+    avatar: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, position: 'absolute' },
     attendeeText: { fontSize: 12, fontWeight: '700' },
-    joinBtn: { paddingHorizontal: 25, paddingVertical: 10, borderRadius: 15 },
-    joinBtnText: { fontWeight: '900', fontSize: 13 },
+    joinBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 15 },
+    joinBtnText: { fontWeight: '900', fontSize: 12 },
     createCard: { padding: 20, borderRadius: 30, borderWidth: 2, alignItems: 'center', flexDirection: 'row', gap: 15, marginTop: 10 },
     addIconCircle: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(128,128,128,0.2)' },
     createText: { fontWeight: '800', fontSize: 15 },
-
-    // Modal
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' },
     modalBox: { width: width * 0.85, padding: 30, borderRadius: 35, alignItems: 'center' },
     soonIcon: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
