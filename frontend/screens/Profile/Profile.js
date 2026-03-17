@@ -158,9 +158,9 @@ const Profile = ({navigation}) => {
                         {/* Support Section */}
                 <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>SUPPORT</Text>
                 <View style={[styles.menuContainer, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
-                    <SettingItem icon="help-buoy-outline" title="Help Center" />
-                    <SettingItem icon="document-text-outline" title="Terms of Service" />
-                    <SettingItem icon="information-circle-outline" title="About App" isLast />
+                    <SettingItem icon="help-buoy-outline" title="Help Center" onPress={() => navigation.navigate('Help')}/>
+                    <SettingItem icon="document-text-outline" title="Terms of Service" onPress={() => navigation.navigate('Terms')} />
+                    <SettingItem icon="information-circle-outline" title="About App" isLast onPress={() => navigation.navigate('About')}/>
                 </View>       
         
                 <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>

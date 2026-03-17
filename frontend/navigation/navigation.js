@@ -9,7 +9,11 @@ import Signup from "../screens/Auths/Signup";
 import CreateEcho from "../screens/Home/CreateEcho";
 import Intro from "../screens/Intro";
 import MainTabs from "../screens/MainTabs";
+import About from "../screens/Profile/About";
+import Help from "../screens/Profile/Help";
 import PrivacySecurity from "../screens/Profile/PrivacySecurity";
+import Terms from "../screens/Profile/Terms";
+
 const Stack = createNativeStackNavigator();
 
 const HomeStackNavigator = () => {
@@ -21,22 +25,25 @@ const HomeStackNavigator = () => {
                 // --- AUTHENTICATED STACK ---
                 <>
                     <Stack.Screen name="MainTabsRoot" component={MainTabs} />
-                    <Stack.Screen  name="Create"   component={CreateEcho}  options={{  animation: 'slide_from_bottom',  presentation: 'modal'   }}   /> 
-                    <Stack.Screen name="PrivacySecurity" component={PrivacySecurity} />  
-                    
+                    <Stack.Screen name="Create" component={CreateEcho} options={{ animation: 'slide_from_bottom', presentation: 'modal' }} />
+                    <Stack.Screen name="PrivacySecurity" component={PrivacySecurity} />
+
                     <Stack.Screen name="SecurityOtpVerify" component={OtpVerification} />
-                    <Stack.Screen name="ResetPassword" component={ResetPassword} />   
-                    
+                    <Stack.Screen name="ResetPassword" component={ResetPassword} />
+                    <Stack.Screen name="Help" component={Help} />
+                    <Stack.Screen name="Terms" component={Terms} />
+                      <Stack.Screen name="About" component={About} />  
                 </>
             ) : (
                 // --- UNAUTHENTICATED STACK ---
                 <>
                     <Stack.Screen name="Intro" component={Intro} />
-                    <Stack.Screen name="Login"   component={Login}  options={{  animationTypeForReplace: isAuthenticated ? 'pop' : 'push',  }}  />
-                    <Stack.Screen   name="Signup"  component={Signup}  />
-                    <Stack.Screen   name="ForgotPassword"  component={ForgotPassword}  />   
-                    <Stack.Screen name="OtpVerification" component={OtpVerification} />  
-                    <Stack.Screen name="ResetPassword" component={ResetPassword} />   
+                    <Stack.Screen name="Login" component={Login} options={{ animationTypeForReplace: isAuthenticated ? 'pop' : 'push', }} />
+                    <Stack.Screen name="Signup" component={Signup} />
+                    <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+                    <Stack.Screen name="OtpVerification" component={OtpVerification} />
+                    <Stack.Screen name="ResetPassword" component={ResetPassword} />
+
                 </>
             )}
         </Stack.Navigator>
