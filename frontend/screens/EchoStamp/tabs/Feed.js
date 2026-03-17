@@ -339,26 +339,20 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         ...Platform.select({
             ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.1, shadowRadius: 12 },
-            android: { elevation: 3 }
+            android: {   }
         })
     },
-    userInfo: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 15 }, // Changed to flex-start
+    userInfo: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 15 },  
     locationRow: { 
         flexDirection: 'row', 
-        alignItems: 'flex-start', // Align icon with top of address
+        alignItems: 'flex-start', 
         marginTop: 2, 
         paddingRight: 10 
     },
     avatar: { width: 42, height: 42, borderRadius: 12, marginRight: 12, justifyContent: 'center', alignItems: 'center' },
     avatarLetter: { fontWeight: '800', fontSize: 16 },
     userName: { fontWeight: '800', fontSize: 15, letterSpacing: -0.3 },
-    timeText: { 
-        fontSize: 11, 
-        marginLeft: 4, 
-        fontWeight: '500', 
-        flex: 1, // Allows text to wrap instead of staying on one line
-        lineHeight: 14 
-    },
+    timeText: {  fontSize: 11,   marginLeft: 4,   fontWeight: '500',  flex: 1,    lineHeight: 14  },
     contentArea: { marginBottom: 15 },
     postTitle: { fontWeight: '900', fontSize: 20, marginBottom: 8, letterSpacing: -0.6 },
     postContent: { fontSize: 14, lineHeight: 22, opacity: 0.9 },

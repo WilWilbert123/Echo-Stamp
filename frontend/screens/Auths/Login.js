@@ -30,24 +30,24 @@ const Login = ({ navigation }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    
+   
     // --- BIOMETRIC STATE ---
     const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
 
- 
+
     const getBioKey = (targetEmail) => {
         if (!targetEmail) return "";
         const sanitized = targetEmail.toLowerCase().trim().replace(/[^a-zA-Z0-9._-]/g, '_');
         return `user_credentials_${sanitized}`;
     };
 
-   
+  
     useEffect(() => {
         checkBiometrics();
     }, [email]);
 
     const checkBiometrics = async () => {
-        
+
         if (!email.trim() || !email.includes('@')) {
             setIsBiometricAvailable(false);
             return;
@@ -56,11 +56,11 @@ const Login = ({ navigation }) => {
         try {
             const hasHardware = await LocalAuthentication.hasHardwareAsync();
             const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-            
+
             // Check for the specific key belonging to the typed email
             const key = getBioKey(email);
             const savedCreds = await SecureStore.getItemAsync(key);
-            
+
             if (hasHardware && isEnrolled && savedCreds) {
                 setIsBiometricAvailable(true);
             } else {
@@ -109,9 +109,9 @@ const Login = ({ navigation }) => {
 
             // --- TWO FACTOR CHECK ---
             if (response.data.twoFactorRequired) {
-                navigation.navigate('OtpVerification', { 
+                navigation.navigate('OtpVerification', {
                     email: loginEmail,
-                    mode: '2fa_login' 
+                    mode: '2fa_login'
                 });
             } else {
                 // Regular Login flow
@@ -172,7 +172,7 @@ const Login = ({ navigation }) => {
                         <TouchableOpacity
                             style={styles.forgotBtn}
                             activeOpacity={0.7}
-                            onPress={() => navigation.navigate('ForgotPassword')} 
+                            onPress={() => navigation.navigate('ForgotPassword')}
                         >
                             <Text style={[styles.forgotText, { color: colors.textSecondary }]}>Forgot Password?</Text>
                         </TouchableOpacity>
@@ -195,8 +195,8 @@ const Login = ({ navigation }) => {
                         </TouchableOpacity>
 
                         {isBiometricAvailable && (
-                            <TouchableOpacity 
-                                style={[styles.biometricBtn, { backgroundColor: isDark ? colors.glass : '#F3F3F3', borderColor: colors.glassBorder }]} 
+                            <TouchableOpacity
+                                style={[styles.biometricBtn, { backgroundColor: isDark ? colors.glass : '#F3F3F3', borderColor: colors.glassBorder }]}
                                 onPress={handleBiometricLogin}
                             >
                                 <Ionicons name="finger-print" size={28} color={colors.primary} />
@@ -204,7 +204,7 @@ const Login = ({ navigation }) => {
                         )}
                     </View>
 
-                     
+
 
                     <TouchableOpacity
                         style={styles.footer}
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
     biometricBtn: { width: 55, height: 55, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 1, elevation: 2 },
     gradientBtn: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loginBtnText: { color: '#FFF', fontWeight: '800', fontSize: 15, letterSpacing: 1 },
-     
+
     footer: { marginTop: 20, alignItems: 'center' },
     footerText: { fontSize: 14 },
     signUpText: { fontWeight: 'bold' },

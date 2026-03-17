@@ -300,7 +300,7 @@ const PrivacySecurity = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: -30 },
+  container: { flex: 1, paddingTop: 20 },
  navBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, height: 50, width: '100%' },
 backButton: { zIndex: 10 },
 titleContainer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
@@ -317,7 +317,7 @@ content: { paddingTop: 15, paddingHorizontal: 20, paddingBottom: 40 },
     borderRadius: 16,
     borderWidth: 1,
     marginBottom: 10,
-    elevation: 2
+    
   },
   iconContainer: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   textContainer: { flex: 1, marginLeft: 12 },
