@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -35,8 +36,8 @@ const Explore = () => {
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [selectedPlace, setSelectedPlace] = useState(null);
     const [isModalVisible, setModalVisible] = useState(false);
+    const [savedIds, setSavedIds] = useState([]);
 
-    // Categories matched with Google Places API "types"
     const categories = [
         { id: '1', name: 'Cities', icon: 'business', color: '#94A3B8', type: 'locality' },
         { id: '2', name: 'Food', icon: 'restaurant', color: '#FB923C', type: 'restaurant' },
@@ -50,7 +51,20 @@ const Explore = () => {
 
     useEffect(() => {
         getInitialLocation();
+        loadSavedStatus();
     }, []);
+
+    const loadSavedStatus = async () => {
+        try {
+            const savedData = await AsyncStorage.getItem('saved_places');
+            if (savedData) {
+                const parsed = JSON.parse(savedData);
+                setSavedIds(parsed.map(item => item.id));
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
 
     const getInitialLocation = async () => {
         try {
@@ -68,13 +82,42 @@ const Explore = () => {
                 longitudeDelta: 0.05,
             };
             setUserLocation(coords);
-            // Default load "Cities" nearby on start
+            // Default to first category
+            setSelectedCategory(categories[0]);
             fetchNearbyGoogle(loc.coords.latitude, loc.coords.longitude, categories[0]);
         } catch (e) {
             console.error(e);
             setLoading(false);
         }
     };
+
+ const toggleSave = async (place) => {
+    try {
+        const savedData = await AsyncStorage.getItem('saved_places');
+        let savedArray = savedData ? JSON.parse(savedData) : [];
+        const isSaved = savedArray.some(item => item.id === place.id);
+
+        if (isSaved) {
+         
+            savedArray = savedArray.filter(item => item.id !== place.id);
+        } else {
+       
+            const newSave = {
+                ...place,
+        
+                organizer: selectedCategory?.name || 'Explore',
+                categoryIcon: place.categoryIcon || 'location',
+                categoryColor: place.categoryColor || colors.primary
+            };
+            savedArray.push(newSave);
+        }
+
+        await AsyncStorage.setItem('saved_places', JSON.stringify(savedArray));
+        setSavedIds(savedArray.map(item => item.id));
+    } catch (e) {
+        Alert.alert("Error", "Could not update bookmark.");
+    }
+};
 
     const updateMapRegion = (newPlaces) => {
         if (newPlaces.length > 0 && mapRef.current) {
@@ -113,7 +156,6 @@ const Explore = () => {
 
         let url;
         if (category.name === 'Cities') {
-            // Use TextSearch for Cities to filter for locality types specifically in a wider radius
             url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=city&location=${lat},${lon}&radius=50000&type=locality&key=${GOOGLE_API_KEY}`;
         } else {
             url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lon}&radius=5000&type=${category.type}&key=${GOOGLE_API_KEY}`;
@@ -122,7 +164,6 @@ const Explore = () => {
         try {
             const response = await fetch(url);
             const data = await response.json();
-
             if (data.status === "OK") {
                 let filteredResults = data.results;
                 if (category.type === 'cafe') {
@@ -150,6 +191,7 @@ const Explore = () => {
             const response = await fetch(url);
             const data = await response.json();
             if (data.status === "OK") {
+                
                 mapGoogleResults(data.results, colors.primary, 'location');
             } else {
                 setPlaces([]);
@@ -186,11 +228,7 @@ const Explore = () => {
                     />
                 </View>
 
-                <ScrollView 
-                    horizontal 
-                    showsHorizontalScrollIndicator={false} 
-                    contentContainerStyle={styles.categoryScroll}
-                >
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
                     {categories.map((cat) => (
                         <TouchableOpacity
                             key={cat.id}
@@ -208,10 +246,7 @@ const Explore = () => {
                                 size={16}
                                 color={selectedCategory?.id === cat.id ? 'white' : cat.color}
                             />
-                            <Text style={[
-                                styles.categoryLabel,
-                                { color: selectedCategory?.id === cat.id ? 'white' : colors.textMain }
-                            ]}>
+                            <Text style={[styles.categoryLabel, { color: selectedCategory?.id === cat.id ? 'white' : colors.textMain }]}>
                                 {cat.name}
                             </Text>
                         </TouchableOpacity>
@@ -279,48 +314,61 @@ const Explore = () => {
                                     <Text style={[styles.placeAddress, { color: colors.textSecondary }]} numberOfLines={1}> {item.address}</Text>
                                 </View>
                             </View>
-                            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+                            <TouchableOpacity onPress={() => toggleSave(item)} style={{ padding: 10 }}>
+                                <Ionicons 
+                                    name={savedIds.includes(item.id) ? "bookmark" : "bookmark-outline"} 
+                                    size={22} 
+                                    color={colors.primary} 
+                                />
+                            </TouchableOpacity>
                         </TouchableOpacity>
                     ))
                 )}
             </ScrollView>
 
-           <Modal visible={isModalVisible} animationType="slide" transparent={true} onRequestClose={() => setModalVisible(false)}>
-    <View style={styles.modalOverlay}>
-        <View style={[styles.modalContent, { backgroundColor: isDark ? '#0F172A' : '#FFF' }]}>
-            
-            {/* Absolute Positioned Close Button */}
-            <TouchableOpacity 
-                onPress={() => setModalVisible(false)} 
-                style={[styles.closeBtnTop, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
-            >
-                <Ionicons name="close" size={24} color={colors.textMain} />
-            </TouchableOpacity>
+            <Modal visible={isModalVisible} animationType="slide" transparent={true} onRequestClose={() => setModalVisible(false)}>
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: isDark ? '#0F172A' : '#FFF' }]}>
+                        <TouchableOpacity 
+                            onPress={() => setModalVisible(false)} 
+                            style={[styles.closeBtnTop, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
+                        >
+                            <Ionicons name="close" size={24} color={colors.textMain} />
+                        </TouchableOpacity>
 
-            <View style={styles.modalHandle} />
-            
-            <ScrollView showsVerticalScrollIndicator={false} style={{ width: '100%' }}>
-                <View style={styles.modalHeroContainer}>
-                    <Image source={{ uri: selectedPlace?.image }} style={styles.modalHeroImg} />
+                        <View style={styles.modalHandle} />
+                        
+                        <ScrollView showsVerticalScrollIndicator={false} style={{ width: '100%' }}>
+                            <View style={styles.modalHeroContainer}>
+                                <Image source={{ uri: selectedPlace?.image }} style={styles.modalHeroImg} />
+                                <TouchableOpacity 
+                                    style={styles.modalBookmarkBtn} 
+                                    onPress={() => toggleSave(selectedPlace)}
+                                >
+                                    <Ionicons 
+                                        name={savedIds.includes(selectedPlace?.id) ? "bookmark" : "bookmark-outline"} 
+                                        size={26} 
+                                        color="white" 
+                                    />
+                                </TouchableOpacity>
+                            </View>
+                            
+                            <Text style={[styles.modalTitle, { color: colors.textMain }]}>{selectedPlace?.name}</Text>
+                            <Text style={[styles.modalSub, { color: colors.textSecondary }]}>{selectedPlace?.address}</Text>
+
+                            <TouchableOpacity
+                                style={[styles.actionBtn, { backgroundColor: colors.primary }]}
+                                onPress={() => selectedPlace && openInMaps(selectedPlace.lat, selectedPlace.lon, selectedPlace.name)}
+                            >
+                                <Ionicons name="navigate" size={20} color="white" style={{ marginRight: 10 }} />
+                                <Text style={styles.actionBtnText}>Go to {selectedCategory?.id === '1' ? 'City' : 'Place'}</Text>
+                            </TouchableOpacity>
+                            
+                            <View style={{ height: 40 }} />
+                        </ScrollView>
+                    </View>
                 </View>
-                
-                <Text style={[styles.modalTitle, { color: colors.textMain }]}>{selectedPlace?.name}</Text>
-                <Text style={[styles.modalSub, { color: colors.textSecondary }]}>{selectedPlace?.address}</Text>
-
-                <TouchableOpacity
-                    style={[styles.actionBtn, { backgroundColor: colors.primary }]}
-                    onPress={() => openInMaps(selectedPlace.lat, selectedPlace.lon, selectedPlace.name)}
-                >
-                    <Ionicons name="navigate" size={20} color="white" style={{ marginRight: 10 }} />
-                    <Text style={styles.actionBtnText}>Go to {selectedCategory?.id === '1' ? 'City' : 'Place'}</Text>
-                </TouchableOpacity>
-                
-                {/* Extra padding at the bottom for better scrolling */}
-                <View style={{ height: 40 }} />
-            </ScrollView>
-        </View>
-    </View>
-</Modal>
+            </Modal>
         </View>
     );
 };
@@ -345,7 +393,7 @@ const darkMapStyle = [
 const styles = StyleSheet.create({
     headerArea: { paddingHorizontal: 20, paddingTop: 15, paddingBottom: 5 },
     categoryScroll: { paddingRight: 20, marginBottom: 10, height: 50 },
-    categoryPill: {  flexDirection: 'row',  alignItems: 'center',  paddingHorizontal: 16,  paddingVertical: 10,  borderRadius: 25, marginRight: 10,  borderWidth: 1,  height: 40  },
+    categoryPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 25, marginRight: 10, borderWidth: 1, height: 40 },
     categoryLabel: { marginLeft: 6, fontSize: 13, fontWeight: '800' },
     scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
     searchWrapper: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, height: 50, borderRadius: 15, borderWidth: 1, marginBottom: 15 },
@@ -368,13 +416,14 @@ const styles = StyleSheet.create({
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
     modalContent: { height: height * 0.75, borderTopLeftRadius: 35, borderTopRightRadius: 35, padding: 25, alignItems: 'center' },
     modalHandle: { width: 40, height: 4, backgroundColor: '#444', borderRadius: 2, marginBottom: 20 },
-    modalHeroContainer: { width: '100%', height: 280, borderRadius: 25, overflow: 'hidden', marginBottom: 20 },
+    modalHeroContainer: { width: '100%', height: 280, borderRadius: 25, overflow: 'hidden', marginBottom: 20, position: 'relative' },
     modalHeroImg: { width: '100%', height: '100%' },
+    modalBookmarkBtn: { position: 'absolute', top: 15, right: 15, backgroundColor: 'rgba(0,0,0,0.3)', padding: 10, borderRadius: 15 },
     modalTitle: { fontSize: 24, fontWeight: '900', textAlign: 'center' },
     modalSub: { fontSize: 14, textAlign: 'center', marginTop: 8, marginBottom: 30 },
     actionBtn: { width: '100%', height: 60, borderRadius: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
     actionBtnText: { color: 'white', fontWeight: '900', fontSize: 17 },
-    closeBtnTop: {  position: 'absolute',  top: 5, right: 10, zIndex: 10,  padding: 8,  borderRadius: 20,},
+    closeBtnTop: { position: 'absolute', top: 5, right: 10, zIndex: 10, padding: 8, borderRadius: 20 },
 });
 
 export default Explore;
