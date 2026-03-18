@@ -3,6 +3,7 @@ const morgan = require('morgan');
 const cors = require('cors');  
 const { errorHandler } = require('./middleware/errorMiddleware');
 const connectDB = require('./config/db');
+const cloudinary = require('cloudinary').v2;
 
 // Load environment variables
 require('dotenv').config();  
@@ -38,17 +39,23 @@ app.use('/api/echoes', require('./routes/echoRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));    
 app.use('/api/journals', require('./routes/journalRoutes'));
 
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
 // --- ERROR HANDLING ---
- 
 app.use(errorHandler);
 
 // --- SERVER START ---
 const PORT = process.env.PORT || 5000;
 
- 
+
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`///////////////////////////////////////////////////////////`);
     console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`✅ Health Check: http://localhost:${PORT}/`);
+     console.log("✅ Cloudinary Admin Configured");
     console.log(`///////////////////////////////////////////////////////////`);
 });
