@@ -18,7 +18,7 @@ const Stack = createNativeStackNavigator();
 
 const HomeStackNavigator = () => {
     const { isAuthenticated } = useSelector((state) => state.auth);
-
+    console.log("Current Auth State:", isAuthenticated);
     return (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
             {isAuthenticated ? (
@@ -32,7 +32,8 @@ const HomeStackNavigator = () => {
                     <Stack.Screen name="ResetPassword" component={ResetPassword} />
                     <Stack.Screen name="Help" component={Help} />
                     <Stack.Screen name="Terms" component={Terms} />
-                      <Stack.Screen name="About" component={About} />  
+                      <Stack.Screen name="About" component={About} /> 
+                       
                 </>
             ) : (
                 // --- UNAUTHENTICATED STACK ---

@@ -18,8 +18,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTheme } from '../../context/ThemeContext';
-import API from '../../services/api';
-
+// IMPORT the specific function here
+import { logout } from '../../redux/authSlice';
+import API, { fullDeleteAccount } from '../../services/api';
 const PrivacySecurity = ({ navigation }) => {
   const { colors, isDark } = useTheme();
   const { user } = useSelector((state) => state.auth);
@@ -32,7 +33,7 @@ const PrivacySecurity = ({ navigation }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
 
-  // --- NEW: Delete Account States ---
+  // --- Delete Account States ---
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -111,23 +112,34 @@ const PrivacySecurity = ({ navigation }) => {
     }
   };
 
-  // --- NEW: Delete Account Logic ---
+  // ---   Delete Account Logic ---
   const handlePermanentDelete = async () => {
     if (deleteConfirmationText !== 'DELETE') return;
+    
+    const targetId = user?._id || user?.id; 
     setIsDeleting(true);
+
     try {
-      await API.delete(`/users/${user._id}/full-delete`);
-      
-      // Clear all local storage
+      await fullDeleteAccount(targetId); 
       await AsyncStorage.clear();
-      await SecureStore.deleteItemAsync(getBioKey());
       
       setDeleteModalVisible(false);
-      Alert.alert("Account Deleted", "Your data has been permanently wiped from Echo Stamp.", [
-        { text: "Goodbye", onPress: () => dispatch({ type: 'LOGOUT' }) }
-      ]);
+
+      Alert.alert(
+        "Account Deleted", 
+        "Your data has been wiped.", 
+        [
+          { 
+            text: "Goodbye", 
+            onPress: () => {
+            
+             dispatch(logout());
+            } 
+          }
+        ]
+      );
     } catch (error) {
-      Alert.alert("Error", "Could not complete account deletion. Please try again.");
+      Alert.alert("Error", "Could not complete deletion.");
     } finally {
       setIsDeleting(false);
     }
@@ -233,7 +245,7 @@ const PrivacySecurity = ({ navigation }) => {
         </View>
       </Modal>
 
-      {/* --- NEW: DELETE ACCOUNT MODAL --- */}
+      {/* --- DELETE ACCOUNT MODAL --- */}
       <Modal visible={isDeleteModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: isDark ? '#1E293B' : '#FFF', borderColor: '#EF4444', borderWidth: 1 }]}>
@@ -242,7 +254,7 @@ const PrivacySecurity = ({ navigation }) => {
             </View>
             <Text style={[styles.modalTitle, { color: '#EF4444' }]}>Dangerous Action</Text>
             <Text style={[styles.modalSub, { color: colors.textSecondary }]}>
-              This will wipe your account, all journals, and all Cloudinary media. This cannot be undone.
+              This will wipe your account, all journals, echoes. This cannot be undone.
             </Text>
             <Text style={{ fontSize: 13, color: colors.textMain, marginBottom: 10, fontWeight: '600' }}>
               Type "DELETE" to confirm:
