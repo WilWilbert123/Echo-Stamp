@@ -7,7 +7,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* Fixed top/bottom margins to ensure visibility */
+  
   padding-top: 140px; 
   padding-bottom: 100px;
   overflow-x: hidden;

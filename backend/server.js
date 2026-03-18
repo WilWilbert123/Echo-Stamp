@@ -34,6 +34,12 @@ app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
 
+// Ping my render
+app.get('/ping', (req, res) => {
+console.log("Ping received from Cron-job.org!");
+res.status(200).send("Alive");
+});
+
 // --- API ROUTES ---
 app.use('/api/echoes', require('./routes/echoRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));    
