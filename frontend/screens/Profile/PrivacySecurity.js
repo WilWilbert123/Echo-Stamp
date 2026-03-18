@@ -207,7 +207,7 @@ const PrivacySecurity = ({ navigation }) => {
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.primary }]}>PRIVACY</Text>
-          <SettingItem icon="eye-off-outline" title="Profile Visibility" onPress={() => { }} />
+          <SettingItem icon="eye-off-outline" title="Profile Visibility" type="toggle" onPress={() => { }} />
           <SettingItem icon="document-text-outline" title="Data Usage" onPress={() => { }} />
           <SettingItem
             icon="trash-outline"
