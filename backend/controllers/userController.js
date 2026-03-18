@@ -2,6 +2,10 @@ const User = require('../models/User');
 const OtpEntry = require('../models/OtpEntry');
 const jwt = require('jsonwebtoken');
 const { Resend } = require('resend');
+const Journal = require('../models/Journal');
+const cloudinary = require('cloudinary').v2;
+const Echo = require('../models/Echo');
+
 
 // Initialize Resend with your API key
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -299,3 +303,55 @@ exports.verify2faLogin = async (req, res) => {
         return res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
+
+ 
+// Delete Account with data
+const deleteFromCloudinary = async (url) => {
+  if (!url) return;
+  try {
+    const parts = url.split('/');
+    const uploadIndex = parts.indexOf('upload');
+    const publicId = parts.slice(uploadIndex + 2).join('/').split('.')[0];
+    const isVideo = url.includes('/video/upload/');
+    await cloudinary.uploader.destroy(publicId, { resource_type: isVideo ? 'video' : 'image' });
+  } catch (err) {
+    console.error("Cloudinary Cleanup Error:", err.message);
+  }
+};
+
+exports.deleteFullAccount = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+   
+    const journals = await Journal.find({ userId });
+    for (const journal of journals) {
+      if (journal.media && journal.media.length > 0) {
+        await Promise.all(journal.media.map(url => deleteFromCloudinary(url)));
+      }
+    }
+    await Journal.deleteMany({ userId });
+
+ 
+    const echoes = await Echo.find({ userId });
+    for (const echo of echoes) {
+      if (echo.media && echo.media.length > 0) {
+        await Promise.all(echo.media.map(url => deleteFromCloudinary(url)));
+      }
+    }
+    await Echo.deleteMany({ userId });
+
+   
+    const user = await User.findByIdAndDelete(userId);
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.status(200).json({ 
+      success: true, 
+      message: "Account, Journals, and Echoes wiped successfully." 
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+

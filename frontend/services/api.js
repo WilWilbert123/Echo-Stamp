@@ -58,4 +58,7 @@ export const resetPassword = (data) => API.post('/users/reset-password', data);
 export const updateSecurity = (data) => API.post('/users/update-security', data);
 export const verify2faLogin = (data) => API.post('/users/login-2fa-verify', data);
 
+// ---- delete account ----
+export const fullDeleteAccount = (userId) => API.delete(`/users/${userId}/full-delete`);
+
 export default API;
