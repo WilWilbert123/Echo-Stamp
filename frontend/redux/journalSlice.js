@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-// ADD removeMediaFromJournal to your imports here
+ 
 import { deleteJournal, fetchJournals, postJournal, removeMediaFromJournal } from '../services/api';
 
 // Async Thunks

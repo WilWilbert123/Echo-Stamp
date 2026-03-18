@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 22, fontWeight: '900' },
   locationStatus: { flexDirection: 'row', alignItems: 'center', marginBottom: 25, paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, alignSelf: 'center' },
   locationStatusText: { fontSize: 12, marginLeft: 6, fontWeight: '700' },
-  solidCard: { padding: 20, borderRadius: 24, marginBottom: 20, ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10 }, android: { elevation: 2 } }) },
+  solidCard: { padding: 20, borderRadius: 24, marginBottom: 20, ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10 }, android: {   } }) },
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   label: { fontWeight: '800', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 },
   counter: { fontSize: 11, fontWeight: '600' },

@@ -26,6 +26,9 @@ router.post('/verify-only', verifyOnly);
 router.post('/update-security', updateSecurity);
 router.post('/login-2fa-verify', verify2faLogin);
 
+// -----Delete account -----
+router.delete('/:userId/full-delete', userController.deleteFullAccount);
+
 // --- Authentication ---
 router.post('/login', loginUser);
 
