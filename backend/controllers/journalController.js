@@ -1,9 +1,43 @@
 const Journal = require('../models/Journal');
+const cloudinary = require('cloudinary').v2;
 
+
+const getPublicIdFromUrl = (url) => {
+  try {
+    const parts = url.split('/');
+    const uploadIndex = parts.indexOf('upload');
+ 
+    const pathAfterUpload = parts.slice(uploadIndex + 2).join('/'); 
+    return pathAfterUpload.split('.')[0]; 
+  } catch (error) {
+    console.error("Error parsing Cloudinary URL:", error);
+    return null;
+  }
+};
+
+/**
+ * HELPER: Deletes a single file from Cloudinary
+ */
+const deleteFromCloudinary = async (url) => {
+  const publicId = getPublicIdFromUrl(url);
+  if (!publicId) return;
+
+  // Check if it's a video so Cloudinary knows how to handle the deletion
+  const isVideo = url.includes('/video/upload/');
+  const resourceType = isVideo ? 'video' : 'image';
+
+  try {
+    const result = await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+    console.log(`[Cloudinary] Deleted: ${publicId}`, result);
+  } catch (err) {
+    console.error(`[Cloudinary] Failed to delete ${publicId}:`, err.message);
+  }
+};
+
+//  Get all journals for a specific user
 exports.getJournals = async (req, res) => {
   try {
     const { userId } = req.params;
-    // Strict privacy: Only find journals belonging to the requester
     const journals = await Journal.find({ userId }).sort({ createdAt: -1 });
     res.status(200).json(journals);
   } catch (error) {
@@ -11,9 +45,9 @@ exports.getJournals = async (req, res) => {
   }
 };
 
+// Create a new journal entry
 exports.createJournal = async (req, res) => {
   try {
-    
     const newJournal = await Journal.create(req.body);
     res.status(201).json(newJournal);
   } catch (error) {
@@ -21,21 +55,41 @@ exports.createJournal = async (req, res) => {
   }
 };
 
+//  Delete a journal and its media from Cloudinary + MongoDB
 exports.deleteJournal = async (req, res) => {
   try {
-    const journal = await Journal.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+
+    // Find the journal first (DO NOT delete yet, or we lose the URLs)
+    const journal = await Journal.findById(id);
     if (!journal) return res.status(404).json({ message: "Journal not found" });
-    res.status(200).json({ id: req.params.id });
+
+    // Delete all attached photos/videos from Cloudinary
+    if (journal.media && journal.media.length > 0) {
+      await Promise.all(journal.media.map(url => deleteFromCloudinary(url)));
+    }
+
+ 
+    await Journal.findByIdAndDelete(id);
+
+    res.status(200).json({ id });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+
 exports.removeJournalMedia = async (req, res) => {
   try {
+    const { id } = req.params;
     const { mediaUri } = req.body;
+
+    // Delete the specific file from Cloudinary
+    await deleteFromCloudinary(mediaUri);
+
+    //  Pull that specific URL from the media array in MongoDB
     const journal = await Journal.findByIdAndUpdate(
-      req.params.id,
+      id,
       { $pull: { media: mediaUri } },
       { new: true }
     );
