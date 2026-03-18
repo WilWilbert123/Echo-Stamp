@@ -8,7 +8,8 @@ const {
     resetPassword,
     verifyOnly,
     updateSecurity,
-    verify2faLogin
+    verify2faLogin,
+    deleteFullAccount
 } = require('../controllers/userController');
 
 // --- Registration Flow ---
@@ -27,7 +28,7 @@ router.post('/update-security', updateSecurity);
 router.post('/login-2fa-verify', verify2faLogin);
 
 // -----Delete account -----
-router.delete('/:userId/full-delete', userController.deleteFullAccount);
+router.delete('/:userId/full-delete', deleteFullAccount);
 
 // --- Authentication ---
 router.post('/login', loginUser);
