@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Dimensions,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -12,7 +13,6 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    useWindowDimensions,
     View
 } from 'react-native';
 
@@ -21,9 +21,11 @@ import { useTheme } from '../../context/ThemeContext';
 // API IMPORT
 import { requestOtp } from '../../services/api';
 
+// Get dimensions outside the component or use fixed values to prevent keyboard-flicker
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 const Signup = ({ navigation }) => {
     const { colors, isDark } = useTheme();
-    const { width, height } = useWindowDimensions(); 
     
     // Form State
     const [firstName, setFirstName] = useState('');
@@ -80,11 +82,9 @@ const Signup = ({ navigation }) => {
             // Detailed Logging for Debugging
             console.log("--- Signup Error Detail ---");
             if (error.response) {
-                // Server responded with a status code outside 2xx
                 console.log("Status:", error.response.status);
                 console.log("Data:", error.response.data);
             } else {
-                // Network error or timeout
                 console.log("Message:", error.message);
             }
 
@@ -95,7 +95,6 @@ const Signup = ({ navigation }) => {
             } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
                 errorMessage = "The server is taking too long to respond (Waking up). Please wait a moment and try again.";
             } else if (error.response?.data?.message) {
-                // This captures your backend's "Email is already registered" messages
                 errorMessage = error.response.data.message;
             }
 
@@ -105,11 +104,13 @@ const Signup = ({ navigation }) => {
         }
     };
 
-    const dynamicStyles = {
-        headerBackground: { height: height * 0.25 },
-        blueWave: { width: width * 1.2, height: height * 0.2 },
-        darkWave: { width: width * 0.8, height: height * 0.18 },
-    };
+    // Use useMemo so these aren't recalculated unless the theme changes
+    // This prevents the background shapes from jumping when the keyboard alters "window height"
+    const dynamicStyles = useMemo(() => ({
+        headerBackground: { height: SCREEN_HEIGHT * 0.25 },
+        blueWave: { width: SCREEN_WIDTH * 1.2, height: SCREEN_HEIGHT * 0.2 },
+        darkWave: { width: SCREEN_WIDTH * 0.8, height: SCREEN_HEIGHT * 0.18 },
+    }), []);
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
@@ -121,8 +122,11 @@ const Signup = ({ navigation }) => {
             </View>
 
             <KeyboardAvoidingView 
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+                // FIXED behavior: Changed from 'height' to 'padding' for Android to stop the flickering
+                behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} 
                 style={styles.flex}
+                // Optional: add keyboardVerticalOffset if the header is covering inputs on some devices
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
             >
                 <ScrollView 
                     contentContainerStyle={styles.scrollContent}

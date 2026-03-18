@@ -248,7 +248,7 @@ themeToggle: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center'
 searchWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 15, paddingHorizontal: 15, height: 50 },
 searchInput: { flex: 1, marginLeft: 10, fontSize: 15 },
 listContent: { paddingHorizontal: 25, paddingTop: 15, paddingBottom: 120 },
-echoCard: { borderRadius: 20, padding: 20, marginBottom: 15, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+echoCard: { borderRadius: 20, padding: 20, marginBottom: 15, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 0 },
 cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
 titleContainer: { flex: 1, marginRight: 10 },
 echoTitle: { fontSize: 18, fontWeight: '800', marginBottom: 2 },
