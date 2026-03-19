@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTheme } from '../../context/ThemeContext';
 import { deleteEchoAsync, getEchoesAsync } from '../../redux/echoSlice';
+
 const { width, height } = Dimensions.get('window');
 
 const Home = () => {
@@ -37,17 +38,15 @@ const Home = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   const emotionAssets = {
-  'Burnout': require('../../assets/burnout.json'),
-  'Calm': require('../../assets/chill.json'),
-  'Fire': require('../../assets/Fire.json'),
-  'Excited': require('../../assets/play.json'),
-  'Loved': require('../../assets/inlove.json'),
-  'Sad': require('../../assets/sad.json'),
-  'Sick': require('../../assets/sick.json'),
-  'Grateful': require('../../assets/walk.json'),
-};
-
-
+    'Burnout': require('../../assets/burnout.json'),
+    'Calm': require('../../assets/chill.json'),
+    'Fire': require('../../assets/Fire.json'),
+    'Excited': require('../../assets/play.json'),
+    'Loved': require('../../assets/inlove.json'),
+    'Sad': require('../../assets/sad.json'),
+    'Sick': require('../../assets/sick.json'),
+    'Grateful': require('../../assets/walk.json'),
+  };
 
   useEffect(() => {
     const userId = user?._id || user?.id;
@@ -94,42 +93,44 @@ const Home = () => {
     </TouchableOpacity>
   );
 
- const renderItem = ({ item }) => (
-  <Swipeable renderRightActions={() => renderRightActions(item._id)} overshootRight={false}>
-    <TouchableOpacity 
-      activeOpacity={0.8} 
-      style={[
-        styles.echoCard, 
-        { 
-          backgroundColor: isDark ? colors.glass : '#F9F9F9',
-          borderColor: colors.glassBorder,
-          borderWidth: isDark ? 1 : 0 
-        }
-      ]}
-    >
-      <View style={styles.cardHeader}>
-        <View style={styles.titleContainer}>
-          <Text style={[styles.echoTitle, { color: colors.textMain }]}>{item.title}</Text>
-          <Text style={[styles.echoDate, { color: colors.textSecondary }]}>
-              {new Date(item.createdAt).toLocaleDateString()}
-          </Text>
+  const renderItem = ({ item }) => (
+    <Swipeable renderRightActions={() => renderRightActions(item._id)} overshootRight={false}>
+      <TouchableOpacity 
+        activeOpacity={0.8} 
+        style={[
+          styles.echoCard, 
+          { 
+            backgroundColor: isDark ? colors.glass : '#F9F9F9',
+            borderColor: colors.glassBorder,
+            borderWidth: isDark ? 1 : 0 
+          }
+        ]}
+      >
+        <View style={styles.cardHeader}>
+      
+          <View style={styles.titleContainer}>
+            <Text style={[styles.echoTitle, { color: colors.textMain }]} numberOfLines={1}>
+              {item.title}
+            </Text>
+            <Text style={[styles.echoDate, { color: colors.textSecondary }]}>
+                {new Date(item.createdAt).toLocaleDateString()}
+            </Text>
+          </View>
+ 
+          <View style={styles.emotionContainer}>
+            {emotionAssets[item.emotion] && (
+              <LottieView
+                source={emotionAssets[item.emotion]}
+                autoPlay
+                loop
+                style={styles.emotionLottie}
+              />
+            )}
+            <Text style={[styles.echoEmotion, { color: colors.textSecondary }]}>
+              {item.emotion}
+            </Text>
+          </View>
         </View>
-
-        {/* UPDATED EMOTION AREA */}
-        <View style={styles.emotionContainer}>
-          {emotionAssets[item.emotion] && (
-            <LottieView
-              source={emotionAssets[item.emotion]}
-              autoPlay
-              loop
-              style={{ width: 70, height: 70}}
-            />
-          )}
-          <Text style={[styles.echoEmotion, { color: colors.textSecondary, fontSize: 10, textAlign: 'center',marginTop:1  }]}>
-            {item.emotion}
-          </Text>
-        </View>
-      </View>
 
         {item.description && (
           <Text style={[styles.echoDescription, { color: isDark ? 'rgba(255,255,255,0.6)' : '#555' }]} numberOfLines={2}>
@@ -139,7 +140,12 @@ const Home = () => {
 
         <View style={styles.cardFooter}>
           <Ionicons name="location-sharp" size={12} color={colors.primary} />
-          <Text style={[styles.locationText, { color: colors.textSecondary }]}>
+         
+          <Text 
+            style={[styles.locationText, { color: colors.textSecondary }]} 
+            numberOfLines={1} 
+            ellipsizeMode="tail"
+          >
             {item.location?.address || 'Private Location'}
           </Text>
         </View>
@@ -151,7 +157,6 @@ const Home = () => {
     <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
       <StatusBar barStyle={colors.status} />
 
-      {/* 1. BRANDED WAVES */}
       <View style={styles.headerBackground}>
         <View style={[styles.blueWave, { backgroundColor: colors.primary, opacity: isDark ? 0.3 : 0.8 }]} />
         <View style={[styles.darkWave, { backgroundColor: isDark ? '#1E293B' : '#637D8B', opacity: 0.6 }]} />
@@ -159,7 +164,6 @@ const Home = () => {
 
       <View style={[styles.contentWrapper, { paddingTop: insets.top + 30}]}>
         
-        {/* 2. HEADER TOP AREA */}
         <View style={styles.headerContainer}>
           <View style={styles.headerTop}>
             <View>
@@ -173,7 +177,6 @@ const Home = () => {
             </TouchableOpacity>
           </View>
 
-          {/* 3. THEMED SEARCH BAR */}
           <View style={[
             styles.searchWrapper, 
             { 
@@ -193,7 +196,6 @@ const Home = () => {
           </View>
         </View>
 
-        {/* 4. LIST AREA */}
         {status === 'loading' && !refreshing ? (
           <View style={styles.loaderContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
@@ -217,7 +219,6 @@ const Home = () => {
           />
         )}
 
-        {/* 5. FLOATING ACTION BUTTON */}
         <TouchableOpacity 
           style={styles.fab} 
           onPress={() => navigation.navigate('Create')}
@@ -235,36 +236,42 @@ const Home = () => {
 };
 
 const styles = StyleSheet.create({
-container: { flex: 1 },
-headerBackground: { position: 'absolute', top: 0, width: '100%', height: height * 0.25 },
-blueWave: { position: 'absolute', top: -50, right: -50, width: width * 1.2, height: height * 0.22, borderBottomLeftRadius: 300, transform: [{ rotate: '-10deg' }] },
-darkWave: { position: 'absolute', top: -30, right: -80, width: width * 0.8, height: height * 0.2, borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] },
-contentWrapper: { flex: 1 },
-headerContainer: { paddingHorizontal: 25, marginBottom: 10 },
-headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
-welcomeText: { fontSize: 16, fontWeight: '500' },
-userName: { fontSize: 28, fontWeight: 'bold' },
-themeToggle: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-searchWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 15, paddingHorizontal: 15, height: 50 },
-searchInput: { flex: 1, marginLeft: 10, fontSize: 15 },
-listContent: { paddingHorizontal: 25, paddingTop: 15, paddingBottom: 120 },
-echoCard: { borderRadius: 20, padding: 20, marginBottom: 15, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 0 },
-cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-titleContainer: { flex: 1, marginRight: 10 },
-echoTitle: { fontSize: 18, fontWeight: '800', marginBottom: 2 },
-echoDate: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
- 
-echoEmotion: { fontSize: 12, fontWeight: '700',textTransform: 'uppercase',marginTop: -5, },
-emotionContainer: {   position:'absolute',left:210,top:-5,},
-echoDescription: { fontSize: 14, lineHeight: 22, marginBottom: 15 },
-cardFooter: { flexDirection: 'row', alignItems: 'center', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(150,150,150,0.2)', paddingTop: 10 },
-locationText: { fontSize: 11, marginLeft: 5, fontWeight: '500' },
-fab: { position: 'absolute', bottom: 100, right: 25, width: 64, height: 64, elevation: 8, shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 5 } },
-fabGradient: { flex: 1, borderRadius: 32, justifyContent: 'center', alignItems: 'center' },
-deleteAction: { justifyContent: 'center', alignItems: 'center', width: 80, height: '88%', marginTop: 0, borderRadius: 20, marginRight: 15 },
-loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-emptyContainer: { alignItems: 'center', marginTop: 100 },
-emptyText: { marginTop: 15, fontSize: 16, fontWeight: '600' },
+  container: { flex: 1 },
+  headerBackground: { position: 'absolute', top: 0, width: '100%', height: height * 0.25 },
+  blueWave: { position: 'absolute', top: -50, right: -50, width: width * 1.2, height: height * 0.22, borderBottomLeftRadius: 300, transform: [{ rotate: '-10deg' }] },
+  darkWave: { position: 'absolute', top: -30, right: -80, width: width * 0.8, height: height * 0.2, borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] },
+  contentWrapper: { flex: 1 },
+  headerContainer: { paddingHorizontal: 25, marginBottom: 10 },
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
+  welcomeText: { fontSize: 16, fontWeight: '500' },
+  userName: { fontSize: 28, fontWeight: 'bold' },
+  themeToggle: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  searchWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 15, paddingHorizontal: 15, height: 50 },
+  searchInput: { flex: 1, marginLeft: 10, fontSize: 15 },
+  listContent: { paddingHorizontal: 25, paddingTop: 15, paddingBottom: 120 },
+  
+  // CARD STYLES
+  echoCard: { borderRadius: 24, padding: 18, marginBottom: 15, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 0 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  titleContainer: { flex: 1, marginRight: 15 },
+  echoTitle: { fontSize: 18, fontWeight: '800', marginBottom: 2 },
+  echoDate: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, opacity: 0.6 },
+  
+  // EMOTION FIX: Removed absolute positioning
+  emotionContainer: { alignItems: 'center', justifyContent: 'center', minWidth: 60 },
+  emotionLottie: { width: 55, height: 55 },
+  echoEmotion: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', marginTop:  5, textAlign: 'center' },
+  
+  echoDescription: { fontSize: 14, lineHeight: 20, marginBottom: 15, opacity: 0.8 },
+  cardFooter: { flexDirection: 'row', alignItems: 'center', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(150,150,150,0.2)', paddingTop: 12 },
+  locationText: { flex: 1, fontSize: 11, marginLeft: 6, fontWeight: '600' },
+  
+  fab: { position: 'absolute', bottom: 100, right: 25, width: 64, height: 64, elevation: 8, shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 5 } },
+  fabGradient: { flex: 1, borderRadius: 32, justifyContent: 'center', alignItems: 'center' },
+  deleteAction: { justifyContent: 'center', alignItems: 'center', width: 80, height: '88%', marginTop: 0, borderRadius: 24, marginRight: 15 },
+  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  emptyContainer: { alignItems: 'center', marginTop: 100 },
+  emptyText: { marginTop: 15, fontSize: 16, fontWeight: '600' },
 });
 
 export default Home;
