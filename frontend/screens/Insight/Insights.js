@@ -11,7 +11,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { LineChart, PieChart, ProgressChart } from 'react-native-chart-kit';
+import { ContributionGraph, LineChart, PieChart, ProgressChart } from 'react-native-chart-kit';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 
@@ -23,6 +23,7 @@ const Insights = () => {
     const insets = useSafeAreaInsets();
     const { colors, isDark } = useTheme();
 
+    // Redux selectors for Echoes and Journals
     const { list = [] } = useSelector((state) => state.echoes || {});
     const { list: journalList = [] } = useSelector((state) => state.journals || {});
 
@@ -45,8 +46,7 @@ const Insights = () => {
     const getEmotionDetails = (val) => emotions.find(e => e.value === val) || emotions[1];
 
     // --- SHARED FILTERED DATA ---
-    // We create a single filtered list that all charts will use
-    const filteredData = useMemo(() => {
+    const filteredEchoes = useMemo(() => {
         const data = Array.isArray(list) ? list : [];
         const now = new Date();
         
@@ -63,9 +63,9 @@ const Insights = () => {
     }, [list, timeframe]);
 
     const stats = useMemo(() => {
-        if (!filteredData.length) return { total: 0, topEmotion: 'Calm', stability: 0.5 };
+        if (!filteredEchoes.length) return { total: 0, topEmotion: 'Calm', stability: 0.5 };
 
-        const emotionCounts = filteredData.reduce((acc, item) => {
+        const emotionCounts = filteredEchoes.reduce((acc, item) => {
             const emo = item.emotion || 'Calm';
             acc[emo] = (acc[emo] || 0) + 1;
             return acc;
@@ -74,7 +74,7 @@ const Insights = () => {
         const emotionKeys = Object.keys(emotionCounts);
         const topEmotion = emotionKeys.reduce((a, b) => emotionCounts[a] > emotionCounts[b] ? a : b);
 
-        const weights = filteredData.map(e => moodWeights[e.emotion] || 5);
+        const weights = filteredEchoes.map(e => moodWeights[e.emotion] || 5);
         let stability = 0.5;
         if (weights.length > 1) {
             const mean = weights.reduce((a, b) => a + b, 0) / weights.length;
@@ -82,15 +82,12 @@ const Insights = () => {
             stability = Math.max(0.1, Math.min(1, 1 - (variance / 25)));
         }
 
-        return { total: filteredData.length, topEmotion, stability };
-    }, [filteredData]);
+        return { total: filteredEchoes.length, topEmotion, stability };
+    }, [filteredEchoes]);
 
-    // MOOD FLOW FIX: Now uses filteredData
-    const chartData = useMemo(() => {
-        if (filteredData.length === 0) return null;
-        
-        // Show last 7 entries of the filtered period
-        const displayData = filteredData.slice(-7);
+    const moodFlowData = useMemo(() => {
+        if (filteredEchoes.length === 0) return null;
+        const displayData = filteredEchoes.slice(-7);
 
         return {
             labels: displayData.map(e => {
@@ -104,12 +101,46 @@ const Insights = () => {
                 strokeWidth: 4
             }]
         };
-    }, [filteredData, timeframe]);
+    }, [filteredEchoes, timeframe]);
 
-    // EMOTIONAL PROFILE FIX: Now uses filteredData
+    //   Combines Journal uploads and Echoes
+   const combinedActivityData = useMemo(() => {
+    const dateMap = {};
+    const now = new Date();
+
+    const processList = (items) => {
+        items.forEach(entry => {
+            if (entry?.createdAt) {
+                const itemDate = new Date(entry.createdAt);
+                
+                // --- NEW FILTERING LOGIC ---
+                let isMatch = false;
+                if (timeframe === 'Day') {
+                    isMatch = itemDate.toDateString() === now.toDateString();
+                } else if (timeframe === 'Month') {
+                    isMatch = itemDate.getMonth() === now.getMonth() && 
+                              itemDate.getFullYear() === now.getFullYear();
+                } else if (timeframe === 'Year') {
+                    isMatch = itemDate.getFullYear() === now.getFullYear();
+                }
+
+                if (isMatch) {
+                    const dateStr = itemDate.toISOString().split('T')[0];
+                    dateMap[dateStr] = (dateMap[dateStr] || 0) + 1;
+                }
+            }
+        });
+    };
+
+    processList(journalList);
+    processList(list);
+
+    return Object.keys(dateMap).map(date => ({ date, count: dateMap[date] }));
+}, [journalList, list, timeframe]); // Added timeframe to dependency array
+
     const pieData = useMemo(() => {
-        if (filteredData.length === 0) return [];
-        const counts = filteredData.reduce((acc, echo) => {
+        if (filteredEchoes.length === 0) return [];
+        const counts = filteredEchoes.reduce((acc, echo) => {
             const emo = echo.emotion || 'Calm';
             acc[emo] = (acc[emo] || 0) + 1;
             return acc;
@@ -122,16 +153,7 @@ const Insights = () => {
             legendFontColor: 'transparent',
             legendFontSize: 0
         })).sort((a, b) => b.population - a.population);
-    }, [filteredData]);
-
-    const heatmapData = useMemo(() => {
-        const dateMap = journalList.reduce((acc, entry) => {
-            const date = new Date(entry.createdAt).toISOString().split('T')[0];
-            acc[date] = (acc[date] || 0) + 1;
-            return acc;
-        }, {});
-        return Object.keys(dateMap).map(date => ({ date, count: dateMap[date] }));
-    }, [journalList]);
+    }, [filteredEchoes]);
 
     const chartConfig = {
         backgroundGradientFrom: colors.glass,
@@ -143,7 +165,7 @@ const Insights = () => {
         strokeWidth: 3,
         decimalPlaces: 0,
         propsForDots: { r: "5", strokeWidth: "2", stroke: isDark ? colors.background[0] : '#FFF' },
-        propsForBackgroundLines: { strokeDasharray: "", stroke: colors.glassBorder, strokeOpacity: 0.2 }
+        propsForBackgroundLines: { strokeDasharray: "", stroke: colors.glassBorder, strokeOpacity: 0.1 }
     };
 
     const topEmotionDetails = getEmotionDetails(stats.topEmotion);
@@ -185,6 +207,7 @@ const Insights = () => {
                     ))}
                 </View>
 
+                {/* Overview Grid */}
                 <View style={styles.grid}>
                     <View style={[styles.miniCard, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
                         <View style={[styles.iconCircle, { backgroundColor: colors.primary + '20' }]}>
@@ -203,12 +226,12 @@ const Insights = () => {
                     </View>
                 </View>
 
-                {/* Mood Flow */}
+                {/* 1. MOOD FLOW SECTION */}
                 <Text style={[styles.sectionTitle, { color: colors.textMain }]}>Mood Flow</Text>
                 <View style={[styles.chartCard, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
-                    {chartData ? (
+                    {moodFlowData ? (
                         <LineChart
-                            data={chartData}
+                            data={moodFlowData}
                             width={width - 40}
                             height={200}
                             chartConfig={chartConfig}
@@ -225,7 +248,37 @@ const Insights = () => {
                     )}
                 </View>
 
-                {/* Emotional Profile Section */}
+                {/* 2. ACTIVITY MAP SECTION - SLIDABLE */}
+                <Text style={[styles.sectionTitle, { color: colors.textMain }]}>Activity Map</Text>
+                <View style={[styles.chartCard, { backgroundColor: colors.glass, borderColor: colors.glassBorder, paddingLeft: 0, paddingRight: 0 }]}>
+                    {combinedActivityData.length > 0 ? (
+                        <ScrollView 
+                            horizontal 
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={{ paddingHorizontal: 20 }}
+                        >
+                            <ContributionGraph
+                                values={combinedActivityData}
+                                endDate={new Date()}
+                                numDays={105}
+                                width={width * 1.5} // Extra width allows sliding
+                                height={220}
+                                chartConfig={{
+                                    ...chartConfig,
+                                    color: (opacity = 1) => isDark ? `rgba(99, 102, 241, ${opacity})` : `rgba(79, 70, 229, ${opacity})`,
+                                }}
+                                tooltipDataAttrs={() => ({})}
+                            />
+                        </ScrollView>
+                    ) : (
+                        <View style={styles.emptyContainer}>
+                            <Ionicons name="calendar-outline" size={40} color={colors.textSecondary} style={{ opacity: 0.3 }} />
+                            <Text style={{ color: colors.textSecondary, marginTop: 10 }}>Start logging to see activity</Text>
+                        </View>
+                    )}
+                </View>
+
+                {/* 3. EMOTIONAL PROFILE SECTION */}
                 <Text style={[styles.sectionTitle, { color: colors.textMain }]}>Emotional Profile</Text>
                 <View style={[styles.chartCard, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
                     {pieData.length > 0 ? (
@@ -244,7 +297,7 @@ const Insights = () => {
                             <View style={styles.lottieLegendContainer}>
                                 {pieData.map((item, index) => {
                                     const details = getEmotionDetails(item.name);
-                                    const percentage = Math.round((item.population / stats.total) * 100);
+                                    const percentage = Math.round((item.population / (stats.total || 1)) * 100);
                                     return (
                                         <View key={index} style={[styles.legendItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }]}>
                                             <View style={[styles.colorIndicator, { backgroundColor: item.color }]} />
@@ -267,7 +320,7 @@ const Insights = () => {
                     )}
                 </View>
 
-                {/* Resilience Section */}
+                {/* 4. RESILIENCE SECTION */}
                 <Text style={[styles.sectionTitle, { color: colors.textMain }]}>Emotional Resilience</Text>
                 <View style={[styles.chartCard, { flexDirection: 'row', backgroundColor: colors.glass, borderColor: colors.glassBorder, padding: 20 }]}>
                     <ProgressChart
@@ -293,13 +346,13 @@ const Insights = () => {
         </View>
     );
 };
- 
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
     headerBackground: { position: 'absolute', top: 0, width: '100%', height: height * 0.25 },
     blueWave: { position: 'absolute', top: -50, right: -50, width: width * 1.2, height: height * 0.2, borderBottomLeftRadius: 300, transform: [{ rotate: '-10deg' }] },
-    darkWave: { position: 'absolute', top: -30, right: -80, width: width * 0.8, height: height * 0.18, borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] }, scrollContent: { paddingHorizontal: 20 },
+    darkWave: { position: 'absolute', top: -30, right: -80, width: width * 0.8, height: height * 0.18, borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] },
+    scrollContent: { paddingHorizontal: 20 },
     header: { marginBottom: 25, marginTop: 10 },
     headerTitle: { fontSize: 38, fontWeight: '900', letterSpacing: -1.5 },
     headerSubtitle: { fontSize: 16, fontWeight: '500', opacity: 0.8 },
@@ -322,6 +375,7 @@ const styles = StyleSheet.create({
     chartStyle: { borderRadius: 20, paddingRight: 40, marginTop: 10, marginLeft: -10 },
     grid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
     miniCard: { width: (width - 60) / 2, padding: 20, alignItems: 'center', borderRadius: 30, borderWidth: 1.5 },
+    iconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
     miniValue: { fontSize: 20, fontWeight: '900', marginTop: 12, letterSpacing: -0.5 },
     miniLabel: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginTop: 4, opacity: 0.7 },
     emptyContainer: { height: 180, justifyContent: 'center', alignItems: 'center', width: '100%' },
