@@ -1,15 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // Added
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Dimensions,
     FlatList,
-    Image,
     ImageBackground,
-    Linking,
     Modal,
-    Platform,
     Pressable,
     RefreshControl,
     StyleSheet,
@@ -25,18 +23,19 @@ const GOOGLE_API_KEY = thisisit;
 
 const Trending = () => {
     const { colors, isDark } = useTheme();
-    
+    const navigation = useNavigation();
+
     // States
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
     const [trendingLocations, setTrendingLocations] = useState([]);
-    const [savedIds, setSavedIds] = useState([]); // Tracks bookmarked IDs
+    const [savedIds, setSavedIds] = useState([]);
     const [nextPageToken, setNextPageToken] = useState(null);
     const [selectedPlace, setSelectedPlace] = useState(null);
     const [modalVisible, setModalVisible] = useState(false);
-    
-    // Infinity Logic
+
+    // Search Queries for diversity
     const [queryIndex, setQueryIndex] = useState(0);
     const queries = [
         'top+tourist+attractions+in+Philippines',
@@ -46,7 +45,7 @@ const Trending = () => {
         'adventure+spots+Philippines'
     ];
 
-    // --- SEPARATION LOGIC ---
+    // Data Categorization
     const viralLocations = useMemo(() => {
         return [...trendingLocations].sort((a, b) => b.reviews - a.reviews);
     }, [trendingLocations]);
@@ -57,10 +56,10 @@ const Trending = () => {
 
     useEffect(() => {
         fetchTrendingData();
-        loadSavedStatus(); // Load existing bookmarks on mount
+        loadSavedStatus();
     }, []);
 
-    // --- SAVING LOGIC ---
+    // --- LOGIC: BOOKMARKS ---
     const loadSavedStatus = async () => {
         try {
             const savedData = await AsyncStorage.getItem('saved_places');
@@ -78,33 +77,31 @@ const Trending = () => {
             const isAlreadySaved = savedArray.find(item => item.id === place.id);
 
             if (isAlreadySaved) {
-                // Remove
                 savedArray = savedArray.filter(item => item.id !== place.id);
             } else {
-                // Add
                 savedArray.push({
                     ...place,
                     savedAt: new Date().toISOString(),
-                    // Ensure consistency with the Saved screen's expected format
                     location: place.address,
-                    organizer: 'Trending' 
+                    organizer: 'Trending'
                 });
             }
 
             await AsyncStorage.setItem('saved_places', JSON.stringify(savedArray));
-            setSavedIds(savedArray.map(item => item.id)); // Update local UI state
+            setSavedIds(savedArray.map(item => item.id));
         } catch (e) { console.error(e); }
     };
 
+    // --- LOGIC: FETCHING ---
     const formatPlaces = (results) => {
         return results.map(place => {
             const photoReference = place.photos?.[0]?.photo_reference;
-            const imageUrl = photoReference 
+            const imageUrl = photoReference
                 ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${photoReference}&key=${GOOGLE_API_KEY}`
                 : 'https://images.unsplash.com/photo-1516690561799-46d8f74f9abf?w=800';
 
             return {
-                id: place.place_id, 
+                id: place.place_id,
                 name: place.name,
                 rating: place.rating || 4.5,
                 reviews: place.user_ratings_total || 120,
@@ -133,7 +130,7 @@ const Trending = () => {
                 const newPlaces = formatPlaces(data.results);
                 setTrendingLocations(prev => {
                     const combined = token ? [...prev, ...newPlaces] : newPlaces;
-                    return combined.filter((item, index, self) => 
+                    return combined.filter((item, index, self) =>
                         index === self.findIndex((t) => t.id === item.id)
                     );
                 });
@@ -154,6 +151,20 @@ const Trending = () => {
         }
     };
 
+    // --- NAVIGATION: ATLAS HANDLER ---
+    const handleGoToAtlas = (place) => {
+        setModalVisible(false);
+        navigation.navigate('Atlas', {
+            searchLocation: {
+                name: place.name,
+                address: place.address,
+                coords: { latitude: place.lat, longitude: place.lng },
+                image: place.image,
+                autoShowDirections: true // Optional: triggers directions immediately
+            }
+        });
+    };
+
     const handleLoadMore = useCallback(() => {
         if (!loadingMore) {
             if (nextPageToken) {
@@ -170,44 +181,36 @@ const Trending = () => {
         fetchTrendingData();
     };
 
-    const openInMaps = (lat, lon, label) => {
-        const url = Platform.select({
-            ios: `maps:0,0?q=${encodeURIComponent(label)}@${lat},${lon}`,
-            android: `geo:0,0?q=${lat},${lon}(${encodeURIComponent(label)})`
-        });
-        Linking.openURL(url);
-    };
-
-    // Components
+    // --- COMPONENTS ---
     const renderViralCard = ({ item }) => {
         const isSaved = savedIds.includes(item.id);
         return (
-            <TouchableOpacity 
-                activeOpacity={0.9} 
+            <TouchableOpacity
+                activeOpacity={0.9}
                 style={styles.locationCard}
                 onPress={() => { setSelectedPlace(item); setModalVisible(true); }}
             >
-                <ImageBackground 
-                    source={{ uri: item.image }} 
-                    style={styles.cardImage} 
+                <ImageBackground
+                    source={{ uri: item.image }}
+                    style={styles.cardImage}
                     imageStyle={{ borderRadius: 25, backgroundColor: isDark ? '#1e293b' : '#e2e8f0' }}
                 >
-                    <TouchableOpacity 
-                        style={styles.cardBookmark} 
+                    <TouchableOpacity
+                        style={styles.cardBookmark}
                         onPress={() => toggleSave(item)}
                     >
-                        <Ionicons 
-                            name={isSaved ? "bookmark" : "bookmark-outline"} 
-                            size={20} 
-                            color={isSaved ? colors.primary : "white"} 
+                        <Ionicons
+                            name={isSaved ? "bookmark" : "bookmark-outline"}
+                            size={20}
+                            color={isSaved ? colors.primary : "white"}
                         />
                     </TouchableOpacity>
 
                     <View style={styles.cardOverlay}>
                         <Text style={styles.locationName} numberOfLines={1}>{item.name}</Text>
                         <Text style={styles.echoCount}>
-                            <Ionicons name="flame" size={14} color="#FF5252" /> 
-                            {item.reviews > 1000 ? ` ${(item.reviews/1000).toFixed(1)}k` : ` ${item.reviews}`} Viral Reviews
+                            <Ionicons name="flame" size={14} color="#FF5252" />
+                            {item.reviews > 1000 ? ` ${(item.reviews / 1000).toFixed(1)}k` : ` ${item.reviews}`} Viral Reviews
                         </Text>
                     </View>
                 </ImageBackground>
@@ -218,7 +221,7 @@ const Trending = () => {
     const renderPopularItem = ({ item, index }) => {
         const isSaved = savedIds.includes(item.id);
         return (
-            <TouchableOpacity 
+            <TouchableOpacity
                 onPress={() => { setSelectedPlace(item); setModalVisible(true); }}
                 style={[styles.listItem, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}
             >
@@ -230,10 +233,10 @@ const Trending = () => {
                     <Text style={[styles.listSub, { color: colors.textSecondary }]} numberOfLines={1}>⭐ {item.rating} • {item.address}</Text>
                 </View>
                 <TouchableOpacity onPress={() => toggleSave(item)} style={{ padding: 5 }}>
-                    <Ionicons 
-                        name={isSaved ? "bookmark" : "bookmark-outline"} 
-                        size={22} 
-                        color={isSaved ? colors.primary : colors.textSecondary} 
+                    <Ionicons
+                        name={isSaved ? "bookmark" : "bookmark-outline"}
+                        size={22}
+                        color={isSaved ? colors.primary : colors.textSecondary}
                     />
                 </TouchableOpacity>
             </TouchableOpacity>
@@ -306,23 +309,43 @@ const Trending = () => {
             <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
                 <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
                     <Pressable style={[styles.modalContent, { backgroundColor: isDark ? '#0F172A' : '#FFF' }]}>
-                        <View style={styles.modalHandle} />
+                        {/* Modal Handle & Close Button Header */}
+                        <View style={styles.modalHeader}>
+                            <View style={styles.modalHandle} />
+                            <TouchableOpacity
+                                style={[styles.closeButton, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]}
+                                onPress={() => setModalVisible(false)}
+                            >
+                                <Ionicons name="close" size={20} color={colors.textMain} />
+                            </TouchableOpacity>
+                        </View>
+
                         <View style={{ width: '100%' }}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Text style={[styles.modalTitle, { color: colors.textMain, flex: 1, textAlign: 'left' }]}>{selectedPlace?.name}</Text>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                                <Text style={[styles.modalTitle, { color: colors.textMain, flex: 1, textAlign: 'left', marginBottom: 0 }]}>
+                                    {selectedPlace?.name}
+                                </Text>
                                 <TouchableOpacity onPress={() => toggleSave(selectedPlace)}>
-                                    <Ionicons 
-                                        name={savedIds.includes(selectedPlace?.id) ? "bookmark" : "bookmark-outline"} 
-                                        size={28} 
-                                        color={colors.primary} 
+                                    <Ionicons
+                                        name={savedIds.includes(selectedPlace?.id) ? "bookmark" : "bookmark-outline"}
+                                        size={28}
+                                        color={colors.primary}
                                     />
                                 </TouchableOpacity>
                             </View>
+
                             <View style={styles.streetViewContainer}>
-                                <Image source={{ uri: selectedPlace?.streetView }} style={styles.streetViewImg} />
+                                <ImageBackground source={{ uri: selectedPlace?.streetView }} style={styles.streetViewImg} />
                             </View>
-                            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primary, marginTop: 25 }]} onPress={() => openInMaps(selectedPlace.lat, selectedPlace.lng, selectedPlace.name)}>
-                                <Text style={styles.actionBtnText}>Go to Location</Text>
+
+                            <TouchableOpacity
+                                style={[styles.actionBtn, { backgroundColor: colors.primary, marginTop: 25 }]}
+                                onPress={() => handleGoToAtlas(selectedPlace)}
+                            >
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Ionicons name="map" size={20} color="white" style={{ marginRight: 10 }} />
+                                    <Text style={styles.actionBtnText}>Go to Atlas</Text>
+                                </View>
                             </TouchableOpacity>
                         </View>
                     </Pressable>
@@ -339,7 +362,7 @@ const styles = StyleSheet.create({
     sectionTitle: { fontSize: 22, fontWeight: '900', marginLeft: 10 },
     locationCard: { width: width * 0.75, height: 220, marginRight: 15 },
     cardImage: { flex: 1, justifyContent: 'flex-end' },
-    cardBookmark: { position: 'absolute', top: 15, right: 15, backgroundColor: 'rgba(0,0,0,0.3)', padding: 8, borderRadius: 15 }, // Added
+    cardBookmark: { position: 'absolute', top: 15, right: 15, backgroundColor: 'rgba(0,0,0,0.3)', padding: 8, borderRadius: 15 },
     cardOverlay: { padding: 18, backgroundColor: 'rgba(0,0,0,0.5)', borderBottomLeftRadius: 25, borderBottomRightRadius: 25 },
     locationName: { color: 'white', fontWeight: '900', fontSize: 18, marginBottom: 4 },
     echoCount: { color: 'white', fontSize: 13, fontWeight: '700' },
@@ -360,6 +383,8 @@ const styles = StyleSheet.create({
     streetViewImg: { width: '100%', height: '100%' },
     actionBtn: { width: '100%', height: 60, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
     actionBtnText: { color: 'white', fontWeight: '900', fontSize: 17 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: '100%', marginBottom: 15, position: 'relative' },
+closeButton: { position: 'absolute', right: -10, top: -15, width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
 });
 
 export default Trending;

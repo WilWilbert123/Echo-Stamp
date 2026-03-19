@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useRoute } from '@react-navigation/native'; // Added useRoute
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -61,6 +62,8 @@ const VideoPlayerItem = ({ uri, isVisible }) => {
 
 const Atlas = () => {
   const dispatch = useDispatch();
+  const navigation = useNavigation();
+  const route = useRoute(); // Hook to receive data from Trending
   const insets = useSafeAreaInsets();
   const mapRef = useRef(null);
   const { colors, isDark } = useTheme();
@@ -90,7 +93,39 @@ const Atlas = () => {
   const [description, setDescription] = useState('');
   const [mediaList, setMediaList] = useState([]);
 
-  // 1. Initial Data Fetch & Real-time Location Setup
+  // --- ADDED: LISTENER FOR TRENDING SCREEN NAVIGATION ---
+  useEffect(() => {
+    if (route.params?.searchLocation) {
+      const { coords, name, address, image, autoShowDirections } = route.params.searchLocation;
+
+      // 1. Set the search result card info
+      setSearchResult({
+        name,
+        address,
+        coords,
+        image
+      });
+
+      // 2. Move map to the location
+      const region = {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        latitudeDelta: 0.012,
+        longitudeDelta: 0.012,
+      };
+      mapRef.current?.animateToRegion(region, 1500);
+
+      // 3. Auto-start navigation if requested
+      if (autoShowDirections) {
+        setDestination(coords);
+        setShowDirections(true);
+      }
+
+      // 4. Clear params so it doesn't trigger again on tab switch
+      navigation.setParams({ searchLocation: undefined });
+    }
+  }, [route.params?.searchLocation]);
+
   useEffect(() => {
     const userId = user?._id || user?.id;
     if (userId) dispatch(getJournalsAsync(userId));
@@ -104,11 +139,10 @@ const Atlas = () => {
         return;
       }
 
-      // Continuous tracking
       locationSubscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.High,
-          distanceInterval: 1, // Update every 1 meter
+          distanceInterval: 1,
         },
         (location) => {
           const newCoords = {
@@ -116,8 +150,7 @@ const Atlas = () => {
             longitude: location.coords.longitude,
           };
           setUserLocation(newCoords);
-          
-          // Update heading if navigating
+
           if (showDirections && routeCoordinates.length > 0) {
             calculateHeading(newCoords, routeCoordinates);
           }
@@ -129,12 +162,9 @@ const Atlas = () => {
     return () => { if (locationSubscription) locationSubscription.remove(); };
   }, [dispatch, user, showDirections, routeCoordinates]);
 
-  // Logic to calculate which way the arrow should point
   const calculateHeading = (currentPos, path) => {
     if (path.length < 2) return;
-    
-    // Point towards the next index in the path array
-    const nextPoint = path[1]; 
+    const nextPoint = path[1];
     const r2d = 180 / Math.PI;
     const dLon = nextPoint.longitude - currentPos.longitude;
     const dLat = nextPoint.latitude - currentPos.latitude;
@@ -153,28 +183,111 @@ const Atlas = () => {
   };
 
   const renderStreetViewHTML = (lat, lng) => `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
-        <style>html, body, #pano { height: 100%; margin: 0; padding: 0; }</style>
-      </head>
-      <body>
-        <div id="pano"></div>
-        <script src="https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_APIKEY}"></script>
-        <script>
-          function init() {
-            new google.maps.StreetViewPanorama(document.getElementById('pano'), {
-              position: {lat: ${lat}, lng: ${lng}},
-              addressControl: false,
-              fullscreenControl: false
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <style>
+      html, body, #pano { height: 100%; margin: 0; padding: 0; background-color: #000; }
+      #loader {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        text-align: center; color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
+        z-index: 10; transition: opacity 0.5s ease;
+      }
+      .spinner {
+        border: 4px solid rgba(255, 255, 255, 0.1);
+        border-left-color: #4285F4;
+        border-radius: 50%; width: 40px; height: 40px;
+        animation: spin 1s linear infinite; margin: 0 auto 15px;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+  </head>
+  <body>
+    <div id="loader">
+      <div class="spinner"></div>
+      <div id="status">Finding best view...</div>
+    </div>
+    <div id="pano"></div>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_APIKEY}"></script>
+    <script>
+      function calculateHeading(from, to) {
+        if (!from || !to) return 0;
+        const lat1 = from.lat() * Math.PI / 180;
+        const lon1 = from.lng() * Math.PI / 180;
+        const lat2 = to.lat * Math.PI / 180;
+        const lon2 = to.lng * Math.PI / 180;
+        const dLon = lon2 - lon1;
+        const y = Math.sin(dLon) * Math.cos(lat2);
+        const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+        return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+      }
+
+      function init() {
+        const loader = document.getElementById('loader');
+        const status = document.getElementById('status');
+        const sv = new google.maps.StreetViewService();
+        const targetPoint = { lat: ${lat}, lng: ${lng} };
+
+        // Search for outdoor road-view within 100m for better coverage
+        sv.getPanorama({
+          location: targetPoint,
+          radius: 100,
+          source: google.maps.StreetViewSource.OUTDOOR
+        }, (data, statusResult) => {
+          
+          const panoOptions = {
+            addressControl: false,
+            fullscreenControl: false,
+            motionTracking: true,
+            motionTrackingControl: false,
+            linksControl: true,    // The arrows
+            panControl: true,      // The compass/pan tool
+            zoomControl: true,     // Pinch to zoom is enabled by default, but this adds buttons
+            clickToGo: true,       // Tap road to move
+            enableCloseButton: false
+          };
+
+          if (statusResult === "OK") {
+            // Calculate heading so camera faces the exact pin location
+            const heading = calculateHeading(data.location.latLng, targetPoint);
+            
+            const panorama = new google.maps.StreetViewPanorama(
+              document.getElementById('pano'), 
+              { 
+                ...panoOptions,
+                position: data.location.latLng,
+                pov: { heading: heading, pitch: 0 } 
+              }
+            );
+
+            // Hide loader only when view is ready
+            google.maps.event.addListenerOnce(panorama, 'status_changed', () => {
+              loader.style.opacity = '0';
+              setTimeout(() => loader.style.display = 'none', 500);
             });
+
+          } else {
+            status.innerHTML = "No road found. Using snapshot...";
+            const fallbackPano = new google.maps.StreetViewPanorama(
+              document.getElementById('pano'), 
+              { 
+                ...panoOptions,
+                position: targetPoint 
+              }
+            );
+            setTimeout(() => {
+                loader.style.display = 'none';
+            }, 2000);
           }
-          google.maps.event.addDomListener(window, 'load', init);
-        </script>
-      </body>
-    </html>
-  `;
+        });
+      }
+      google.maps.event.addDomListener(window, 'load', init);
+    </script>
+  </body>
+</html>
+`;
 
   const checkIsVideo = (uri) => {
     if (!uri || typeof uri !== 'string') return false;
@@ -182,58 +295,53 @@ const Atlas = () => {
     return url.includes('/video/upload/') || url.endsWith('.mp4') || url.endsWith('.mov');
   };
 
- const handleSearch = async () => {
-  if (!searchQuery.trim()) return;
-  setIsSearching(true);
-  setSearchResult(null);
-  
-  try {
-     
-    const response = await fetch(
-      `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(searchQuery)}&inputtype=textquery&fields=photos,geometry,name,formatted_address&key=${GOOGLE_MAPS_APIKEY}`
-    );
-    
-    const data = await response.json();
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    setSearchResult(null);
 
-    if (data.candidates?.length > 0) {
-      const place = data.candidates[0];
-      const { lat, lng } = place.geometry.location;
-      
-      let imageUrl = null;
-      
-      
-      if (place.photos && place.photos.length > 0) {
-        
-        const photoRef = place.photos[0].photo_reference;
-        imageUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${photoRef}&key=${GOOGLE_MAPS_APIKEY}`;
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(searchQuery)}&inputtype=textquery&fields=photos,geometry,name,formatted_address&key=${GOOGLE_MAPS_APIKEY}`
+      );
+      const data = await response.json();
+
+      if (data.candidates?.length > 0) {
+        const place = data.candidates[0];
+        const { lat, lng } = place.geometry.location;
+        let imageUrl = null;
+
+        if (place.photos && place.photos.length > 0) {
+          const photoRef = place.photos[0].photo_reference;
+          imageUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${photoRef}&key=${GOOGLE_MAPS_APIKEY}`;
+        }
+
+        const region = {
+          latitude: lat,
+          longitude: lng,
+          latitudeDelta: 0.015,
+          longitudeDelta: 0.015
+        };
+
+        setSearchResult({
+          name: place.name,
+          address: place.formatted_address,
+          coords: { latitude: lat, longitude: lng },
+          image: imageUrl
+        });
+
+        mapRef.current?.animateToRegion(region, 1500);
+      } else {
+        Alert.alert("Location Not Found", "Try being more specific.");
       }
-
-      const region = { 
-        latitude: lat, 
-        longitude: lng, 
-        latitudeDelta: 0.015, 
-        longitudeDelta: 0.015 
-      };
-
-      setSearchResult({
-        name: place.name,
-        address: place.formatted_address,
-        coords: { latitude: lat, longitude: lng },
-        image: imageUrl  
-      });
-
-      mapRef.current?.animateToRegion(region, 1500);
-    } else {
-      Alert.alert("Location Not Found", "Try being more specific.");
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "Search failed.");
+    } finally {
+      setIsSearching(false);
+      setSearchQuery('');
     }
-  } catch (e) {
-    console.error(e);
-    Alert.alert("Error", "Search failed.");
-  } finally {
-    setIsSearching(false);
-    setSearchQuery('');
-  }
-};
+  };
 
   const pickMedia = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -320,7 +428,6 @@ const Atlas = () => {
     <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
 
-      {/* Search Bar UI */}
       <View style={[styles.searchContainer, { top: insets.top + 10 }]}>
         <GlassCard style={[styles.searchBar, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
           {isSearching ? <ActivityIndicator size="small" color={colors.primary} /> : <Ionicons name="search" size={20} color={colors.primary} style={{ marginRight: 10 }} />}
@@ -343,7 +450,6 @@ const Atlas = () => {
         onLongPress={(e) => { setTempCoords(e.nativeEvent.coordinate); setModalVisible(true); }}
         customMapStyle={isDark ? darkMapStyle : []}
       >
-        {/* DIRECTIONS PATH */}
         {showDirections && userLocation && destination && (
           <MapViewDirections
             origin={userLocation}
@@ -361,7 +467,6 @@ const Atlas = () => {
           />
         )}
 
-        {/* 2. REAL-TIME USER PIN (The Arrow) */}
         {userLocation && (
           <Marker
             coordinate={userLocation}
@@ -378,7 +483,6 @@ const Atlas = () => {
           </Marker>
         )}
 
-        {/* JOURNAL PINS */}
         {markers.map((journal) => (
           <Marker
             key={journal._id}
@@ -402,7 +506,6 @@ const Atlas = () => {
         ))}
       </MapView>
 
-      {/* Cancel Navigation Button */}
       {showDirections && (
         <TouchableOpacity
           style={[styles.cancelNavBtn, { top: insets.top + 100 }]}
@@ -415,7 +518,6 @@ const Atlas = () => {
         </TouchableOpacity>
       )}
 
-      {/* Search Results Display */}
       {searchResult && (
         <View style={styles.searchCardContainer}>
           <GlassCard style={[styles.searchResultCard, { backgroundColor: colors.background[1], borderColor: colors.glassBorder }]}>
@@ -427,9 +529,9 @@ const Atlas = () => {
                   <Ionicons name="image-outline" size={24} color={colors.textSecondary} />
                 </View>
               )}
-              <View style={{ flex: 1, marginRight:-10 , marginTop: 20 }}>
+              <View style={{ flex: 1, marginRight: -10, marginTop: 20 }}>
                 <Text style={[styles.searchResultTitle, { color: colors.textMain }]} numberOfLines={1}>{searchResult.name}</Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 12,width:300 }} numberOfLines={1}>{searchResult.address}</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 12, width: 300 }} numberOfLines={1}>{searchResult.address}</Text>
               </View>
               <View style={{ position: 'absolute', right: -20, bottom: 235 }}>
                 <TouchableOpacity onPress={() => setSearchResult(null)}>
@@ -475,7 +577,6 @@ const Atlas = () => {
         </View>
       )}
 
-      {/* Street View Modal */}
       {showStreetView && selectedJournal && (
         <View style={StyleSheet.absoluteFill}>
           <WebView source={{ html: renderStreetViewHTML(selectedJournal.location.lat, selectedJournal.location.lng) }} />
@@ -485,7 +586,6 @@ const Atlas = () => {
         </View>
       )}
 
-      {/* Media Viewer Modal */}
       <Modal visible={viewerVisible} transparent animationType="fade">
         <View style={styles.viewerOverlay}>
           <View style={styles.viewerHeader}>
@@ -530,7 +630,6 @@ const Atlas = () => {
         </View>
       </Modal>
 
-      {/* Create Pin Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <GlassCard style={[styles.modalContent, { backgroundColor: colors.background[1], borderColor: colors.glassBorder }]}>
@@ -564,6 +663,8 @@ const Atlas = () => {
     </View>
   );
 };
+
+
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
