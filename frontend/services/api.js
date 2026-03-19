@@ -61,4 +61,12 @@ export const verify2faLogin = (data) => API.post('/users/login-2fa-verify', data
 // ---- delete account ----
 export const fullDeleteAccount = (userId) => API.delete(`/users/${userId}/full-delete`);
 
+//------Fetchglobal journal
+export const fetchGlobalFeed = () => API.get('/journals/feed/global');
+
+export const Config = { 
+  MAPS_SDK_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_SDK_KEY,
+  PLACES_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY,
+};
+
 export default API;
