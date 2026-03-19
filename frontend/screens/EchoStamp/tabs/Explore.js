@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -7,9 +8,7 @@ import {
     Alert,
     Dimensions,
     Image,
-    Linking,
     Modal,
-    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -26,6 +25,7 @@ const GOOGLE_API_KEY = thisisit;
 
 const Explore = () => {
     const { colors, isDark } = useTheme();
+    const navigation = useNavigation();
     const mapRef = useRef(null);
 
     const [userLocation, setUserLocation] = useState(null);
@@ -82,7 +82,6 @@ const Explore = () => {
                 longitudeDelta: 0.05,
             };
             setUserLocation(coords);
-            // Default to first category
             setSelectedCategory(categories[0]);
             fetchNearbyGoogle(loc.coords.latitude, loc.coords.longitude, categories[0]);
         } catch (e) {
@@ -91,33 +90,30 @@ const Explore = () => {
         }
     };
 
- const toggleSave = async (place) => {
-    try {
-        const savedData = await AsyncStorage.getItem('saved_places');
-        let savedArray = savedData ? JSON.parse(savedData) : [];
-        const isSaved = savedArray.some(item => item.id === place.id);
+    const toggleSave = async (place) => {
+        try {
+            const savedData = await AsyncStorage.getItem('saved_places');
+            let savedArray = savedData ? JSON.parse(savedData) : [];
+            const isSaved = savedArray.some(item => item.id === place.id);
 
-        if (isSaved) {
-         
-            savedArray = savedArray.filter(item => item.id !== place.id);
-        } else {
-       
-            const newSave = {
-                ...place,
-        
-                organizer: selectedCategory?.name || 'Explore',
-                categoryIcon: place.categoryIcon || 'location',
-                categoryColor: place.categoryColor || colors.primary
-            };
-            savedArray.push(newSave);
+            if (isSaved) {
+                savedArray = savedArray.filter(item => item.id !== place.id);
+            } else {
+                const newSave = {
+                    ...place,
+                    organizer: selectedCategory?.name || 'Explore',
+                    categoryIcon: place.categoryIcon || 'location',
+                    categoryColor: place.categoryColor || colors.primary
+                };
+                savedArray.push(newSave);
+            }
+
+            await AsyncStorage.setItem('saved_places', JSON.stringify(savedArray));
+            setSavedIds(savedArray.map(item => item.id));
+        } catch (e) {
+            Alert.alert("Error", "Could not update bookmark.");
         }
-
-        await AsyncStorage.setItem('saved_places', JSON.stringify(savedArray));
-        setSavedIds(savedArray.map(item => item.id));
-    } catch (e) {
-        Alert.alert("Error", "Could not update bookmark.");
-    }
-};
+    };
 
     const updateMapRegion = (newPlaces) => {
         if (newPlaces.length > 0 && mapRef.current) {
@@ -191,7 +187,6 @@ const Explore = () => {
             const response = await fetch(url);
             const data = await response.json();
             if (data.status === "OK") {
-                
                 mapGoogleResults(data.results, colors.primary, 'location');
             } else {
                 setPlaces([]);
@@ -204,12 +199,17 @@ const Explore = () => {
         }
     };
 
-    const openInMaps = (lat, lon, label) => {
-        const url = Platform.select({
-            ios: `maps:0,0?q=${encodeURIComponent(label)}@${lat},${lon}`,
-            android: `geo:0,0?q=${lat},${lon}(${encodeURIComponent(label)})`
+    const goToAtlas = (place) => {
+        setModalVisible(false);
+        navigation.navigate('Atlas', {
+            location: {
+                latitude: place.lat,
+                longitude: place.lon,
+            },
+            placeName: place.name,
+            placeAddress: place.address,
+            placeImage: place.image
         });
-        Linking.openURL(url);
     };
 
     return (
@@ -307,6 +307,7 @@ const Explore = () => {
                                     <Text style={styles.ratingText}>{item.rating}</Text>
                                 </View>
                             </View>
+                            {/* Fixed the <div> to <View> here */}
                             <View style={styles.placeInfo}>
                                 <Text style={[styles.placeName, { color: colors.textMain }]} numberOfLines={1}>{item.name}</Text>
                                 <View style={styles.addressRow}>
@@ -358,10 +359,10 @@ const Explore = () => {
 
                             <TouchableOpacity
                                 style={[styles.actionBtn, { backgroundColor: colors.primary }]}
-                                onPress={() => selectedPlace && openInMaps(selectedPlace.lat, selectedPlace.lon, selectedPlace.name)}
+                                onPress={() => selectedPlace && goToAtlas(selectedPlace)}
                             >
-                                <Ionicons name="navigate" size={20} color="white" style={{ marginRight: 10 }} />
-                                <Text style={styles.actionBtnText}>Go to {selectedCategory?.id === '1' ? 'City' : 'Place'}</Text>
+                                <Ionicons name="map" size={20} color="white" style={{ marginRight: 10 }} />
+                                <Text style={styles.actionBtnText}>Go to Atlas</Text>
                             </TouchableOpacity>
                             
                             <View style={{ height: 40 }} />
@@ -373,6 +374,7 @@ const Explore = () => {
     );
 };
 
+ 
 const darkMapStyle = [
     { "elementType": "geometry", "stylers": [{ "color": "#1d2c4d" }] },
     { "elementType": "labels.text.fill", "stylers": [{ "color": "#8ec3b9" }] },
