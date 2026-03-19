@@ -1,15 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native'; // 1. Added useNavigation
 import React, { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     Dimensions,
     Image,
-    Linking,
     Modal,
-    Platform,
     Pressable,
     RefreshControl,
     ScrollView,
@@ -24,6 +22,7 @@ const { width } = Dimensions.get('window');
 
 const Saved = () => {
     const { colors, isDark } = useTheme();
+    const navigation = useNavigation(); 
 
     const [collections, setCollections] = useState([]);
     const [recentSaves, setRecentSaves] = useState([]);
@@ -53,40 +52,21 @@ const Saved = () => {
 
             setRecentSaves(sortedSaves);
 
-            // Updated logic to match Explore categories
             const categories = [...new Set(parsedSaves.map(item => item.organizer || 'General'))];
             const collectionMock = categories.map((cat, index) => {
                 let iconName = 'map';
                 let iconColor = index % 2 === 0 ? colors.primary : '#F472B6';
                 const lowerCat = cat.toLowerCase();
 
-                if (lowerCat.includes('city')) {
-                    iconName = 'business';
-                    iconColor = '#94A3B8';
-                } else if (lowerCat.includes('food')) {
-                    iconName = 'restaurant';
-                    iconColor = '#FB923C';
-                } else if (lowerCat.includes('cafe') || lowerCat.includes('café')) {
-                    iconName = 'cafe';
-                    iconColor = '#A16207';
-                } else if (lowerCat.includes('hotel')) {
-                    iconName = 'bed';
-                    iconColor = '#60A5FA';
-                } else if (lowerCat.includes('nature') || lowerCat.includes('park')) {
-                    iconName = 'leaf';
-                    iconColor = '#4ADE80';
-                } else if (lowerCat.includes('museum')) {
-                    iconName = 'color-palette';
-                    iconColor = '#A855F7';
-                } else if (lowerCat.includes('shopping')) {
-                    iconName = 'cart';
-                    iconColor = '#EC4899';
-                } else if (lowerCat.includes('nightlife') || lowerCat.includes('bar')) {
-                    iconName = 'beer';
-                    iconColor = '#F43F5E';
-                } else if (lowerCat.includes('trending')) {
-                    iconName = 'flame';
-                }
+                if (lowerCat.includes('city')) { iconName = 'business'; iconColor = '#94A3B8'; }
+                else if (lowerCat.includes('food')) { iconName = 'restaurant'; iconColor = '#FB923C'; }
+                else if (lowerCat.includes('cafe')) { iconName = 'cafe'; iconColor = '#A16207'; }
+                else if (lowerCat.includes('hotel')) { iconName = 'bed'; iconColor = '#60A5FA'; }
+                else if (lowerCat.includes('nature') || lowerCat.includes('park')) { iconName = 'leaf'; iconColor = '#4ADE80'; }
+                else if (lowerCat.includes('museum')) { iconName = 'color-palette'; iconColor = '#A855F7'; }
+                else if (lowerCat.includes('shopping')) { iconName = 'cart'; iconColor = '#EC4899'; }
+                else if (lowerCat.includes('nightlife')) { iconName = 'beer'; iconColor = '#F43F5E'; }
+                else if (lowerCat.includes('trending')) { iconName = 'flame'; }
 
                 return {
                     id: String(index),
@@ -104,6 +84,22 @@ const Saved = () => {
             setIsLoading(false);
             setIsRefreshing(false);
         }
+    };
+
+    // 3. NEW: Function to Navigate to Atlas
+    const handleGoToAtlas = (item) => {
+        const coords = {
+            latitude: item.lat || item.latitude,
+            longitude: item.lon || item.lng || item.longitude
+        };
+
+        navigation.navigate('Atlas', {
+            location: coords,
+            placeName: item.name || item.title,
+            placeAddress: item.address || item.location,
+            placeImage: item.image,
+            autoShowDirections: true 
+        });
     };
 
     const confirmDelete = (id) => {
@@ -129,16 +125,6 @@ const Saved = () => {
         } catch (e) {
             console.error("Remove Save Error:", e);
         }
-    };
-
-    const openInMaps = (lat, lon, label) => {
-        const longitude = lon || 0;
-        const latitude = lat || 0;
-        const url = Platform.select({
-            ios: `maps:0,0?q=${encodeURIComponent(label)}@${latitude},${longitude}`,
-            android: `geo:0,0?q=${latitude},${longitude}(${encodeURIComponent(label)})`
-        });
-        Linking.openURL(url);
     };
 
     const handleAction = (featureName) => {
@@ -168,7 +154,6 @@ const Saved = () => {
                     />
                 }
             >
-                {/* --- Stats Header --- */}
                 <View style={[styles.statsBar, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
                     <View style={styles.statItem}>
                         <Text style={[styles.statNum, { color: colors.textMain }]}>{recentSaves.length}</Text>
@@ -181,32 +166,28 @@ const Saved = () => {
                     </View>
                 </View>
 
-                {/* --- Collections Grid --- */}
                 <View style={styles.sectionHeader}>
                     <Text style={[styles.sectionTitle, { color: colors.textMain }]}>Collections</Text>
-                    <TouchableOpacity onPress={() => handleAction('New Collection')}>
-                        <Text style={[styles.seeAll, { color: colors.primary }]}>+ New</Text>
-                    </TouchableOpacity>
                 </View>
 
                 <View style={styles.grid}>
                     {collections.length > 0 ? collections.map((item) => (
                         <TouchableOpacity
                             key={item.id}
-                            style={[styles.folderCard, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}
-                        >
+                            style={[styles.folderCard, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]} >   
+                        <View style={{alignItems:'center',justifyContent:'center'}}>
                             <View style={[styles.iconBox, { backgroundColor: `${item.color}20` }]}>
                                 <Ionicons name={item.icon} size={24} color={item.color} />
                             </View>
                             <Text style={[styles.folderTitle, { color: colors.textMain }]} numberOfLines={1}>{item.title}</Text>
                             <Text style={[styles.folderCount, { color: colors.textSecondary }]}>{item.count} items</Text>
+                            </View>
                         </TouchableOpacity>
                     )) : (
                         <Text style={{ color: colors.textSecondary, marginLeft: 5, marginBottom: 20 }}>No categories yet.</Text>
                     )}
                 </View>
 
-                {/* --- Recently Bookmarked List --- */}
                 <Text style={[styles.sectionTitle, { color: colors.textMain, marginTop: 10, marginBottom: 5 }]}>
                     Recently Bookmarked
                 </Text>
@@ -226,7 +207,7 @@ const Saved = () => {
                         >
                             <TouchableOpacity
                                 activeOpacity={0.9}
-                                onPress={() => openInMaps(item.lat, item.lon || item.lng, item.name || item.title)}
+                                onPress={() => handleGoToAtlas(item)}  
                                 style={[styles.recentCard, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}
                             >
                                 <Image source={{ uri: item.image }} style={styles.recentImg} />
@@ -292,7 +273,7 @@ const styles = StyleSheet.create({
     grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
     folderCard: { width: (width - 55) / 2, padding: 20, borderRadius: 30, borderWidth: 1, marginBottom: 15 },
     iconBox: { width: 45, height: 45, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-    folderTitle: { fontWeight: '800', fontSize: 15 },
+    folderTitle: { fontWeight: '800', fontSize: 15},
     folderCount: { fontSize: 12, fontWeight: '600', marginTop: 4 },
     swipeContainer: { marginBottom: 12, overflow: 'hidden', borderRadius: 22 },
     recentCard: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 22, borderWidth: 1, width: width - 40 },
