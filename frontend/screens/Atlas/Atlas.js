@@ -93,12 +93,25 @@ const Atlas = () => {
   const [description, setDescription] = useState('');
   const [mediaList, setMediaList] = useState([]);
 
-  // --- ADDED: LISTENER FOR TRENDING SCREEN NAVIGATION ---
+ // ---   HANDLES BOTH EXPLORE & TRENDING DATA ---
   useEffect(() => {
-    if (route.params?.searchLocation) {
-      const { coords, name, address, image, autoShowDirections } = route.params.searchLocation;
+    const params = route.params;
+    
+    
+    if (params?.location || params?.searchLocation) {
+      
+    
+      const incoming = params.searchLocation || {
+        coords: params.location,
+        name: params.placeName,
+        address: params.placeAddress,
+        image: params.placeImage,
+        autoShowDirections: params.autoShowDirections || false
+      };
 
-      // 1. Set the search result card info
+      const { coords, name, address, image, autoShowDirections } = incoming;
+
+  
       setSearchResult({
         name,
         address,
@@ -106,25 +119,36 @@ const Atlas = () => {
         image
       });
 
-      // 2. Move map to the location
+    
       const region = {
         latitude: coords.latitude,
         longitude: coords.longitude,
-        latitudeDelta: 0.012,
-        longitudeDelta: 0.012,
+        latitudeDelta: 0.008, 
+        longitudeDelta: 0.008,
       };
-      mapRef.current?.animateToRegion(region, 1500);
+      
+      
+      setTimeout(() => {
+        mapRef.current?.animateToRegion(region, 1500);
+      }, 500);
 
-      // 3. Auto-start navigation if requested
+      
       if (autoShowDirections) {
         setDestination(coords);
         setShowDirections(true);
       }
 
-      // 4. Clear params so it doesn't trigger again on tab switch
-      navigation.setParams({ searchLocation: undefined });
+    
+      navigation.setParams({ 
+        searchLocation: undefined, 
+        location: undefined,
+        placeName: undefined,
+        placeAddress: undefined,
+        placeImage: undefined,
+        autoShowDirections: undefined
+      });
     }
-  }, [route.params?.searchLocation]);
+  }, [route.params]);
 
   useEffect(() => {
     const userId = user?._id || user?.id;
