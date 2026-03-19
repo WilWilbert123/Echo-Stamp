@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native'; // 1. Import Navigation
 import * as Location from 'expo-location';
 import React, { useEffect, useState } from 'react';
 import {
@@ -6,16 +7,14 @@ import {
     Alert,
     Dimensions,
     Image,
-    Linking,
     Modal,
-    Platform,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
-import thisisit from "../../../config/config"; // Your API Key
+import thisisit from "../../../config/config";
 import { useTheme } from '../../../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
@@ -23,11 +22,11 @@ const GOOGLE_API_KEY = thisisit;
 
 const Events = () => {
     const { colors, isDark } = useTheme();
+    const navigation = useNavigation(); // 2. Initialize Navigation
 
     const [places, setPlaces] = useState([]);  
-    const [isLoading, setIsLoading] = useState(true);         
+    const [isLoading, setIsLoading] = useState(true);          
     const [showSoon, setShowSoon] = useState(false);      
-    const [userLoc, setUserLoc] = useState(null);
 
     useEffect(() => {
         loadData();
@@ -36,7 +35,6 @@ const Events = () => {
     const loadData = async () => {
         try {
             setIsLoading(true);
-            // 1. Get Permission & Location
             let { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
                 Alert.alert("Permission Denied", "We need location to find nearby trending spots.");
@@ -45,8 +43,6 @@ const Events = () => {
             }
 
             let location = await Location.getCurrentPositionAsync({});
-            setUserLoc(location.coords);
-
           
             const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${location.coords.latitude},${location.coords.longitude}&radius=5000&type=restaurant|cafe|park&key=${GOOGLE_API_KEY}`;
             
@@ -54,21 +50,18 @@ const Events = () => {
             const data = await response.json();
 
             if (data.status === "OK") {
-              
-                const formatted = data.results.map((item, index) => {
-                   
+                const formatted = data.results.map((item) => {
                     const activityCount = Math.floor((item.user_ratings_total || 10) / 10);
                     const capacity = 100;
                     
                     return {
                         id: item.place_id,
                         title: item.name,
-                        date: 'NOW', // Live spots
                         location: item.vicinity,
                         joined: activityCount > capacity ? capacity - 5 : activityCount,
                         totalSlots: capacity,
                         isHot: item.rating >= 4.5,
-                        organizer: item.types[0].replace('_', ' '),
+                        organizer: item.types[0].replace(/_/g, ' '),
                         image: item.photos 
                             ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${item.photos[0].photo_reference}&key=${GOOGLE_API_KEY}`
                             : 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
@@ -77,8 +70,10 @@ const Events = () => {
                             `https://i.pravatar.cc/150?u=${item.place_id}2`,
                             `https://i.pravatar.cc/150?u=${item.place_id}3`
                         ],
-                        lat: item.geometry.location.lat,
-                        lng: item.geometry.location.lng
+                        coords: {
+                            latitude: item.geometry.location.lat,
+                            longitude: item.geometry.location.lng
+                        }
                     };
                 });
                 setPlaces(formatted);
@@ -90,12 +85,15 @@ const Events = () => {
         }
     };
 
-    const openInMaps = (lat, lon, label) => {
-        const url = Platform.select({
-            ios: `maps:0,0?q=${encodeURIComponent(label)}@${lat},${lon}`,
-            android: `geo:0,0?q=${lat},${lon}(${encodeURIComponent(label)})`
+    // 3. New Function to navigate to Atlas
+    const handleGoToAtlas = (event) => {
+        navigation.navigate('Atlas', {
+            location: event.coords,
+            placeName: event.title,
+            placeAddress: event.location,
+            placeImage: event.image,
+            autoShowDirections: true // This triggers the blue lines immediately
         });
-        Linking.openURL(url);
     };
 
     if (isLoading) {
@@ -113,7 +111,6 @@ const Events = () => {
         <View style={{ flex: 1, backgroundColor: colors.background[0] }}>
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 
-                {/* --- Spotlight Banner --- */}
                 <TouchableOpacity 
                     activeOpacity={0.9}
                     onPress={() => setShowSoon(true)}
@@ -121,7 +118,7 @@ const Events = () => {
                 >
                     <View style={styles.spotlightTextContent}>
                         <View style={styles.liveBadge}>
-                            <View style={styles.dot} />
+                           <View style={styles.dot} />
                             <Text style={styles.liveText}>TRENDING NEARBY</Text>
                         </View>
                         <Text style={[styles.spotlightTitle, { color: '#FFF' }]}>Local Echo Hotspots</Text>
@@ -139,14 +136,13 @@ const Events = () => {
                     </TouchableOpacity>
                 </View>
 
-                {/* --- Dynamic Place Cards --- */}
                 {places.map((event) => {
                     const occupancy = (event.joined / event.totalSlots) * 100;
                     return (
                         <TouchableOpacity 
                             key={event.id} 
                             activeOpacity={0.9}
-                            onPress={() => openInMaps(event.lat, event.lng, event.title)}
+                            onPress={() => handleGoToAtlas(event)} // Navigate on Card Press
                             style={[styles.eventCard, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}
                         >
                             <View style={styles.imageWrapper}>
@@ -185,9 +181,12 @@ const Events = () => {
                                             <Image key={index} source={{ uri: url }} style={[styles.avatar, { left: index * -8, borderColor: isDark ? '#1E293B' : '#FFF', zIndex: 10 - index }]} />
                                         ))}
                                     </View>
-                                    <Text style={[styles.attendeeText, { color: colors.textSecondary, marginLeft: 10 }]}>{event.joined} people exploring</Text>
+                                    <Text style={[styles.attendeeText, { color: colors.textSecondary, marginLeft: 10 }]}>{event.joined} exploring</Text>
                                 </View>
-                                <TouchableOpacity style={[styles.joinBtn, { backgroundColor: colors.primary }]} onPress={() => openInMaps(event.lat, event.lng, event.title)}>
+                                <TouchableOpacity 
+                                    style={[styles.joinBtn, { backgroundColor: colors.primary }]} 
+                                    onPress={() => handleGoToAtlas(event)} // Navigate on Button Press
+                                >
                                     <Text style={[styles.joinBtnText, { color: '#FFF' }]}>GET THERE</Text>
                                 </TouchableOpacity>
                             </View>
@@ -195,7 +194,6 @@ const Events = () => {
                     );
                 })}
 
-                {/* --- Create CTA --- */}
                 <TouchableOpacity 
                     onPress={() => setShowSoon(true)}
                     style={[styles.createCard, { borderColor: colors.glassBorder, borderStyle: 'dashed' }]}
@@ -210,7 +208,6 @@ const Events = () => {
                 </TouchableOpacity>
             </ScrollView>
 
-            {/* Modal remains the same... */}
             <Modal transparent={true} visible={showSoon} animationType="fade" onRequestClose={() => setShowSoon(false)}>
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalBox, { backgroundColor: isDark ? '#1E293B' : '#FFF' }]}>
@@ -233,7 +230,7 @@ const Events = () => {
 
 export default Events;
 
-// Styles remain largely the same, but ensure avatarStack has enough width
+// Styles remain identical to your previous version...
 const styles = StyleSheet.create({
     loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     scrollContent: { paddingHorizontal: 20, paddingBottom: 120, paddingTop: 10 },
