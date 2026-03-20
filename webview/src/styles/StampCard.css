@@ -2,7 +2,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  padding: 12px !important; /* Overriding default glass-card padding */
+  padding: 12px !important;
   border-radius: 28px;
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   cursor: pointer;
@@ -21,7 +21,7 @@
 .stamp-image-container {
   position: relative;
   width: 100%;
-  aspect-ratio: 1 / 1; /* Keeps it square like a stamp */
+  aspect-ratio: 1 / 1; 
   border-radius: 20px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.02);
@@ -108,7 +108,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transform: rotate(-15deg); /* Slight tilt for that "stamped" look */
+  transform: rotate(-15deg); 
 }
 
 .seal-inner {

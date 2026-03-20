@@ -32,7 +32,7 @@
 
 .landing-footer-note {
   position: absolute;
-  bottom: -100px; /* Sits at the very bottom of the page */
+  bottom: -100px; 
   left: 0;
   right: 0;
   opacity: 0.3;

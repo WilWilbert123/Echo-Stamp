@@ -75,7 +75,7 @@ exports.askAiAssistant = async (req, res) => {
             throw new Error("Gemini returned an empty response.");
         }
 
-      
+        // 6. PERSIST TO DATABASE
         const newUserMsg = { role: "user", parts: [{ text: message }] };
         const newBotMsg = { role: "model", parts: [{ text: botResponseText }] };
 
