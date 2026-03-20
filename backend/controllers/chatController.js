@@ -1,35 +1,31 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const axios = require('axios');
 const Chat = require("../models/Chat");
 
- 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY);
-
- 
 exports.askAiAssistant = async (req, res) => {
     try {
         const { message } = req.body;
 
-    
         if (!req.user || !req.user.id) {
             return res.status(401).json({ error: "User not authenticated correctly." });
         }
 
         const userId = req.user.id;
- 
-        const model = genAI.getGenerativeModel({ 
-            model: "gemini-1.5-flash", 
-            systemInstruction: "You are the Echo App AI Assistant. Echo is a mood and journal app where users save 'Echoes'. Help users with app features and rank levels (50 echoes = new rank). Keep it concise, friendly, and buttery-smooth."
-        });
- 
-        let userChat = await Chat.findOne({ userId });
+        const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
 
- 
+        // 1. DIRECT ENDPOINT (Fixed to v1 and gemini-2.5-flash as per your request)
+        const model = "gemini-2.5-flash";
+        const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+
+        // 2. RETRIEVE HISTORY
+        let userChat = await Chat.findOne({ userId });
+        
+        // Clean history and fix legacy roles
         let rawHistory = userChat ? userChat.messages.map(msg => ({
             role: msg.role === 'ai' ? 'model' : msg.role,
-            parts: msg.parts
+            parts: [{ text: msg.parts[0].text }]
         })) : [];
 
-       
+        // 3. SEQUENCE GUARD: Ensure roles alternate (User -> Model -> User)
         let filteredHistory = [];
         rawHistory.forEach((msg, index) => {
             if (index === 0 || msg.role !== rawHistory[index - 1].role) {
@@ -37,31 +33,48 @@ exports.askAiAssistant = async (req, res) => {
             }
         });
 
-    
+        // Ensure history sequence starts with 'user'
         if (filteredHistory.length > 0 && filteredHistory[0].role === 'model') {
             filteredHistory.shift(); 
         }
 
-      
-        const slicedHistory = filteredHistory.slice(-10);
+        // 4. CONSTRUCT PAYLOAD
+        // Prepending System Instructions as a User/Model pair since we are using the direct API
+        const payload = {
+            contents: [
+                {
+                    role: "user",
+                    parts: [{ text: "SYSTEM: You are the Echo App AI Assistant. Echo is a mood and journal app. 50 echoes = new rank. Be concise and friendly." }]
+                },
+                {
+                    role: "model",
+                    parts: [{ text: "Understood. I am the Echo Assistant, ready to help!" }]
+                },
+                ...filteredHistory.slice(-10), // Context limit
+                {
+                    role: "user",
+                    parts: [{ text: message }]
+                }
+            ]
+        };
 
- 
-        const chat = model.startChat({
-            history: slicedHistory,
+        // 5. SEND VIA AXIOS
+        const apiRes = await axios.post(url, payload, {
+            headers: { 'Content-Type': 'application/json' }
         });
 
-   
-        const result = await chat.sendMessage(message);
-        const botResponseText = result.response.text();
+        const botResponseText = apiRes.data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
-       
+        if (!botResponseText) {
+            throw new Error("AI returned empty content. Check API credits or safety filters.");
+        }
+
+        // 6. PERSIST TO DATABASE
         const newUserMsg = { role: "user", parts: [{ text: message }] };
         const newBotMsg = { role: "model", parts: [{ text: botResponseText }] };
 
         if (userChat) {
             userChat.messages.push(newUserMsg, newBotMsg);
-            
-        
             if (userChat.messages.length > 100) {
                 userChat.messages = userChat.messages.slice(-100);
             }
@@ -73,48 +86,36 @@ exports.askAiAssistant = async (req, res) => {
             });
         }
 
-      
         res.json({ text: botResponseText });
 
     } catch (error) {
-       
         console.error("--- Echo AI Error ---");
-        console.error("Status Code:", error.status || "N/A");
-        console.error("Message:", error.message);
+        // Log the actual error response from Google if available
+        console.error("Details:", error.response?.data || error.message);
         
         res.status(500).json({ 
-            error: "The Echo-sphere is currently unstable. Try again in a moment.",
-            details: error.message // Optional: remove in production for security
+            error: "The Echo-sphere is currently unstable.",
+            debug: error.response?.data?.error?.message || error.message
         });
     }
 };
 
- 
 exports.getChatHistory = async (req, res) => {
     try {
-        if (!req.user || !req.user.id) {
-            return res.status(401).json({ error: "Not authorized." });
-        }
-        
+        if (!req.user || !req.user.id) return res.status(401).json({ error: "Not authorized." });
         const userChat = await Chat.findOne({ userId: req.user.id });
         res.json(userChat ? userChat.messages : []);
     } catch (error) {
-        console.error("Fetch History Error:", error);
         res.status(500).json({ error: "Could not fetch history." });
     }
 };
 
- 
 exports.clearChatHistory = async (req, res) => {
     try {
-        if (!req.user || !req.user.id) {
-            return res.status(401).json({ error: "Not authorized." });
-        }
-
+        if (!req.user || !req.user.id) return res.status(401).json({ error: "Not authorized." });
         await Chat.findOneAndDelete({ userId: req.user.id });
         res.status(200).json({ message: "Chat history deleted successfully." });
     } catch (error) {
-        console.error("Delete Error:", error);
         res.status(500).json({ error: "Could not delete history." });
     }
 };
