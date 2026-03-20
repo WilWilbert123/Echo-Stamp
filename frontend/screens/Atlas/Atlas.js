@@ -441,8 +441,8 @@ const Atlas = () => {
           <Image source={{ uri: item }} style={styles.fullMedia} resizeMode="contain" />
         )}
         <TouchableOpacity style={styles.viewerSingleDelete} onPress={() => handleRemoveSingleSavedMedia(item)}>
-          <Ionicons name="trash" size={16} color="white" />
-          <Text style={styles.deleteBtnText}>Remove</Text>
+          <Ionicons name="trash" size={23} color="white" />
+       
         </TouchableOpacity>
       </View>
     );
@@ -623,8 +623,8 @@ const Atlas = () => {
               <TouchableOpacity onPress={() => { setViewerVisible(false); setShowDirections(true); }} style={[styles.headerCircleBtn, { backgroundColor: '#34A853', marginRight: 12 }]}>
                 <Ionicons name="navigate" size={24} color="#fff" />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleDeleteJournal(selectedJournal?._id)} style={styles.headerCircleBtn}>
-                <Ionicons name="trash-outline" size={22} color="#ff4444" />
+              <TouchableOpacity onPress={() => handleDeleteJournal(selectedJournal?._id)} style={[styles.headerCircleBtn , { backgroundColor: '#e33030', marginRight: 12 }] }>
+                <Ionicons name="trash-outline" size={22} color="#ffffff" />
               </TouchableOpacity>
             </View>
           </View>
@@ -714,7 +714,7 @@ const styles = StyleSheet.create({
   headerCircleBtn: { backgroundColor: 'rgba(0,0,0,0.5)', width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   mediaSlide: { width: width, height: height, justifyContent: 'center' },
   fullMedia: { width: width, height: '100%' },
-  viewerSingleDelete: { position: 'absolute', top: 120, right: 20, backgroundColor: 'rgba(255,0,0,0.6)', padding: 10, borderRadius: 15, flexDirection: 'row', alignItems: 'center' },
+  viewerSingleDelete: { position: 'absolute', top: 135, right: 10 , padding: 10, borderRadius: 15, flexDirection: 'row', alignItems: 'center' },
   deleteBtnText: { color: 'white', marginLeft: 5, fontWeight: '600', fontSize: 12 },
   paginationRow: { flexDirection: 'row', justifyContent: 'center', position: 'absolute', bottom: 210, width: '100%' },
   dot: { width: 8, height: 8, borderRadius: 4, marginHorizontal: 5 },
