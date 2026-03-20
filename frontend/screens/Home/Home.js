@@ -22,6 +22,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useTheme } from '../../context/ThemeContext';
 import { deleteEchoAsync, getEchoesAsync } from '../../redux/echoSlice';
 
+// IMPORT THE NEW CONSTANTS
+import { EMOTION_ASSETS, EMOTION_CONFIG } from '../../constants/assets';
+
 const { width, height } = Dimensions.get('window');
 
 const Home = () => {
@@ -37,17 +40,6 @@ const Home = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
-  const emotionAssets = {
-    'Burnout': require('../../assets/burnout.json'),
-    'Calm': require('../../assets/chill.json'),
-    'Fire': require('../../assets/Fire.json'),
-    'Excited': require('../../assets/play.json'),
-    'Loved': require('../../assets/inlove.json'),
-    'Sad': require('../../assets/sad.json'),
-    'Sick': require('../../assets/sick.json'),
-    'Grateful': require('../../assets/walk.json'),
-  };
-
   useEffect(() => {
     const userId = user?._id || user?.id;
     if (userId) {
@@ -60,7 +52,8 @@ const Home = () => {
     if (!searchQuery) return data;
     return data.filter(echo =>
       echo.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      echo.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      echo.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      echo.emotion?.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [searchQuery, list]);
 
@@ -93,65 +86,72 @@ const Home = () => {
     </TouchableOpacity>
   );
 
-  const renderItem = ({ item }) => (
-    <Swipeable renderRightActions={() => renderRightActions(item._id)} overshootRight={false}>
-      <TouchableOpacity 
-        activeOpacity={0.8} 
-        style={[
-          styles.echoCard, 
-          { 
-            backgroundColor: isDark ? colors.glass : '#F9F9F9',
-            borderColor: colors.glassBorder,
-            borderWidth: isDark ? 1 : 0 
-          }
-        ]}
-      >
-        <View style={styles.cardHeader}>
-      
-          <View style={styles.titleContainer}>
-            <Text style={[styles.echoTitle, { color: colors.textMain }]} numberOfLines={1}>
-              {item.title}
-            </Text>
-            <Text style={[styles.echoDate, { color: colors.textSecondary }]}>
-                {new Date(item.createdAt).toLocaleDateString()}
-            </Text>
-          </View>
- 
-          <View style={styles.emotionContainer}>
-            {emotionAssets[item.emotion] && (
+  const renderItem = ({ item }) => {
+    // LOOKUP LOGIC: Find the config for this specific emotion stored in DB
+    const config = EMOTION_CONFIG.find(c => c.value === item.emotion);
+    
+    // Get the animation file from assets using the key, or fallback to Calm
+    const animationSource = config ? EMOTION_ASSETS[config.assetKey] : EMOTION_ASSETS.Calm;
+    
+    // Use the pretty label from config (e.g., "Chill" instead of "Calm")
+    const displayLabel = config ? config.label : item.emotion;
+
+    return (
+      <Swipeable renderRightActions={() => renderRightActions(item._id)} overshootRight={false}>
+        <TouchableOpacity 
+          activeOpacity={0.8} 
+          style={[
+            styles.echoCard, 
+            { 
+              backgroundColor: isDark ? colors.glass : '#FFF',
+              borderColor: colors.glassBorder,
+              borderWidth: isDark ? 1 : 0.5 
+            }
+          ]}
+        >
+          <View style={styles.cardHeader}>
+            <View style={styles.titleContainer}>
+              <Text style={[styles.echoTitle, { color: colors.textMain }]} numberOfLines={1}>
+                {item.title}
+              </Text>
+              <Text style={[styles.echoDate, { color: colors.textSecondary }]}>
+                  {new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+              </Text>
+            </View>
+
+            <View style={styles.emotionContainer}>
               <LottieView
-                source={emotionAssets[item.emotion]}
+                source={animationSource}
                 autoPlay
                 loop
                 style={styles.emotionLottie}
               />
-            )}
-            <Text style={[styles.echoEmotion, { color: colors.textSecondary }]}>
-              {item.emotion}
+              <Text style={[styles.echoEmotion, { color: colors.primary }]}>
+                {displayLabel}
+              </Text>
+            </View>
+          </View>
+
+          {item.description && (
+            <Text style={[styles.echoDescription, { color: isDark ? 'rgba(255,255,255,0.6)' : '#555' }]} numberOfLines={2}>
+              {item.description}
+            </Text>
+          )}
+
+          <View style={styles.cardFooter}>
+            <Ionicons name="location-sharp" size={12} color={colors.primary} />
+            <Text 
+              style={[styles.locationText, { color: colors.textSecondary }]} 
+              numberOfLines={1} 
+              ellipsizeMode="tail"
+            >
+              {item.location?.address || 'Somewhere beautiful'}
             </Text>
           </View>
-        </View>
-
-        {item.description && (
-          <Text style={[styles.echoDescription, { color: isDark ? 'rgba(255,255,255,0.6)' : '#555' }]} numberOfLines={2}>
-            {item.description}
-          </Text>
-        )}
-
-        <View style={styles.cardFooter}>
-          <Ionicons name="location-sharp" size={12} color={colors.primary} />
-         
-          <Text 
-            style={[styles.locationText, { color: colors.textSecondary }]} 
-            numberOfLines={1} 
-            ellipsizeMode="tail"
-          >
-            {item.location?.address || 'Private Location'}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    </Swipeable>
-  );
+        </TouchableOpacity>
+      </Swipeable>
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
@@ -251,22 +251,30 @@ const styles = StyleSheet.create({
   listContent: { paddingHorizontal: 25, paddingTop: 15, paddingBottom: 120 },
   
   // CARD STYLES
-  echoCard: { borderRadius: 24, padding: 18, marginBottom: 15, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 0 },
+  echoCard: { 
+    borderRadius: 24, 
+    padding: 18, 
+    marginBottom: 15, 
+    shadowColor: '#000', 
+    shadowOpacity: 0.05, 
+    shadowRadius: 10, 
+    shadowOffset: { width: 0, height: 4 }, 
+    
+  },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   titleContainer: { flex: 1, marginRight: 15 },
   echoTitle: { fontSize: 18, fontWeight: '800', marginBottom: 2 },
   echoDate: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, opacity: 0.6 },
   
-  // EMOTION FIX: Removed absolute positioning
-  emotionContainer: { alignItems: 'center', justifyContent: 'center', minWidth: 60 },
-  emotionLottie: { width: 55, height: 55 },
-  echoEmotion: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', marginTop:  5, textAlign: 'center' },
+  emotionContainer: { alignItems: 'center', justifyContent: 'center', minWidth: 70 },
+  emotionLottie: { width: 60, height: 60 },
+  echoEmotion: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', textAlign: 'center', marginTop: -5 },
   
   echoDescription: { fontSize: 14, lineHeight: 20, marginBottom: 15, opacity: 0.8 },
   cardFooter: { flexDirection: 'row', alignItems: 'center', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(150,150,150,0.2)', paddingTop: 12 },
   locationText: { flex: 1, fontSize: 11, marginLeft: 6, fontWeight: '600' },
   
-  fab: { position: 'absolute', bottom: 100, right: 25, width: 64, height: 64, elevation: 8, shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 5 } },
+  fab: { position: 'absolute', bottom: 100, right: 25, width: 64, height: 64,   shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 5 } },
   fabGradient: { flex: 1, borderRadius: 32, justifyContent: 'center', alignItems: 'center' },
   deleteAction: { justifyContent: 'center', alignItems: 'center', width: 80, height: '88%', marginTop: 0, borderRadius: 24, marginRight: 15 },
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
