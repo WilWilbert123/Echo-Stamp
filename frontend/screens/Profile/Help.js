@@ -89,11 +89,10 @@ const Help = ({ navigation }) => {
     };
 
     // 3. Action: Send Message
-    const sendMessage = async () => {
+   const sendMessage = async () => {
         if (chatMessage.trim().length === 0 || isTyping) return;
         
         const messageText = chatMessage.trim();
-        // Gemini-compatible structure
         const userMsg = { role: 'user', parts: [{ text: messageText }] };
         
         dispatch(addMessage(userMsg));
@@ -102,22 +101,23 @@ const Help = ({ navigation }) => {
 
         try {
             const response = await askAiAssistant(messageText);
-            const responseText = response?.data?.text || response?.text;
+            // Handle both potential response formats
+            const responseText = response.data?.text || response.text;
 
             if (responseText) {
-                const botMsg = { 
+                dispatch(addMessage({ 
                     role: 'model', 
                     parts: [{ text: responseText }] 
-                };
-                dispatch(addMessage(botMsg));
-            } else {
-                throw new Error("Empty response from AI");
+                }));
             }
         } catch (error) {
-            console.error("Chat Error:", error);
+            // Enhanced Error Logging for Frontend
+            const errorMsg = error.response?.data?.details || "The Echo-sphere is unstable.";
+            console.log("Frontend Chat Error:", errorMsg);
+            
             dispatch(addMessage({ 
                 role: 'model', 
-                parts: [{ text: "The Echo-sphere is currently unstable. Please check your connection or clear history to reset." }] 
+                parts: [{ text: `Error: ${errorMsg}` }] 
             }));
         } finally {
             dispatch(setChatLoading(false));

@@ -65,10 +65,10 @@ export const fullDeleteAccount = () => API.delete('/users/full-delete');
 export const fetchGlobalFeed = () => API.get('/journals/feed/global');
 
 /* --- AI Chat Assistant --- */
-export const askAiAssistant = (message, history) => API.post('/chat/ai-assistant', { message, history });
+export const askAiAssistant = (message) => API.post('/chat/ai-assistant', { message });
+
 export const fetchChatHistory = () => API.get('/chat/history');
 export const clearChatHistory = () => API.delete('/chat/history');
-
 
 
 export const Config = { 
