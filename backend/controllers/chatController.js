@@ -58,7 +58,7 @@ exports.askAiAssistant = async (req, res) => {
                 }
             ],
             generationConfig: {
-                maxOutputTokens: 500,
+                maxOutputTokens: 8192,
                 temperature: 0.7,
             }
         };
