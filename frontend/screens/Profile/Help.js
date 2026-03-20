@@ -78,13 +78,24 @@ const Help = ({ navigation }) => {
         );
     };
 
-    const handleDeleteHistory = async () => {
+  const handleDeleteHistory = async () => {
         try {
+        
             await clearChatHistory();
+            
+            
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+          
             dispatch(clearHistory());
-            Alert.alert("Success", "History cleared.");
+            
+         
+            setChatMessage(''); 
+            
+            Alert.alert("Success", "Your conversation has been wiped clean.");
         } catch (error) {
-            Alert.alert("Error", "Could not clear history.");
+            console.error("Delete Error:", error);
+            const errorMsg = error.response?.data?.message || "Could not clear history.";
+            Alert.alert("Error", errorMsg);
         }
     };
 

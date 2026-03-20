@@ -117,10 +117,17 @@ exports.getChatHistory = async (req, res) => {
  
 exports.clearChatHistory = async (req, res) => {
     try {
-        await Chat.findOneAndDelete({ userId: req.user._id });
+        const userId = req.user._id;  
+        const result = await Chat.findOneAndDelete({ userId });
+        
+        if (!result) {
+            return res.status(404).json({ message: "No history found to clear." });
+        }
+
+        console.log(`🗑️ History cleared for user: ${userId}`);
         res.status(200).json({ message: "History cleared successfully." });
     } catch (err) {
-        console.error("Clear History Error:", err.message);
-        res.status(500).json({ error: "Failed to clear history" });
+        console.error("❌ Clear History Error:", err.message);
+        res.status(500).json({ error: "Failed to clear history from database." });
     }
 };

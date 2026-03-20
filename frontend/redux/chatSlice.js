@@ -14,9 +14,10 @@ const chatSlice = createSlice({
     addMessage: (state, action) => {
       state.history.push(action.payload);
     },
-    clearHistory: (state) => {
-      state.history = [];
-    },
+   clearHistory: (state) => {
+  state.history = [];  
+  state.loading = false;  
+},
     setChatLoading: (state, action) => {
       state.loading = action.payload;
     }
