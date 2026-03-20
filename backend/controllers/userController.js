@@ -240,25 +240,15 @@ exports.verifyOnly = async (req, res) => {
     }
 };
 
-// --- FIXED: UPDATE SECURITY (Toggle 2FA) ---
+// --- SECURED: UPDATE SECURITY (Toggle 2FA) ---
 exports.updateSecurity = async (req, res) => {
     try {
-        // Use req.user.id (from your 'protect' middleware) or the email from the body
-        // If your frontend sends the email, use this. If not, use req.user.id
-        const email = req.body.email ? req.body.email.toLowerCase().trim() : null;
         const { twoFactorEnabled } = req.body;
 
-        let query = {};
-        if (email) {
-            query = { email };
-        } else if (req.user && req.user.id) {
-            query = { _id: req.user.id };
-        } else {
-            return res.status(400).json({ message: "User identification missing" });
-        }
-
-        const user = await User.findOneAndUpdate(
-            query,
+        
+        // This ensures a user can only toggle 2FA for THEIR own account.
+        const user = await User.findByIdAndUpdate(
+            req.user.id,
             { twoFactorEnabled },
             { new: true }
         );
@@ -319,11 +309,14 @@ const deleteFromCloudinary = async (url) => {
   }
 };
 
+// --- SECURED: DELETE FULL ACCOUNT ---
 exports.deleteFullAccount = async (req, res) => {
   try {
-    const { userId } = req.params;
-
    
+    // This prevents someone from deleting a random user's account via ID guessing.
+    const userId = req.user.id;
+
+    // 1. Wipe Journals and their Cloudinary media
     const journals = await Journal.find({ userId });
     for (const journal of journals) {
       if (journal.media && journal.media.length > 0) {
@@ -332,7 +325,7 @@ exports.deleteFullAccount = async (req, res) => {
     }
     await Journal.deleteMany({ userId });
 
- 
+    // 2. Wipe Echoes and their Cloudinary media
     const echoes = await Echo.find({ userId });
     for (const echo of echoes) {
       if (echo.media && echo.media.length > 0) {
@@ -341,7 +334,7 @@ exports.deleteFullAccount = async (req, res) => {
     }
     await Echo.deleteMany({ userId });
 
-   
+    // 3. Delete the actual User
     const user = await User.findByIdAndDelete(userId);
 
     if (!user) return res.status(404).json({ message: "User not found" });
@@ -354,4 +347,3 @@ exports.deleteFullAccount = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-

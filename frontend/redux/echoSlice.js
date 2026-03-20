@@ -9,7 +9,7 @@ export const getEchoesAsync = createAsyncThunk(
       // 1. Get token from the current Redux state
       const token = getState().auth.token; 
       
-      // 2. Fetch using 'mode' as the type
+      // 2. Fetch using 'mood' as the type
       const response = await api.fetchEchoes(userId, 'mood', token);
       return response.data;
     } catch (error) {
@@ -25,7 +25,7 @@ export const addEchoAsync = createAsyncThunk(
     try {
       const token = getState().auth.token;
 
-      // Force structure to match your Backend Model
+     
       const payload = {
         userId: echoData.userId,
         type: 'mood', 

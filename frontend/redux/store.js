@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import logger from 'redux-logger';
-import authReducer from './authSlice'; // Import the new slice
+import authReducer from './authSlice';
 import echoReducer from './echoSlice';
 import journalReducer from './journalSlice';
 
