@@ -202,7 +202,7 @@ const Help = ({ navigation }) => {
                 </View>
 
                 <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: colors.textMain }]}>Contact Us</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.textMain }]}>Ask Ai</Text>
                     <View style={styles.actionGrid}>
                         <QuickAction 
                             icon="sparkles" 
@@ -211,6 +211,14 @@ const Help = ({ navigation }) => {
                             color={colors.primary} 
                             onPress={() => setIsChatVisible(true)}
                         />
+                       
+                    </View>
+                </View>
+
+                 <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: colors.textMain }]}>Contact Us</Text>
+                    <View style={styles.actionGrid}>
+                     
                         <QuickAction 
                             icon="mail-outline" 
                             title="Email Support" 
@@ -220,6 +228,7 @@ const Help = ({ navigation }) => {
                         />
                     </View>
                 </View>
+
 
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: colors.textMain }]}>Frequently Asked</Text>
