@@ -3,6 +3,7 @@ import { useNavigation, useRoute } from '@react-navigation/native'; // Added use
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import LottieView from 'lottie-react-native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -34,7 +35,6 @@ import {
   removeJournalMediaAsync
 } from '../../redux/journalSlice';
 import { uploadImageToCloudinary } from '../../services/cloudinary';
-
 const { width, height } = Dimensions.get('window');
 const GOOGLE_MAPS_APIKEY = thisisit;
 
@@ -93,14 +93,14 @@ const Atlas = () => {
   const [description, setDescription] = useState('');
   const [mediaList, setMediaList] = useState([]);
 
- // ---   HANDLES BOTH EXPLORE & TRENDING DATA ---
+  // ---   HANDLES BOTH EXPLORE & TRENDING DATA ---
   useEffect(() => {
     const params = route.params;
-    
-    
+
+
     if (params?.location || params?.searchLocation) {
-      
-    
+
+
       const incoming = params.searchLocation || {
         coords: params.location,
         name: params.placeName,
@@ -111,7 +111,7 @@ const Atlas = () => {
 
       const { coords, name, address, image, autoShowDirections } = incoming;
 
-  
+
       setSearchResult({
         name,
         address,
@@ -119,28 +119,28 @@ const Atlas = () => {
         image
       });
 
-    
+
       const region = {
         latitude: coords.latitude,
         longitude: coords.longitude,
-        latitudeDelta: 0.008, 
+        latitudeDelta: 0.008,
         longitudeDelta: 0.008,
       };
-      
-      
+
+
       setTimeout(() => {
         mapRef.current?.animateToRegion(region, 1500);
       }, 500);
 
-      
+
       if (autoShowDirections) {
         setDestination(coords);
         setShowDirections(true);
       }
 
-    
-      navigation.setParams({ 
-        searchLocation: undefined, 
+
+      navigation.setParams({
+        searchLocation: undefined,
         location: undefined,
         placeName: undefined,
         placeAddress: undefined,
@@ -442,7 +442,7 @@ const Atlas = () => {
         )}
         <TouchableOpacity style={styles.viewerSingleDelete} onPress={() => handleRemoveSingleSavedMedia(item)}>
           <Ionicons name="trash" size={23} color="white" />
-       
+
         </TouchableOpacity>
       </View>
     );
@@ -491,21 +491,33 @@ const Atlas = () => {
           />
         )}
 
-        {userLocation && (
-          <Marker
-            coordinate={userLocation}
-            anchor={{ x: 0.5, y: 0.5 }}
-            flat
-          >
-            <View style={{ transform: [{ rotate: `${arrowHeading}deg` }] }}>
-              {showDirections ? (
-                <Ionicons name="navigate" size={38} color={colors.primary} />
-              ) : (
-                <View style={[styles.userDot, { backgroundColor: colors.primary }]} />
-              )}
-            </View>
-          </Marker>
-        )}
+       {userLocation && (
+  <Marker
+    coordinate={userLocation}
+    anchor={{ x: 0.5, y: 0.5 }}
+    flat={true}
+  >
+    <View style={{
+      width: 40, 
+      height: 35,
+      alignItems: 'center',
+     
+      transform: [{ rotate: `${arrowHeading}deg` }] 
+    }}>
+      <LottieView
+        source={require('../../assets/location-map.json')}
+        autoPlay
+        loop
+      
+        resizeMode="contain" 
+        style={{
+          width: '100%', 
+          height: '100%',
+        }}
+      />
+    </View>
+  </Marker>
+)}
 
         {markers.map((journal) => (
           <Marker
@@ -623,7 +635,7 @@ const Atlas = () => {
               <TouchableOpacity onPress={() => { setViewerVisible(false); setShowDirections(true); }} style={[styles.headerCircleBtn, { backgroundColor: '#34A853', marginRight: 12 }]}>
                 <Ionicons name="navigate" size={24} color="#fff" />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleDeleteJournal(selectedJournal?._id)} style={[styles.headerCircleBtn , { backgroundColor: '#e33030', marginRight: 12 }] }>
+              <TouchableOpacity onPress={() => handleDeleteJournal(selectedJournal?._id)} style={[styles.headerCircleBtn, { backgroundColor: '#e33030', marginRight: 12 }]}>
                 <Ionicons name="trash-outline" size={22} color="#ffffff" />
               </TouchableOpacity>
             </View>
@@ -714,7 +726,7 @@ const styles = StyleSheet.create({
   headerCircleBtn: { backgroundColor: 'rgba(0,0,0,0.5)', width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   mediaSlide: { width: width, height: height, justifyContent: 'center' },
   fullMedia: { width: width, height: '100%' },
-  viewerSingleDelete: { position: 'absolute', top: 135, right: 10 , padding: 10, borderRadius: 15, flexDirection: 'row', alignItems: 'center' },
+  viewerSingleDelete: { position: 'absolute', top: 135, right: 10, padding: 10, borderRadius: 15, flexDirection: 'row', alignItems: 'center' },
   deleteBtnText: { color: 'white', marginLeft: 5, fontWeight: '600', fontSize: 12 },
   paginationRow: { flexDirection: 'row', justifyContent: 'center', position: 'absolute', bottom: 210, width: '100%' },
   dot: { width: 8, height: 8, borderRadius: 4, marginHorizontal: 5 },
