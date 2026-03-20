@@ -39,6 +39,8 @@ app.use('/api/echoes', require('./routes/echoRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));    
 app.use('/api/journals', require('./routes/journalRoutes'));
 
+//ai
+app.use('/api/chat', chatRoutes);
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,

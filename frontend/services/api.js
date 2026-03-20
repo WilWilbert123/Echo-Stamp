@@ -64,6 +64,13 @@ export const fullDeleteAccount = () => API.delete('/users/full-delete');
 //------Fetchglobal journal
 export const fetchGlobalFeed = () => API.get('/journals/feed/global');
 
+/* --- AI Chat Assistant --- */
+export const askAiAssistant = (message, history) => API.post('/chat/ai-assistant', { message, history });
+export const fetchChatHistory = () => API.get('/chat/history');
+export const clearChatHistory = () => API.delete('/chat/history');
+
+
+
 export const Config = { 
   MAPS_SDK_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_SDK_KEY,
   PLACES_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY,
