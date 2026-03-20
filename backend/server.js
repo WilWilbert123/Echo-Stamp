@@ -4,7 +4,7 @@ const cors = require('cors');
 const { errorHandler } = require('./middleware/errorMiddleware');
 const connectDB = require('./config/db');
 const cloudinary = require('cloudinary').v2;
-
+ 
 // Load environment variables
 require('dotenv').config();  
 
@@ -46,7 +46,7 @@ app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/journals', require('./routes/journalRoutes'));
 
 //ai
-app.use('/api/chat', chatRoutes);
+app.use('/api/chat', require('./routes/chatRoutes'));
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
