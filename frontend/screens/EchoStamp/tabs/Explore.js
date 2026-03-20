@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location';
+import LottieView from 'lottie-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -20,6 +21,7 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import thisisit from "../../../config/config";
 import { useTheme } from '../../../context/ThemeContext';
 
+
 const { width, height } = Dimensions.get('window');
 const GOOGLE_API_KEY = thisisit;
 
@@ -37,7 +39,7 @@ const Explore = () => {
     const [selectedPlace, setSelectedPlace] = useState(null);
     const [isModalVisible, setModalVisible] = useState(false);
     const [savedIds, setSavedIds] = useState([]);
-
+    const [arrowHeading, setArrowHeading] = useState(0);
     const categories = [
         { id: '1', name: 'Cities', icon: 'business', color: '#94A3B8', type: 'locality' },
         { id: '2', name: 'Food', icon: 'restaurant', color: '#FB923C', type: 'restaurant' },
@@ -53,7 +55,7 @@ const Explore = () => {
         getInitialLocation();
         loadSavedStatus();
     }, []);
-
+    
     const loadSavedStatus = async () => {
         try {
             const savedData = await AsyncStorage.getItem('saved_places');
@@ -261,14 +263,45 @@ const Explore = () => {
                         provider={PROVIDER_GOOGLE}
                         style={styles.map}
                         initialRegion={userLocation}
-                        showsUserLocation={true}
+                      
+                        showsUserLocation={false}
                         customMapStyle={isDark ? darkMapStyle : []}
                     >
+                         
+                        {userLocation && (
+                            <Marker
+                                coordinate={{
+                                    latitude: userLocation.latitude,
+                                    longitude: userLocation.longitude
+                                }}
+                                anchor={{ x: 0.5, y: 0.5 }}  
+                                flat={false}  
+                            >
+                                <View style={{
+                                    width: 30,  
+                                    height: 30,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transform: [{ rotate: `${arrowHeading}deg` }]
+                                }}>
+                                    <LottieView
+                                        source={require('../../../assets/location-map.json')}  
+                                        autoPlay
+                                        loop
+                                        style={{
+                                            width: '100%',
+                                            height: '100%',
+                                        }}
+                                    />
+                                </View>
+                            </Marker>
+                        )}
+
+                      
                         {places.map((place) => (
                             <Marker
                                 key={place.id}
                                 coordinate={{ latitude: place.lat, longitude: place.lon }}
-                                title={place.name}
                                 onPress={() => { setSelectedPlace(place); setModalVisible(true); }}
                             >
                                 <View style={[styles.customMarker, { backgroundColor: place.categoryColor }]}>
@@ -316,10 +349,10 @@ const Explore = () => {
                                 </View>
                             </View>
                             <TouchableOpacity onPress={() => toggleSave(item)} style={{ padding: 10 }}>
-                                <Ionicons 
-                                    name={savedIds.includes(item.id) ? "bookmark" : "bookmark-outline"} 
-                                    size={22} 
-                                    color={colors.primary} 
+                                <Ionicons
+                                    name={savedIds.includes(item.id) ? "bookmark" : "bookmark-outline"}
+                                    size={22}
+                                    color={colors.primary}
                                 />
                             </TouchableOpacity>
                         </TouchableOpacity>
@@ -330,30 +363,30 @@ const Explore = () => {
             <Modal visible={isModalVisible} animationType="slide" transparent={true} onRequestClose={() => setModalVisible(false)}>
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalContent, { backgroundColor: isDark ? '#0F172A' : '#FFF' }]}>
-                        <TouchableOpacity 
-                            onPress={() => setModalVisible(false)} 
+                        <TouchableOpacity
+                            onPress={() => setModalVisible(false)}
                             style={[styles.closeBtnTop, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
                         >
                             <Ionicons name="close" size={24} color={colors.textMain} />
                         </TouchableOpacity>
 
                         <View style={styles.modalHandle} />
-                        
+
                         <ScrollView showsVerticalScrollIndicator={false} style={{ width: '100%' }}>
                             <View style={styles.modalHeroContainer}>
                                 <Image source={{ uri: selectedPlace?.image }} style={styles.modalHeroImg} />
-                                <TouchableOpacity 
-                                    style={styles.modalBookmarkBtn} 
+                                <TouchableOpacity
+                                    style={styles.modalBookmarkBtn}
                                     onPress={() => toggleSave(selectedPlace)}
                                 >
-                                    <Ionicons 
-                                        name={savedIds.includes(selectedPlace?.id) ? "bookmark" : "bookmark-outline"} 
-                                        size={26} 
-                                        color="white" 
+                                    <Ionicons
+                                        name={savedIds.includes(selectedPlace?.id) ? "bookmark" : "bookmark-outline"}
+                                        size={26}
+                                        color="white"
                                     />
                                 </TouchableOpacity>
                             </View>
-                            
+
                             <Text style={[styles.modalTitle, { color: colors.textMain }]}>{selectedPlace?.name}</Text>
                             <Text style={[styles.modalSub, { color: colors.textSecondary }]}>{selectedPlace?.address}</Text>
 
@@ -364,7 +397,7 @@ const Explore = () => {
                                 <Ionicons name="map" size={20} color="white" style={{ marginRight: 10 }} />
                                 <Text style={styles.actionBtnText}>Go to Atlas</Text>
                             </TouchableOpacity>
-                            
+
                             <View style={{ height: 40 }} />
                         </ScrollView>
                     </View>
@@ -374,7 +407,7 @@ const Explore = () => {
     );
 };
 
- 
+
 const darkMapStyle = [
     { "elementType": "geometry", "stylers": [{ "color": "#1d2c4d" }] },
     { "elementType": "labels.text.fill", "stylers": [{ "color": "#8ec3b9" }] },
