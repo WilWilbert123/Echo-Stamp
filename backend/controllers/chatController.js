@@ -13,51 +13,53 @@ exports.askAiAssistant = async (req, res) => {
         }
 
         const userId = req.user.id;
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+ 
+        const model = genAI.getGenerativeModel({ 
+            model: "gemini-1.5-flash",
+            systemInstruction: "You are the Echo App AI Assistant. Echo is a mood and journal app where users save 'Echoes'. Help users with app features and rank levels (50 echoes = new rank). Keep it concise, friendly, and buttery-smooth."
+        });
 
         let userChat = await Chat.findOne({ userId });
 
-        // 1. Map history and fix any legacy 'ai' roles to 'model'
-        let history = userChat ? userChat.messages.map(msg => ({
+      
+        let rawHistory = userChat ? userChat.messages.map(msg => ({
             role: msg.role === 'ai' ? 'model' : msg.role,
             parts: msg.parts
         })) : [];
 
-        // 2. IMPORTANT: Ensure history starts with 'user' or is empty to prevent sequence errors
-        // Gemini expects: [User, Model, User, Model...]
-        // Our 'System' instructions are [User, Model], so history MUST start with User.
-        if (history.length > 0 && history[0].role === 'model') {
-            history.shift(); 
-        }
-
-        // Limit history size for performance
-        const slicedHistory = history.slice(-10);
-
-        const chat = model.startChat({
-            history: [
-                {
-                    role: "user",
-                    parts: [{ text: "You are the Echo App AI Assistant. Echo is a mood and journal app where users save 'Echoes'. Help users with app features and rank levels (50 echoes = new rank). Keep it concise and friendly." }],
-                },
-                {
-                    role: "model",
-                    parts: [{ text: "Understood. I am ready to help Pioneers with their Echoes!" }],
-                },
-                ...slicedHistory 
-            ],
+    
+        let filteredHistory = [];
+        rawHistory.forEach((msg, index) => {
+            if (index === 0 || msg.role !== rawHistory[index - 1].role) {
+                filteredHistory.push(msg);
+            }
         });
 
+ 
+        if (filteredHistory.length > 0 && filteredHistory[0].role === 'model') {
+            filteredHistory.shift(); 
+        }
+
+     
+        const slicedHistory = filteredHistory.slice(-10);
+
+      
+        const chat = model.startChat({
+            history: slicedHistory,
+        });
+
+    
         const result = await chat.sendMessage(message);
         const botResponseText = result.response.text();
 
-        const newMessages = [
-            { role: "user", parts: [{ text: message }] },
-            { role: "model", parts: [{ text: botResponseText }] }
-        ];
+      
+        const newUserMsg = { role: "user", parts: [{ text: message }] };
+        const newBotMsg = { role: "model", parts: [{ text: botResponseText }] };
 
         if (userChat) {
-            userChat.messages.push(...newMessages);
-            // Optional: Keep the database from growing indefinitely
+            userChat.messages.push(newUserMsg, newBotMsg);
+           
             if (userChat.messages.length > 100) {
                 userChat.messages = userChat.messages.slice(-100);
             }
@@ -65,16 +67,19 @@ exports.askAiAssistant = async (req, res) => {
         } else {
             await Chat.create({
                 userId,
-                messages: newMessages
+                messages: [newUserMsg, newBotMsg]
             });
         }
 
         res.json({ text: botResponseText });
 
     } catch (error) {
-        // This logs the specific reason (like role sequence) to your terminal
-        console.error("AI Error Details:", error.response?.data || error.message);
-        res.status(500).json({ error: "AI Assistant is resting right now." });
+    
+        console.error("--- Echo AI Error ---");
+        console.error("Message:", error.message);
+        if (error.stack) console.error("Stack:", error.stack);
+        
+        res.status(500).json({ error: "The Echo-sphere is currently unstable. Try again in a moment." });
     }
 };
 
@@ -85,7 +90,6 @@ exports.getChatHistory = async (req, res) => {
         }
         
         const userChat = await Chat.findOne({ userId: req.user.id });
-        // Return only the messages array
         res.json(userChat ? userChat.messages : []);
     } catch (error) {
         console.error("Fetch History Error:", error);

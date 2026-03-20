@@ -47,7 +47,6 @@ const Help = ({ navigation }) => {
         const loadHistory = async () => {
             try {
                 const response = await fetchChatHistory();
-                // Check if response is the array directly or inside .data
                 const historyData = response.data || response;
                 
                 if (Array.isArray(historyData)) {
@@ -89,12 +88,12 @@ const Help = ({ navigation }) => {
         }
     };
 
-    // 3. Action: Send Message (FIXED STRUCTURE)
+    // 3. Action: Send Message
     const sendMessage = async () => {
         if (chatMessage.trim().length === 0 || isTyping) return;
         
         const messageText = chatMessage.trim();
-        // Gemini expects 'user' role
+        // Gemini-compatible structure
         const userMsg = { role: 'user', parts: [{ text: messageText }] };
         
         dispatch(addMessage(userMsg));
@@ -103,13 +102,11 @@ const Help = ({ navigation }) => {
 
         try {
             const response = await askAiAssistant(messageText);
-
-            // Correctly handle the response structure from your API
             const responseText = response?.data?.text || response?.text;
 
             if (responseText) {
                 const botMsg = { 
-                    role: 'model', // CRITICAL: Gemini uses 'model', not 'ai'
+                    role: 'model', 
                     parts: [{ text: responseText }] 
                 };
                 dispatch(addMessage(botMsg));
@@ -120,7 +117,7 @@ const Help = ({ navigation }) => {
             console.error("Chat Error:", error);
             dispatch(addMessage({ 
                 role: 'model', 
-                parts: [{ text: "I'm having trouble connecting to the Echo-sphere. Please try again in a moment." }] 
+                parts: [{ text: "The Echo-sphere is currently unstable. Please check your connection or clear history to reset." }] 
             }));
         } finally {
             dispatch(setChatLoading(false));
@@ -270,7 +267,7 @@ const Help = ({ navigation }) => {
                             </View>
                         ))}
                         {isTyping && (
-                            <View style={[styles.messageBubble, styles.botMessage, { backgroundColor: isDark ? '#1E293B' : '#E2E8F0', width: 60 }]}>
+                            <View style={[styles.messageBubble, styles.botMessage, { backgroundColor: isDark ? '#1E293B' : '#E2E8F0', width: 60, height: 40, justifyContent: 'center' }]}>
                                 <ActivityIndicator size="small" color={colors.primary} />
                             </View>
                         )}
