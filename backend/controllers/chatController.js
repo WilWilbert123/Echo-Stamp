@@ -1,8 +1,5 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const axios = require('axios');
 const Chat = require("../models/Chat");
-
- 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY);
 
 exports.askAiAssistant = async (req, res) => {
     try {
@@ -13,53 +10,64 @@ exports.askAiAssistant = async (req, res) => {
         }
 
         const userId = req.user.id;
+        const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
+        
+    
+        const model = "gemini-1.5-flash";
+        const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
 
- 
-        const model = genAI.getGenerativeModel({ 
-            model: "gemini-1.5-flash",
-            systemInstruction: "You are the Echo App AI Assistant. Echo is a mood and journal app where users save 'Echoes'. Help users with app features and rank levels (50 echoes = new rank). Keep it concise, friendly, and buttery-smooth."
-        });
-
+     
         let userChat = await Chat.findOne({ userId });
-
-      
-        let rawHistory = userChat ? userChat.messages.map(msg => ({
+   
+        let formattedHistory = userChat ? userChat.messages.map(msg => ({
             role: msg.role === 'ai' ? 'model' : msg.role,
-            parts: msg.parts
+            parts: [{ text: msg.parts[0].text }]
         })) : [];
 
-    
-        let filteredHistory = [];
-        rawHistory.forEach((msg, index) => {
-            if (index === 0 || msg.role !== rawHistory[index - 1].role) {
-                filteredHistory.push(msg);
+     
+        let finalContents = [];
+        formattedHistory.forEach((msg, index) => {
+            if (index === 0 || msg.role !== formattedHistory[index - 1].role) {
+                finalContents.push(msg);
             }
         });
 
  
-        if (filteredHistory.length > 0 && filteredHistory[0].role === 'model') {
-            filteredHistory.shift(); 
-        }
+        const systemPrompt = {
+            role: "user",
+            parts: [{ text: "SYSTEM: You are the Echo App AI Assistant. Echo is a mood/journal app. 50 echoes = new rank. Be concise and friendly." }]
+        };
+        const systemAck = {
+            role: "model",
+            parts: [{ text: "Understood. I am ready to help with Echo Stamp!" }]
+        };
+ 
+        const payload = {
+            contents: [
+                systemPrompt,
+                systemAck,
+                ...finalContents.slice(-10), 
+                { role: "user", parts: [{ text: message }] }
+            ]
+        };
 
-     
-        const slicedHistory = filteredHistory.slice(-10);
-
-      
-        const chat = model.startChat({
-            history: slicedHistory,
+        // 5. AXIOS CALL
+        const apiRes = await axios.post(url, payload, {
+            headers: { 'Content-Type': 'application/json' }
         });
 
-    
-        const result = await chat.sendMessage(message);
-        const botResponseText = result.response.text();
+        const botResponseText = apiRes.data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
-      
+        if (!botResponseText) {
+            throw new Error("AI returned empty content.");
+        }
+
+        // 6. SAVE TO DB
         const newUserMsg = { role: "user", parts: [{ text: message }] };
         const newBotMsg = { role: "model", parts: [{ text: botResponseText }] };
 
         if (userChat) {
             userChat.messages.push(newUserMsg, newBotMsg);
-           
             if (userChat.messages.length > 100) {
                 userChat.messages = userChat.messages.slice(-100);
             }
@@ -74,39 +82,27 @@ exports.askAiAssistant = async (req, res) => {
         res.json({ text: botResponseText });
 
     } catch (error) {
-    
-        console.error("--- Echo AI Error ---");
-        console.error("Message:", error.message);
-        if (error.stack) console.error("Stack:", error.stack);
-        
-        res.status(500).json({ error: "The Echo-sphere is currently unstable. Try again in a moment." });
+        console.error("❌ AXIOS/GEMINI ERROR:", error.response?.data || error.message);
+        res.status(500).json({ error: "The Echo-sphere is hazy. Please try again." });
     }
 };
 
 exports.getChatHistory = async (req, res) => {
     try {
-        if (!req.user || !req.user.id) {
-            return res.status(401).json({ error: "Not authorized." });
-        }
-        
+        if (!req.user || !req.user.id) return res.status(401).json({ error: "Not authorized." });
         const userChat = await Chat.findOne({ userId: req.user.id });
         res.json(userChat ? userChat.messages : []);
     } catch (error) {
-        console.error("Fetch History Error:", error);
         res.status(500).json({ error: "Could not fetch history." });
     }
 };
 
 exports.clearChatHistory = async (req, res) => {
     try {
-        if (!req.user || !req.user.id) {
-            return res.status(401).json({ error: "Not authorized." });
-        }
-
+        if (!req.user || !req.user.id) return res.status(401).json({ error: "Not authorized." });
         await Chat.findOneAndDelete({ userId: req.user.id });
-        res.status(200).json({ message: "Chat history deleted successfully." });
+        res.status(200).json({ message: "History cleared." });
     } catch (error) {
-        console.error("Delete Error:", error);
         res.status(500).json({ error: "Could not delete history." });
     }
 };
