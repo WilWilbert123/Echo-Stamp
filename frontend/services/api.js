@@ -59,7 +59,7 @@ export const updateSecurity = (data) => API.post('/users/update-security', data)
 export const verify2faLogin = (data) => API.post('/users/login-2fa-verify', data);
 
 // ---- delete account ----
-export const fullDeleteAccount = (userId) => API.delete(`/users/${userId}/full-delete`);
+export const fullDeleteAccount = () => API.delete('/users/full-delete');
 
 //------Fetchglobal journal
 export const fetchGlobalFeed = () => API.get('/journals/feed/global');
