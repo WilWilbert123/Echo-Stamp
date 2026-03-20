@@ -1,57 +1,79 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const axios = require('axios');
 const Chat = require("../models/Chat");
-
  
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY);
-
 exports.askAiAssistant = async (req, res) => {
+   
+    console.log("📩 Request received from User:", req.user?._id);
+
     try {
         const { message } = req.body;
 
-        if (!req.user || !req.user.id) {
-            return res.status(401).json({ error: "User not authenticated correctly." });
+        // Validation
+        if (!message) {
+            return res.status(400).json({ error: "Message is required" });
         }
 
-        const userId = req.user.id;
-
+        const userId = req.user._id;
+        const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
  
-        const model = genAI.getGenerativeModel({ 
-            model: "gemini-1.5-flash",
-            systemInstruction: "You are the Echo App AI Assistant. Echo is a mood and journal app where users save 'Echoes'. Help users with app features and rank levels (50 echoes = new rank). Keep it concise, friendly, and buttery-smooth."
-        });
+        const model = "gemini-1.5-flash"; 
+        const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
 
+       
         let userChat = await Chat.findOne({ userId });
-
-      
+     
         let rawHistory = userChat ? userChat.messages.map(msg => ({
-            role: msg.role === 'ai' ? 'model' : msg.role,
-            parts: msg.parts
+            role: msg.role, // Must be 'user' or 'model'
+            parts: [{ text: msg.parts[0].text }]
         })) : [];
 
-    
         let filteredHistory = [];
         rawHistory.forEach((msg, index) => {
+          
             if (index === 0 || msg.role !== rawHistory[index - 1].role) {
                 filteredHistory.push(msg);
             }
         });
 
- 
+        
         if (filteredHistory.length > 0 && filteredHistory[0].role === 'model') {
             filteredHistory.shift(); 
         }
 
-     
-        const slicedHistory = filteredHistory.slice(-10);
+       
+        const payload = {
+            contents: [
+                { 
+                    role: "user", 
+                    parts: [{ text: "SYSTEM: You are the Echo App AI Assistant. Echo is a mood/journal app. 50 echoes = new rank. Be concise, friendly, and helpful." }] 
+                },
+                { 
+                    role: "model", 
+                    parts: [{ text: "Understood! I am the Echo Assistant. How can I help with your memories today?" }] 
+                },
+                ...filteredHistory.slice(-8),  
+                { 
+                    role: "user", 
+                    parts: [{ text: message }] 
+                }
+            ],
+            generationConfig: {
+                maxOutputTokens: 500,
+                temperature: 0.7,
+            }
+        };
 
       
-        const chat = model.startChat({
-            history: slicedHistory,
+        const apiRes = await axios.post(url, payload, {
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 60000  
         });
 
-    
-        const result = await chat.sendMessage(message);
-        const botResponseText = result.response.text();
+        const botResponseText = apiRes.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!botResponseText) {
+            throw new Error("Gemini returned an empty response.");
+        }
 
       
         const newUserMsg = { role: "user", parts: [{ text: message }] };
@@ -59,54 +81,46 @@ exports.askAiAssistant = async (req, res) => {
 
         if (userChat) {
             userChat.messages.push(newUserMsg, newBotMsg);
-           
+          
             if (userChat.messages.length > 100) {
                 userChat.messages = userChat.messages.slice(-100);
             }
             await userChat.save();
         } else {
-            await Chat.create({
-                userId,
-                messages: [newUserMsg, newBotMsg]
-            });
+            await Chat.create({ userId, messages: [newUserMsg, newBotMsg] });
         }
 
+        // 7. Final Success Response
         res.json({ text: botResponseText });
 
     } catch (error) {
-    
-        console.error("--- Echo AI Error ---");
-        console.error("Message:", error.message);
-        if (error.stack) console.error("Stack:", error.stack);
+      
+        const apiError = error.response?.data?.error?.message || error.message;
+        console.error("❌ GEMINI API ERROR:", apiError);
         
-        res.status(500).json({ error: "The Echo-sphere is currently unstable. Try again in a moment." });
+        res.status(500).json({ 
+            error: "The Echo-sphere is currently unstable.",
+            details: apiError 
+        });
     }
 };
-
+ 
 exports.getChatHistory = async (req, res) => {
     try {
-        if (!req.user || !req.user.id) {
-            return res.status(401).json({ error: "Not authorized." });
-        }
-        
-        const userChat = await Chat.findOne({ userId: req.user.id });
+        const userChat = await Chat.findOne({ userId: req.user._id });
         res.json(userChat ? userChat.messages : []);
-    } catch (error) {
-        console.error("Fetch History Error:", error);
-        res.status(500).json({ error: "Could not fetch history." });
+    } catch (err) {
+        console.error("Fetch History Error:", err.message);
+        res.status(500).json({ error: "Failed to load history" });
     }
 };
-
+ 
 exports.clearChatHistory = async (req, res) => {
     try {
-        if (!req.user || !req.user.id) {
-            return res.status(401).json({ error: "Not authorized." });
-        }
-
-        await Chat.findOneAndDelete({ userId: req.user.id });
-        res.status(200).json({ message: "Chat history deleted successfully." });
-    } catch (error) {
-        console.error("Delete Error:", error);
-        res.status(500).json({ error: "Could not delete history." });
+        await Chat.findOneAndDelete({ userId: req.user._id });
+        res.status(200).json({ message: "History cleared successfully." });
+    } catch (err) {
+        console.error("Clear History Error:", err.message);
+        res.status(500).json({ error: "Failed to clear history" });
     }
 };
