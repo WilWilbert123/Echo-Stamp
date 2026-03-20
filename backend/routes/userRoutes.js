@@ -24,11 +24,11 @@ router.post('/reset-password', resetPassword);
 router.post('/verify-only', verifyOnly);
 
 // --- Two Factor Auth----
-router.post('/update-security', updateSecurity);
+router.post('/update-security', protect, updateSecurity);
 router.post('/login-2fa-verify', verify2faLogin);
 
 // -----Delete account -----
-router.delete('/:userId/full-delete', deleteFullAccount);
+router.delete('/full-delete', protect, deleteFullAccount);
 
 // --- Authentication ---
 router.post('/login', loginUser);

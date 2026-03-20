@@ -52,7 +52,9 @@ app.use(errorHandler);
 // --- SERVER START ---
 const PORT = process.env.PORT || 5000;
 
-
+if (!process.env.CLOUDINARY_CLOUD_NAME) {
+    console.warn("⚠️  Warning: Cloudinary environment variables are missing!");
+}
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`///////////////////////////////////////////////////////////`);
     console.log(`🚀 Server running on port ${PORT}`);

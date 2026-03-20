@@ -10,17 +10,17 @@ const userSchema = new mongoose.Schema({
     twoFactorEnabled: { type: Boolean, default: false },
 }, { timestamps: true });
 
-userSchema.pre('save', async function () {
-   
+userSchema.pre('save', async function (next) {  
     if (!this.isModified('password')) {
-        return; 
+        return next();  
     }
 
     try {
         const salt = await bcrypt.genSalt(10);
         this.password = await bcrypt.hash(this.password, salt);
+        next();  
     } catch (error) {
-        throw new Error(error);
+        next(error);  
     }
 });
 
