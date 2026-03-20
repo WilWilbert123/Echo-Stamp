@@ -1,0 +1,42 @@
+// src/constants/assets.js
+
+export const EMOTION_ASSETS = {
+  Burnout: require('../assets/burnout.json'),
+  Calm: require('../assets/chill.json'),
+  Fire: require('../assets/Fire.json'),
+  Play: require('../assets/play.json'),
+  Loved: require('../assets/inlove.json'),
+  Sad: require('../assets/sad.json'),
+  Sick: require('../assets/sick.json'),
+  Walk: require('../assets/walk.json'),
+  ChillBeach: require('../assets/Watermelon.json'),
+  NoEnergy: require('../assets/saddog.json'),
+  Jogging: require('../assets/runcycle.json'),
+  Ok: require('../assets/okdog.json'),
+  Rides: require('../assets/RIder.json'),
+  Haha: require('../assets/haha.json'),
+  What: require('../assets/dogshock.json'),
+  Blee: require('../assets/bledog.json'),
+  Beach: require('../assets/Beach.json'),
+};
+
+ 
+export const EMOTION_CONFIG = [
+  { label: 'Burnout', value: 'Burnout', assetKey: 'Burnout' },
+  { label: 'Chill', value: 'Calm', assetKey: 'Calm' },
+  { label: 'Fire', value: 'Fire', assetKey: 'Fire' },
+  { label: 'Play', value: 'Play', assetKey: 'Play' },
+  { label: 'In Love', value: 'In Love', assetKey: 'Loved' },
+  { label: 'Sad', value: 'Sad', assetKey: 'Sad' },
+  { label: 'Sick', value: 'Sick', assetKey: 'Sick' },
+  { label: 'Walk', value: 'Walk', assetKey: 'Walk' },
+  { label: 'Chill Beach', value: 'Chill Beach', assetKey: 'ChillBeach' },
+  { label: 'No Energy', value: 'No Energy', assetKey: 'NoEnergy' },
+  { label: 'Jogging', value: 'Jogging', assetKey: 'Jogging' },
+  { label: 'Ok', value: 'Ok', assetKey: 'Ok' },
+  { label: 'Rides', value: 'Rides', assetKey: 'Rides' },
+  { label: 'haha', value: 'haha', assetKey: 'Haha' },
+  { label: 'What', value: 'What', assetKey: 'What' },
+  { label: 'Blee', value: 'Blee', assetKey: 'Blee' },
+  { label: 'Beach', value: 'Beach', assetKey: 'Beach' },
+];

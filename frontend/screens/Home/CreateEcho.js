@@ -18,6 +18,7 @@ import {
   View
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
+import { EMOTION_ASSETS, EMOTION_CONFIG } from '../../constants/assets';
 import { useTheme } from '../../context/ThemeContext';
 import { addEchoAsync } from '../../redux/echoSlice';
 
@@ -29,12 +30,20 @@ const CreateEcho = ({ navigation }) => {
   const [description, setDescription] = useState('');
   const [emotion, setEmotion] = useState('Calm');
   const [loading, setLoading] = useState(false);
-
   const [address, setAddress] = useState('');
   const [isLocating, setIsLocating] = useState(false);
 
+  // Search States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+
+  // Filtered Emotions Logic
+  const filteredEmotions = EMOTION_CONFIG.filter((item) =>
+    item.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   useEffect(() => {
     const preFetchLocation = async () => {
@@ -81,17 +90,6 @@ const CreateEcho = ({ navigation }) => {
     preFetchLocation();
   }, []);
 
-  const emotions = [
-    { label: 'Burnout', value: 'Burnout', animation: require('../../assets/burnout.json') },
-    { label: 'Chill', value: 'Calm', animation: require('../../assets/chill.json') },
-    { label: 'Fire', value: 'Fire', animation: require('../../assets/Fire.json') },
-    { label: 'Play', value: 'Excited', animation: require('../../assets/play.json') },
-    { label: 'In Love', value: 'Loved', animation: require('../../assets/inlove.json') },
-    { label: 'Sad', value: 'Sad', animation: require('../../assets/sad.json') },
-    { label: 'Sick', value: 'Sick', animation: require('../../assets/sick.json') },
-    { label: 'Walk', value: 'Grateful', animation: require('../../assets/walk.json') },
-  ];
-
   const handleSave = async () => {
     if (!title.trim()) {
       Alert.alert("Wait", "Please give this moment a title.");
@@ -116,7 +114,6 @@ const CreateEcho = ({ navigation }) => {
       };
 
       await dispatch(addEchoAsync(echoData)).unwrap();
-      //Alert.alert("Success", "Memory anchored!");
       navigation.goBack();
     } catch (error) {
       console.error(error);
@@ -130,7 +127,6 @@ const CreateEcho = ({ navigation }) => {
     <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
       <StatusBar barStyle={colors.status} />
 
-      {/* BRANDED WAVY HEADER */}
       <View style={styles.headerBackground}>
         <View style={[styles.blueWave, { backgroundColor: colors.primary, opacity: isDark ? 0.3 : 0.8 }]} />
         <View style={[styles.darkWave, { backgroundColor: isDark ? '#1E293B' : '#637D8B', opacity: 0.6 }]} />
@@ -160,7 +156,7 @@ const CreateEcho = ({ navigation }) => {
             <Ionicons
               name={address && !address.includes("denied") ? "location" : "location-outline"}
               size={14}
-              color={isDark ? colors.primary : colors.primary}
+              color={colors.primary}
             />
             <Text numberOfLines={1} style={[styles.locationStatusText, { color: isDark ? '#FFF' : colors.textMain }]}>
               {isLocating ? "Finding your spot..." : address || "Location ready"}
@@ -188,7 +184,32 @@ const CreateEcho = ({ navigation }) => {
             />
           </View>
 
-          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>HOW DID IT FEEL?</Text>
+          {/* Emotion Section Header with Search */}
+          <View style={styles.sectionHeaderRow}>
+            {!isSearching ? (
+              <>
+                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>HOW DID IT FEEL?</Text>
+                <TouchableOpacity onPress={() => setIsSearching(true)} style={styles.searchIconButton}>
+                  <Ionicons name="search" size={18} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <View style={[styles.searchBarContainer, { backgroundColor: isDark ? colors.glass : '#F1F5F9' }]}>
+                <Ionicons name="search" size={16} color={colors.primary} style={{ marginLeft: 10 }} />
+                <TextInput
+                  autoFocus
+                  style={[styles.searchInput, { color: colors.textMain }]}
+                  placeholder="Search emotions..."
+                  placeholderTextColor={isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)"}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                <TouchableOpacity onPress={() => { setIsSearching(false); setSearchQuery(''); }}>
+                  <Ionicons name="close-circle" size={18} color={colors.textSecondary} style={{ marginRight: 10 }} />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
 
           <ScrollView
             horizontal
@@ -196,39 +217,48 @@ const CreateEcho = ({ navigation }) => {
             contentContainerStyle={styles.emotionScrollContent}
             style={styles.emotionScrollView}
           >
-            {emotions.map((item) => (
-              <TouchableOpacity
-                key={item.label}
-                onPress={() => setEmotion(item.value)} // set the value for your DB
-                style={[
-                  styles.emotionBox,
-                  {
-                    backgroundColor: isDark ? colors.glass : '#FFF',
-                    borderColor: emotion === item.value ? colors.primary : colors.glassBorder,
-                    borderWidth: emotion === item.value ? 2 : 1
-                  },
-                  emotion === item.value && {
-                    backgroundColor: isDark ? 'rgba(56,189,248,0.1)' : 'rgba(56,189,248,0.05)'
-                  }
-                ]}
-              >
-                {/* RENDER LOTTIE INSTEAD OF TEXT EMOJI */}
-                <LottieView
-                  source={item.animation}
-                  autoPlay
-                  loop={emotion === item.value}
-                  style={{ width: 80, height: 80 }}
-                />
+            {filteredEmotions.map((item) => {
+              const isSelected = emotion === item.value;
+              const animationFile = EMOTION_ASSETS[item.assetKey];
 
-                <Text style={[
-                  styles.emotionText,
-                  { color: colors.textSecondary },
-                  emotion === item.value && { color: colors.primary, fontWeight: '800' }
-                ]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+              return (
+                <TouchableOpacity
+                  key={item.value}  
+                  onPress={() => setEmotion(item.value)}
+                  activeOpacity={0.7}
+                  style={[
+                    styles.emotionBox,
+                    {
+                      backgroundColor: isDark ? colors.glass : '#FFF',
+                      borderColor: isSelected ? colors.primary : colors.glassBorder,
+                      borderWidth: isSelected ? 2 : 1,
+                    },
+                    isSelected && {
+                      backgroundColor: isDark ? 'rgba(56,189,248,0.1)' : 'rgba(56,189,248,0.05)',
+                    }
+                  ]}
+                >
+                  <LottieView
+                    source={animationFile}
+                    autoPlay
+                    loop={isSelected}  
+                    style={{ width: 80, height: 80 }}
+                  />
+                  <Text
+                    style={[
+                      styles.emotionText,
+                      { color: colors.textSecondary },
+                      isSelected && { color: colors.primary, fontWeight: '800' }
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+            {filteredEmotions.length === 0 && (
+              <Text style={{ color: colors.textSecondary, marginLeft: 10, marginTop: 40 }}>No results found...</Text>
+            )}
           </ScrollView>
 
           {/* Details Card */}
@@ -289,17 +319,22 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 22, fontWeight: '900' },
   locationStatus: { flexDirection: 'row', alignItems: 'center', marginBottom: 25, paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, alignSelf: 'center' },
   locationStatusText: { fontSize: 12, marginLeft: 6, fontWeight: '700' },
-  solidCard: { padding: 20, borderRadius: 24, marginBottom: 20, ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10 }, android: {   } }) },
+  solidCard: { padding: 20, borderRadius: 24, marginBottom: 20, ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10 }, android: {} }) },
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   label: { fontWeight: '800', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 },
   counter: { fontSize: 11, fontWeight: '600' },
   input: { fontSize: 17, fontWeight: '500', lineHeight: 24 },
   textArea: { minHeight: 120 },
-  sectionLabel: { fontSize: 11, fontWeight: '800', marginLeft: 10, marginBottom: 15, letterSpacing: 1.5 },
+  // New Header Styles
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, paddingRight: 10 },
+  sectionLabel: { fontSize: 11, fontWeight: '800', marginLeft: 10, letterSpacing: 1.5 },
+  searchIconButton: { padding: 5, borderRadius: 10 },
+  searchBarContainer: { flex: 1, flexDirection: 'row', alignItems: 'center', height: 40, borderRadius: 20, marginLeft: 10 },
+  searchInput: { flex: 1, fontSize: 14, paddingHorizontal: 10, fontWeight: '600' },
+  // Emotion List
   emotionScrollView: { marginBottom: 25 },
   emotionScrollContent: { paddingHorizontal: 5, gap: 12 },
   emotionBox: { width: 90, height: 95, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
-  emojiText: { fontSize: 32, marginBottom: 8 },
   emotionText: { fontSize: 11, fontWeight: '700' },
   footer: { marginTop: 10, alignItems: 'center' },
   mainButton: { width: '100%', height: 60, borderRadius: 30, overflow: 'hidden' },
