@@ -31,8 +31,8 @@ const Help = ({ navigation }) => {
     const dispatch = useDispatch();
 
     // Redux State
-    const chatHistory = useSelector((state) => state.chat.history);
-    const isTyping = useSelector((state) => state.chat.loading);
+    const chatHistory = useSelector((state) => state.chat?.history || []);
+    const isTyping = useSelector((state) => state.chat?.loading || false);
     
     // Local UI States
     const [searchQuery, setSearchQuery] = useState('');
@@ -47,11 +47,14 @@ const Help = ({ navigation }) => {
         const loadHistory = async () => {
             try {
                 const response = await fetchChatHistory();
-                if (response.data.length > 0) {
-                    dispatch(setHistory(response.data));
+                // Check if response is the array directly or inside .data
+                const historyData = response.data || response;
+                
+                if (Array.isArray(historyData)) {
+                    dispatch(setHistory(historyData));
                 }
             } catch (error) {
-                console.log("No previous history found or network error.");
+                console.log("No previous history found or backend offline.");
             }
         };
 
@@ -64,7 +67,7 @@ const Help = ({ navigation }) => {
     const confirmDeleteHistory = () => {
         Alert.alert(
             "Clear History",
-            "Are you sure you want to delete your chat with Echo AI? This cannot be undone.",
+            "Are you sure you want to delete your chat with Echo AI?",
             [
                 { text: "Cancel", style: "cancel" },
                 { 
@@ -80,36 +83,44 @@ const Help = ({ navigation }) => {
         try {
             await clearChatHistory();
             dispatch(clearHistory());
-            Alert.alert("Success", "Your chat history has been cleared.");
+            Alert.alert("Success", "History cleared.");
         } catch (error) {
-            Alert.alert("Error", "Could not clear history. Please try again.");
+            Alert.alert("Error", "Could not clear history.");
         }
     };
 
-    // 3. Action: Send Message
+    // 3. Action: Send Message (FIXED STRUCTURE)
     const sendMessage = async () => {
         if (chatMessage.trim().length === 0 || isTyping) return;
         
-        const userMsg = { role: 'user', parts: [{ text: chatMessage.trim() }] };
-        dispatch(addMessage(userMsg));
+        const messageText = chatMessage.trim();
+        // Gemini expects 'user' role
+        const userMsg = { role: 'user', parts: [{ text: messageText }] };
         
-        const messageToSend = chatMessage;
+        dispatch(addMessage(userMsg));
         setChatMessage('');
         dispatch(setChatLoading(true));
 
         try {
-            // Send current message + existing history to Gemini
-            const response = await askAiAssistant(messageToSend, chatHistory);
+            const response = await askAiAssistant(messageText);
 
-            const botMsg = { 
-                role: 'model', 
-                parts: [{ text: response.data.text }] 
-            };
-            dispatch(addMessage(botMsg));
+            // Correctly handle the response structure from your API
+            const responseText = response?.data?.text || response?.text;
+
+            if (responseText) {
+                const botMsg = { 
+                    role: 'model', // CRITICAL: Gemini uses 'model', not 'ai'
+                    parts: [{ text: responseText }] 
+                };
+                dispatch(addMessage(botMsg));
+            } else {
+                throw new Error("Empty response from AI");
+            }
         } catch (error) {
+            console.error("Chat Error:", error);
             dispatch(addMessage({ 
                 role: 'model', 
-                parts: [{ text: "I lost my connection to the Echo-sphere. Try again?" }] 
+                parts: [{ text: "I'm having trouble connecting to the Echo-sphere. Please try again in a moment." }] 
             }));
         } finally {
             dispatch(setChatLoading(false));
@@ -148,6 +159,16 @@ const Help = ({ navigation }) => {
         </TouchableOpacity>
     );
 
+    const faqs = [
+        { id: 1, question: "How do I create an Echo?", answer: "Navigate to the Map and tap the '+' button or hold a location to create an Echo." },
+        { id: 2, question: "How do I level up my rank?", answer: "You earn a new rank every 50 Echoes. Your progress is tracked in your Profile." },
+        { id: 3, question: "Is my data private?", answer: "Yes, your memories are stored securely and are only visible to you." },
+        { id: 4, question: "Can I use Echo Stamp offline?", answer: "You can view existing Echoes, but creating new ones requires a connection." },
+        { id: 5, question: "How do I sync my photos?", answer: "Syncing to Cloudinary happens automatically when you save an Echo." }
+    ];
+
+    const filteredFaqs = faqs.filter(f => f.question.toLowerCase().includes(searchQuery.toLowerCase()));
+
     return (
         <LinearGradient colors={colors.background} style={styles.container}>
             <ScrollView contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
@@ -159,7 +180,6 @@ const Help = ({ navigation }) => {
                     <Text style={[styles.subtitle, { color: colors.textSecondary }]}>How can we help you today?</Text>
                 </View>
 
-                {/* Search Bar */}
                 <View style={styles.searchContainer}>
                     <View style={[styles.searchBar, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
                         <Ionicons name="search" size={20} color={colors.textSecondary} />
@@ -173,7 +193,6 @@ const Help = ({ navigation }) => {
                     </View>
                 </View>
 
-                {/* Contact Options */}
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: colors.textMain }]}>Contact Us</Text>
                     <View style={styles.actionGrid}>
@@ -194,13 +213,9 @@ const Help = ({ navigation }) => {
                     </View>
                 </View>
 
-                {/* FAQ Section */}
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: colors.textMain }]}>Frequently Asked</Text>
-                    {[
-                        { id: 1, question: "How do I create an Echo?", answer: "Tap the '+' icon on the Map or Home screen." },
-                        { id: 2, question: "Is my data private?", answer: "Yes, your Echoes are private by default." }
-                    ].map((faq) => (
+                    {filteredFaqs.map((faq) => (
                         <TouchableOpacity 
                             key={faq.id}
                             onPress={() => toggleFaq(faq.id)}
@@ -216,15 +231,13 @@ const Help = ({ navigation }) => {
                 </View>
             </ScrollView>
 
-            {/* --- LIVE CHAT MODAL --- */}
-            <Modal visible={isChatVisible} animationType="slide" onRequestClose={() => setIsChatVisible(false)}>
+            <Modal visible={isChatVisible} animationType="slide" transparent={false} onRequestClose={() => setIsChatVisible(false)}>
                 <View style={[styles.modalContainer, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
                     <View style={[styles.chatHeader, { paddingTop: insets.top + 10, borderBottomColor: colors.glassBorder }]}>
                         <TouchableOpacity onPress={() => setIsChatVisible(false)}>
                             <Ionicons name="close" size={28} color={colors.textMain} />
                         </TouchableOpacity>
                         <Text style={[styles.chatHeaderText, { color: colors.textMain }]}>Echo AI Assistant</Text>
-                        
                         <TouchableOpacity onPress={confirmDeleteHistory}>
                             <Ionicons name="trash-outline" size={24} color="#EF4444" />
                         </TouchableOpacity>
@@ -239,7 +252,7 @@ const Help = ({ navigation }) => {
                         {chatHistory.length === 0 && (
                             <View style={[styles.messageBubble, styles.botMessage, { backgroundColor: isDark ? '#1E293B' : '#E2E8F0' }]}>
                                 <Text style={{ color: colors.textMain, fontWeight: '500' }}>
-                                    Hi! I'm your Echo Assistant. Ask me anything about your memories or app levels!
+                                    Hi! I'm your Echo Assistant. Ask me anything about your memories or app ranks!
                                 </Text>
                             </View>
                         )}
@@ -247,15 +260,17 @@ const Help = ({ navigation }) => {
                         {chatHistory.map((item, index) => (
                             <View key={index} style={[
                                 styles.messageBubble, 
-                                item.role === 'user' ? [styles.userMessage, { backgroundColor: colors.primary }] : [styles.botMessage, { backgroundColor: isDark ? '#1E293B' : '#E2E8F0' }]
+                                item.role === 'user' 
+                                    ? [styles.userMessage, { backgroundColor: colors.primary }] 
+                                    : [styles.botMessage, { backgroundColor: isDark ? '#1E293B' : '#E2E8F0' }]
                             ]}>
                                 <Text style={{ color: item.role === 'user' ? '#FFF' : colors.textMain, fontWeight: '500' }}>
-                                    {item.parts[0].text}
+                                    {item.parts?.[0]?.text || item.text || "..."}
                                 </Text>
                             </View>
                         ))}
                         {isTyping && (
-                            <View style={[styles.messageBubble, styles.botMessage, { backgroundColor: isDark ? '#1E293B' : '#E2E8F0', width: 60, alignItems: 'center' }]}>
+                            <View style={[styles.messageBubble, styles.botMessage, { backgroundColor: isDark ? '#1E293B' : '#E2E8F0', width: 60 }]}>
                                 <ActivityIndicator size="small" color={colors.primary} />
                             </View>
                         )}
@@ -265,7 +280,7 @@ const Help = ({ navigation }) => {
                         <View style={[styles.inputContainer, { paddingBottom: insets.bottom + 10, backgroundColor: isDark ? '#1E293B' : '#FFF' }]}>
                             <TextInput 
                                 style={[styles.chatInput, { color: colors.textMain, backgroundColor: isDark ? '#0F172A' : '#F1F5F9' }]}
-                                placeholder="How do I reach the next rank?"
+                                placeholder="Type a message..."
                                 placeholderTextColor={colors.textSecondary}
                                 value={chatMessage}
                                 onChangeText={setChatMessage}
@@ -310,12 +325,12 @@ const styles = StyleSheet.create({
     chatHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 15, borderBottomWidth: 1 },
     chatHeaderText: { fontSize: 18, fontWeight: '800' },
     chatArea: { flex: 1 },
-    messageBubble: { padding: 12, borderRadius: 18, marginBottom: 10, maxWidth: '80%' },
+    messageBubble: { padding: 14, borderRadius: 18, marginBottom: 10, maxWidth: '80%' },
     userMessage: { alignSelf: 'flex-end', borderBottomRightRadius: 2 },
     botMessage: { alignSelf: 'flex-start', borderBottomLeftRadius: 2 },
     inputContainer: { flexDirection: 'row', padding: 15, alignItems: 'center', gap: 10 },
-    chatInput: { flex: 1, height: 45, borderRadius: 22, paddingHorizontal: 20, fontSize: 15 },
-    sendBtn: { width: 45, height: 45, borderRadius: 22, justifyContent: 'center', alignItems: 'center' }
+    chatInput: { flex: 1, height: 48, borderRadius: 24, paddingHorizontal: 20, fontSize: 15 },
+    sendBtn: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center' }
 });
 
 export default Help;
