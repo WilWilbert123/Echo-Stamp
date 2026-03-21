@@ -2,17 +2,16 @@ const axios = require('axios');
 const Chat = require("../models/Chat");
 
 exports.askAiAssistant = async (req, res) => {
-    console.log("📩 Request received from User:", req.user?._id);
-
+   
     try {
         const { message } = req.body;
 
-         
+      
         if (!message) {
             return res.status(400).json({ error: "Message is required" });
         }
 
-      
+     
         const forbiddenPatterns = [
             'ddos', 'sql injection', 'hack', 'exploit', 'bypass', 
             'ignore previous instructions', 'system prompt', 'developer mode',
@@ -30,18 +29,27 @@ exports.askAiAssistant = async (req, res) => {
         }
 
         const userId = req.user._id;
+      
         const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
+
+        if (!GEMINI_API_KEY) {
+            console.error("❌ ERROR: GOOGLE_GEMINI_API_KEY is not defined in Environment Variables.");
+            return res.status(500).json({ error: "AI Service is not configured on the server." });
+        }
+
+       
         const model = "gemini-2.5-flash"; 
-        const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
 
        
         let userChat = await Chat.findOne({ userId });
         
         let rawHistory = userChat ? userChat.messages.map(msg => ({
-            role: msg.role,  
+            role: msg.role === 'model' ? 'model' : 'user',  
             parts: [{ text: msg.parts[0].text }]
         })) : [];
 
+       
         let filteredHistory = [];
         rawHistory.forEach((msg, index) => {
             if (index === 0 || msg.role !== rawHistory[index - 1].role) {
@@ -49,22 +57,23 @@ exports.askAiAssistant = async (req, res) => {
             }
         });
 
+        
         if (filteredHistory.length > 0 && filteredHistory[0].role === 'model') {
             filteredHistory.shift(); 
         }
 
-     
+        
         const payload = {
             contents: [
                 { 
                     role: "user", 
-                    parts: [{ text: "SYSTEM: You are Echo AI, a warm and empathetic journal assistant. 50 echoes = new rank. Provide thoughtful, multi-sentence reflections. Never discuss hacking, security exploits, or illegal activities." }] 
+                    parts: [{ text: "SYSTEM: You are Echo AI, a warm and empathetic journal assistant for the app 'Echo Stamp'. Users earn new ranks every 50 echoes. Provide thoughtful, multi-sentence reflections. Never discuss hacking or security exploits." }] 
                 },
                 { 
                     role: "model", 
-                    parts: [{ text: "Understood. I am ready to help you reflect on your memories and track your Echoes." }] 
+                    parts: [{ text: "Understood. I am Echo AI, ready to help you reflect on your memories and track your Echoes." }] 
                 },
-                ...filteredHistory.slice(-6),  
+                ...filteredHistory.slice(-6), 
                 { 
                     role: "user", 
                     parts: [{ text: message }] 
@@ -72,13 +81,13 @@ exports.askAiAssistant = async (req, res) => {
             ],
             generationConfig: {
                 maxOutputTokens: 1024,  
-                temperature: 0.8,
+                temperature: 0.7, 
                 topP: 0.8,
                 topK: 40
             }
         };
 
-      
+       
         const apiRes = await axios.post(url, payload, {
             headers: { 'Content-Type': 'application/json' },
             timeout: 30000  
@@ -87,15 +96,16 @@ exports.askAiAssistant = async (req, res) => {
         const botResponseText = apiRes.data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (!botResponseText) {
-            throw new Error("Gemini returned an empty response.");
+            throw new Error("Gemini returned an empty response. Possible safety filter block.");
         }
 
-       
+     
         const newUserMsg = { role: "user", parts: [{ text: message }] };
         const newBotMsg = { role: "model", parts: [{ text: botResponseText }] };
 
         if (userChat) {
             userChat.messages.push(newUserMsg, newBotMsg);
+           
             if (userChat.messages.length > 50) {
                 userChat.messages = userChat.messages.slice(-50);
             }
@@ -103,14 +113,13 @@ exports.askAiAssistant = async (req, res) => {
         } else {
             await Chat.create({ userId, messages: [newUserMsg, newBotMsg] });
         }
-
+ 
         res.json({ text: botResponseText });
 
     } catch (error) {
         const apiError = error.response?.data?.error?.message || error.message;
         console.error("❌ GEMINI API ERROR:", apiError);
         
-      
         res.status(500).json({ 
             error: "The Echo-sphere is currently unstable.",
             details: apiError 
