@@ -340,7 +340,7 @@ const Explore = () => {
                                     <Text style={styles.ratingText}>{item.rating}</Text>
                                 </View>
                             </View>
-                            {/* Fixed the <div> to <View> here */}
+                            
                             <View style={styles.placeInfo}>
                                 <Text style={[styles.placeName, { color: colors.textMain }]} numberOfLines={1}>{item.name}</Text>
                                 <View style={styles.addressRow}>

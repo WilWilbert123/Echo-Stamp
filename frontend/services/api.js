@@ -75,7 +75,7 @@ export const clearChatHistory = () => API.delete('/chat/history');
 export const hostMeetup = (eventData) => API.post('/events/host', eventData);
 export const fetchNearbyEvents = (lat, lng) => API.get(`/events/nearby?lat=${lat}&lng=${lng}`);
 export const joinEvent = (eventId) => API.post(`/events/join/${eventId}`);
-
+export const getAllEvents = () => API.get('/events');
 
 
 export const Config = { 
