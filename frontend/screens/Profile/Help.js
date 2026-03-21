@@ -139,7 +139,7 @@ const Help = ({ navigation }) => {
         const isAvailable = await MailComposer.isAvailableAsync();
         if (isAvailable) {
             MailComposer.composeAsync({
-                recipients: ['support@echoapp.com'],
+                recipients: ['stampecho22@gmail.com'],
                 subject: 'Support Request - Echo Stamp',
                 body: `\n\n---\nPlatform: ${Platform.OS}`,
             });

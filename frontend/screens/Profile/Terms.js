@@ -78,7 +78,7 @@ const Terms = ({ navigation }) => {
 
                 <View style={styles.footer}>
                     <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-                        Questions about our Terms? Contact us at legal@echostamp.com
+                        Questions about our Terms? Contact us at stampecho22@gmail.com
                     </Text>
                 </View>
             </ScrollView>
