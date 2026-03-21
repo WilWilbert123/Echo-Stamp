@@ -39,13 +39,13 @@ export const deleteJournalAsync = createAsyncThunk(
   }
 );
 
-// This function now has access to the imported 'removeMediaFromJournal'
+ 
 export const removeJournalMediaAsync = createAsyncThunk(
   'journals/removeMedia',
   async ({ id, mediaUri }, { rejectWithValue }) => {
     try {
       const response = await removeMediaFromJournal(id, mediaUri);
-      return response.data; // This is the updated journal object from backend
+      return response.data;  
     } catch (error) {
       return rejectWithValue(error.response?.data || "Server Error");
     }
@@ -80,11 +80,11 @@ const journalSlice = createSlice({
       .addCase(deleteJournalAsync.fulfilled, (state, action) => {
         state.list = state.list.filter((j) => j._id !== action.payload);
       })
-      // --- ADD THIS: Update Single Media Deletion in State ---
+   
       .addCase(removeJournalMediaAsync.fulfilled, (state, action) => {
         const index = state.list.findIndex((j) => j._id === action.payload._id);
         if (index !== -1) {
-          // Replace the old journal with the new one returned by the server
+          
           state.list[index] = action.payload;
         }
       });
