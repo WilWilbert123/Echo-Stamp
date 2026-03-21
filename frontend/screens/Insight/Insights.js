@@ -47,14 +47,14 @@ const Insights = () => {
         
         setRefreshing(true);
         try {
-            // Fetch both Journals and Echoes in parallel
+            
             await Promise.all([
                 dispatch(getJournalsAsync(user._id)).unwrap(),
-                // Adjust parameters based on your echoSlice requirements
+               
                 dispatch(getEchoesAsync({ userId: user._id })).unwrap()
             ]);
             
-            // Force charts to re-animate after data sync
+          
             setChartKey(prev => prev + 1);
         } catch (error) {
             console.error("Data Sync Error:", error);
@@ -72,13 +72,12 @@ const Insights = () => {
         Loved: '#E91E63', Sad: '#546E7A', Sick: '#9E9E9E', Walk: '#4CAF50',
         ChillBeach: '#00BCD4', NoEnergy: '#78909C', Jogging: '#8BC34A',
         Ok: '#CDDC39', Rides: '#673AB7', Haha: '#FFEB3B', What: '#FF9800',
-        Blee: '#F06292', Beach: '#03A9F4'
+        Blee: '#F06292', Beach: '#03A9F4', Sneaking: '#634242', Crying: '#4703f4' , Drunk: '#000000' ,Thinking: '#ffffff'
     };
-
-    const moodWeights = { 
-        'Play': 10, 'Fire': 9, 'Loved': 8, 'Walk': 7, 'Calm': 6, 
-        'Ok': 5, 'Burnout': 3, 'Sad': 2, 'Sick': 1 
-    };
+const moodWeights = { 
+    'Play': 10, 'Fire': 9,  'Loved': 8,  'Walk': 7,  'Calm': 6,   'Ok': 5,  'Burnout': 3, 
+    'Sad': 2,  'Sick': 1, 'Haha': 9, 'Beach': 8, 'Drunk': 4, 'NoEnergy': 2,'Crying': 1
+};
 
     const parseDate = (dateData) => {
         if (!dateData) return null;

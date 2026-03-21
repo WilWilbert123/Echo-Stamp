@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React from 'react';
+import LottieView from 'lottie-react-native';
+import React, { useRef } from 'react';
 import {
     Alert,
     Dimensions,
@@ -16,10 +17,11 @@ import { useTheme } from '../../context/ThemeContext';
 const { width } = Dimensions.get('window');
 
 const About = ({ navigation }) => {
-    const { colors } = useTheme();
+    // isDark and colors are extracted from your ThemeContext
+    const { colors, isDark } = useTheme(); 
     const insets = useSafeAreaInsets();
+    const animation = useRef(null);
 
-    // Function to handle items still in progress
     const handleDevelopingLink = (platform) => {
         Alert.alert(
             "Coming Soon!",
@@ -41,12 +43,30 @@ const About = ({ navigation }) => {
 
                 {/* App Logo/Branding Section */}
                 <View style={styles.brandSection}>
-                    <LinearGradient 
-                        colors={[colors.primary, '#0ea5e9']} 
-                        style={styles.logoPlaceholder}
-                    >
-                        <Ionicons name="location" size={50} color="#FFF" />
-                    </LinearGradient>
+                    <View style={styles.logoPlaceholder}>
+                        <LottieView
+                            autoPlay
+                            loop
+                            ref={animation}
+                            style={{
+                                width: 150,  
+                                height: 150,
+                            }}
+                   
+                            source={
+                                isDark 
+                                    ? require('../../assets/TechRotate2.json') 
+                                    : require('../../assets/TechRotate.json')
+                            }
+                           
+                            colorFilters={[
+                                {
+                                    keypath: "**", 
+                                    color: colors.textMain, 
+                                },
+                            ]}
+                        />
+                    </View>
                     <Text style={[styles.appName, { color: colors.textMain }]}>Echo Stamp</Text>
                     <Text style={[styles.versionText, { color: colors.textSecondary }]}>Version 1.2.0 (Build 2603)</Text>
                 </View>
@@ -59,7 +79,7 @@ const About = ({ navigation }) => {
                     </Text>
                 </View>
 
-                {/* Features Highlight (Glass Cards) */}
+                {/* Features Row */}
                 <View style={styles.featuresRow}>
                     <View style={[styles.featureCard, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
                         <Ionicons name="map-outline" size={24} color={colors.primary} />
@@ -133,16 +153,11 @@ const styles = StyleSheet.create({
     backBtn: { marginLeft: 20, marginBottom: 10 },
     brandSection: { alignItems: 'center', marginVertical: 30 },
     logoPlaceholder: { 
-        width: 100, 
-        height: 100, 
-        borderRadius: 25, 
+        width: 150, 
+        height: 150, 
         justifyContent: 'center', 
         alignItems: 'center',
-        elevation: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 5 },
-        shadowOpacity: 0.3,
-        shadowRadius: 10
+        backgroundColor: 'transparent',
     },
     appName: { fontSize: 32, fontWeight: '900', marginTop: 15, letterSpacing: -1 },
     versionText: { fontSize: 14, fontWeight: '600', marginTop: 4, opacity: 0.7 },

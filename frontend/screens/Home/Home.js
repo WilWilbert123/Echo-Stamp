@@ -87,13 +87,13 @@ const Home = () => {
   );
 
   const renderItem = ({ item }) => {
-    // LOOKUP LOGIC: Find the config for this specific emotion stored in DB
+     
     const config = EMOTION_CONFIG.find(c => c.value === item.emotion);
     
-    // Get the animation file from assets using the key, or fallback to Calm
+  
     const animationSource = config ? EMOTION_ASSETS[config.assetKey] : EMOTION_ASSETS.Calm;
     
-    // Use the pretty label from config (e.g., "Chill" instead of "Calm")
+    
     const displayLabel = config ? config.label : item.emotion;
 
     return (

@@ -18,6 +18,12 @@ export const EMOTION_ASSETS = {
   What: require('../assets/dogshock.json'),
   Blee: require('../assets/bledog.json'),
   Beach: require('../assets/Beach.json'),
+  Sneaking: require('../assets/amongus.json'),
+  Crying: require('../assets/Cryingemoji.json'),
+  Drunk: require('../assets/drunkbeer.json'),
+  Thinking: require('../assets/Thinking.json'),
+   
+
 };
 
  
@@ -39,4 +45,9 @@ export const EMOTION_CONFIG = [
   { label: 'What', value: 'What', assetKey: 'What' },
   { label: 'Blee', value: 'Blee', assetKey: 'Blee' },
   { label: 'Beach', value: 'Beach', assetKey: 'Beach' },
+  { label: 'Sneaking', value: 'Sneaking', assetKey: 'Sneaking' },
+  { label: 'Crying', value: 'Crying', assetKey: 'Crying' },
+  { label: 'Drunk', value: 'Drunk', assetKey: 'Drunk' },
+  { label: 'Thinking', value: 'Thinking', assetKey: 'Thinking' },
+
 ];
