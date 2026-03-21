@@ -42,6 +42,9 @@ app.use('/api/journals', require('./routes/journalRoutes'));
 //ai
 app.use('/api/chat', require('./routes/chatRoutes'));
 
+//event 
+app.use('/api/events', require('./routes/eventRoutes'));
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,

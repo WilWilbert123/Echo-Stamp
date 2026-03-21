@@ -71,6 +71,13 @@ export const fetchChatHistory = () => API.get('/chat/history');
 export const clearChatHistory = () => API.delete('/chat/history');
 
 
+/* --- Events (Community Gatherings) --- */
+export const hostMeetup = (eventData) => API.post('/events/host', eventData);
+export const fetchNearbyEvents = (lat, lng) => API.get(`/events/nearby?lat=${lat}&lng=${lng}`);
+export const joinEvent = (eventId) => API.post(`/events/join/${eventId}`);
+
+
+
 export const Config = { 
   MAPS_SDK_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_SDK_KEY,
   PLACES_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY,
