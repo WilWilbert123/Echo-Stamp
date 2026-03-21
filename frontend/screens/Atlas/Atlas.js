@@ -95,60 +95,62 @@ const Atlas = () => {
 
   // ---   HANDLES BOTH EXPLORE & TRENDING DATA ---
   useEffect(() => {
-    const params = route.params;
+  const params = route.params;
+ 
+  if (params?.location || params?.searchLocation) {
+    
+    
+    const incoming = params.searchLocation || {
+      coords: params.location,
+      name: params.placeName || params.title || "Community Meetup", 
+      address: params.placeAddress || params.locationName || "",   
+      image: params.placeImage || params.image || null,
+      autoShowDirections: params.autoShowDirections || false
+    };
 
+    const { coords, name, address, image, autoShowDirections } = incoming;
 
-    if (params?.location || params?.searchLocation) {
+   
+    setSearchResult({
+      name,
+      address,
+      coords,
+      image: image || `https://maps.googleapis.com/maps/api/streetview?size=600x300&location=${coords.latitude},${coords.longitude}&key=${GOOGLE_MAPS_APIKEY}`
+    });
 
+ 
+    const region = {
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      latitudeDelta: 0.008,
+      longitudeDelta: 0.008,
+    };
 
-      const incoming = params.searchLocation || {
-        coords: params.location,
-        name: params.placeName,
-        address: params.placeAddress,
-        image: params.placeImage,
-        autoShowDirections: params.autoShowDirections || false
-      };
+   
+    setTimeout(() => {
+      mapRef.current?.animateToRegion(region, 1500);
+    }, 500);
 
-      const { coords, name, address, image, autoShowDirections } = incoming;
-
-
-      setSearchResult({
-        name,
-        address,
-        coords,
-        image
-      });
-
-
-      const region = {
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        latitudeDelta: 0.008,
-        longitudeDelta: 0.008,
-      };
-
-
-      setTimeout(() => {
-        mapRef.current?.animateToRegion(region, 1500);
-      }, 500);
-
-
-      if (autoShowDirections) {
-        setDestination(coords);
-        setShowDirections(true);
-      }
-
-
-      navigation.setParams({
-        searchLocation: undefined,
-        location: undefined,
-        placeName: undefined,
-        placeAddress: undefined,
-        placeImage: undefined,
-        autoShowDirections: undefined
-      });
+    
+    if (autoShowDirections) {
+      setDestination(coords);
+      setShowDirections(true);
     }
-  }, [route.params]);
+
+  
+    navigation.setParams({
+      searchLocation: undefined,
+      location: undefined,
+      placeName: undefined,
+      title: undefined,         
+      locationName: undefined,  
+      placeAddress: undefined,
+      placeImage: undefined,
+      image: undefined,        
+      autoShowDirections: undefined
+    });
+  }
+}, [route.params]);
 
   useEffect(() => {
     const userId = user?._id || user?.id;
