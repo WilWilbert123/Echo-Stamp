@@ -490,34 +490,35 @@ const Atlas = () => {
             }}
           />
         )}
-
-       {userLocation && (
-  <Marker
-    coordinate={userLocation}
-    anchor={{ x: 0.5, y: 0.5 }}
-    flat={true}
-  >
-    <View style={{
-      width: 40, 
-      height: 35,
-      alignItems: 'center',
-     
-      transform: [{ rotate: `${arrowHeading}deg` }] 
-    }}>
-      <LottieView
-        source={require('../../assets/location-map.json')}
-        autoPlay
-        loop
-      
-        resizeMode="contain" 
-        style={{
-          width: '100%', 
-          height: '100%',
-        }}
-      />
-    </View>
-  </Marker>
-)}
+  
+                        {userLocation && (
+                            <Marker
+                                coordinate={{
+                                    latitude: userLocation.latitude,
+                                    longitude: userLocation.longitude
+                                }}
+                                anchor={{ x: 0.5, y: 0.5 }}  
+                                flat={false}  
+                            >
+                                <View style={{
+                                    width: 30,  
+                                    height: 30,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transform: [{ rotate: `${arrowHeading}deg` }]
+                                }}>
+                                    <LottieView
+                                        source={require('../../assets/location-map.json')}  
+                                        autoPlay
+                                        loop
+                                        style={{
+                                            width: '100%',
+                                            height: '100%',
+                                        }}
+                                    />
+                                </View>
+                            </Marker>
+                        )}
 
         {markers.map((journal) => (
           <Marker
