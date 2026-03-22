@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/authMiddleware');
 const { getJournals, createJournal, deleteJournal,removeJournalMedia,getGlobalJournals } = require('../controllers/journalController');
 
 router.get('/:userId', getJournals);
