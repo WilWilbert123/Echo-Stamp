@@ -68,7 +68,8 @@ const Signup = ({ navigation }) => {
                 lastName: lastName.trim(),
                 username: username.trim(),
                 email: email.toLowerCase().trim(),
-                password
+                password,
+                isPublic: false
             };
 
             // Hits: /users/request-otp
@@ -104,8 +105,7 @@ const Signup = ({ navigation }) => {
         }
     };
 
-    // Use useMemo so these aren't recalculated unless the theme changes
-    // This prevents the background shapes from jumping when the keyboard alters "window height"
+   
     const dynamicStyles = useMemo(() => ({
         headerBackground: { height: SCREEN_HEIGHT * 0.25 },
         blueWave: { width: SCREEN_WIDTH * 1.2, height: SCREEN_HEIGHT * 0.2 },
@@ -122,10 +122,10 @@ const Signup = ({ navigation }) => {
             </View>
 
             <KeyboardAvoidingView 
-                // FIXED behavior: Changed from 'height' to 'padding' for Android to stop the flickering
+               
                 behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} 
                 style={styles.flex}
-                // Optional: add keyboardVerticalOffset if the header is covering inputs on some devices
+              
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
             >
                 <ScrollView 

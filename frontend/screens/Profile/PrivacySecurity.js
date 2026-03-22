@@ -21,9 +21,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTheme } from '../../context/ThemeContext';
-import { logout, updatePrivacy } from '../../redux/authSlice';
+import { logout } from '../../redux/authSlice';
 import API, { fullDeleteAccount } from '../../services/api';
-
+ 
+import { updatePrivacy as updatePrivacyAction } from '../../redux/authSlice';
+import { updatePrivacy as updatePrivacyAPI } from '../../services/api';
 
 const PrivacySecurity = ({ navigation }) => {
   const { colors, isDark } = useTheme();
@@ -50,6 +52,8 @@ const PrivacySecurity = ({ navigation }) => {
   const [isDeleting, setIsDeleting] = useState(false);
 const [isPrivacyLoading, setIsPrivacyLoading] = useState(false);
   
+
+
 useEffect(() => {
     if (user?.email) {
       checkInitialStatus();
@@ -146,16 +150,22 @@ useEffect(() => {
     }
   };
 
-  // --- Logic: Profile Visibility ---
+  
 
- const handleProfileVisibility = async (value) => {
+// --- Logic: Profile Visibility ---
+const handleProfileVisibility = async (value) => {
     setIsPrivacyLoading(true);  
     try {
-        await updatePrivacyAPI({ isPublic: value });
-        dispatch(updatePrivacy(value));
+       
+        await updatePrivacyAPI({ isPublic: value }); 
+    
+        dispatch(updatePrivacyAction(value)); 
+        
         setProfileVisible(value);
+        console.log("Successfully saved to DB and Redux:", value);
     } catch (error) {
-        setProfileVisible(!value);
+        console.error("Privacy Toggle Error:", error);
+        setProfileVisible(!value); 
         Alert.alert("Error", "Could not save setting.");
     } finally {
         setIsPrivacyLoading(false);  

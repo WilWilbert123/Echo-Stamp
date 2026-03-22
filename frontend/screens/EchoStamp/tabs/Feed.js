@@ -82,7 +82,7 @@ const PostItem = memo(({ item, colors, isDark, onOpenGallery, onOpenComments }) 
     
     // FIX: Use the user data attached to the journal entry (item.user), 
     // not the global logged-in user.
-    const author = item.user; 
+    const author = item.userId;
     
     const mediaCount = item.media?.length || 0;
     const isMainVid = checkIsVideo(item.media?.[0]);
@@ -218,12 +218,10 @@ const Feed = ({ filter }) => {
     const [galleryModal, setGalleryModal] = useState(false);
     const [galleryImages, setGalleryImages] = useState([]);
     const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
-
-    // FIX: Update loadData to fetch ALL public journals
-    // If your backend action is set up for global feed, we don't need to pass a specific userId
-    // OR we pass a flag to tell the backend to fetch public posts.
+  
+    
     const loadData = useCallback(() => {
-        dispatch(getJournalsAsync()); // Fetching global public feed
+        dispatch(getJournalsAsync());  
     }, [dispatch]);
 
     useEffect(() => { 
@@ -307,7 +305,7 @@ const Feed = ({ filter }) => {
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalContent, { backgroundColor: isDark ? '#121212' : '#FFF' }]}>
                         <View style={styles.modalHeader}>
-                            <div style={styles.modalHandle} />
+                            <View style={styles.modalHandle} />
                             <Text style={[styles.modalTitle, { color: colors.textMain }]}>Reflections</Text>
                         </View>
                         <FlatList
@@ -318,7 +316,7 @@ const Feed = ({ filter }) => {
                                     <View style={[styles.commentAvatar, { backgroundColor: colors.primary + '20' }]} />
                                     <View style={{ flex: 1 }}>
                                         <Text style={{ color: colors.textMain, fontWeight: '600', fontSize: 13 }}>
-                                            {item.username || 'Explorer'}
+                                           {author?.username || 'Explorer'}
                                         </Text>
                                         <Text style={{ color: colors.textSecondary, fontSize: 14, marginTop: 2 }}>{item.text}</Text>
                                     </View>
