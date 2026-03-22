@@ -95,62 +95,110 @@ const Atlas = () => {
 
   // ---   HANDLES BOTH EXPLORE & TRENDING DATA ---
   useEffect(() => {
-  const params = route.params;
- 
-  if (params?.location || params?.searchLocation) {
-    
-    
-    const incoming = params.searchLocation || {
-      coords: params.location,
-      name: params.placeName || params.title || "Community Meetup", 
-      address: params.placeAddress || params.locationName || "",   
-      image: params.placeImage || params.image || null,
-      autoShowDirections: params.autoShowDirections || false
-    };
+    const params = route.params;
+    if (!params) return;
 
-    const { coords, name, address, image, autoShowDirections } = incoming;
+    // --- 1. HANDLE "VIEW ECHO" FROM FEED (Now mimics Search Result Overlay) ---
+    if (params.zoomTo) {
+      const {
+        latitude,
+        longitude,
+        journalId,
+        title,
+        address,
+        image,
+        autoNavigate
+      } = params.zoomTo;
 
-   
-    setSearchResult({
-      name,
-      address,
-      coords,
-      image: image || `https://maps.googleapis.com/maps/api/streetview?size=600x300&location=${coords.latitude},${coords.longitude}&key=${GOOGLE_MAPS_APIKEY}`
-    });
+      const zoomRegion = {
+        latitude: latitude,
+        longitude: longitude,
+        latitudeDelta: 0.005, // Closer zoom for specific echoes
+        longitudeDelta: 0.005,
+      };
 
- 
-    const region = {
-      latitude: coords.latitude,
-      longitude: coords.longitude,
-      latitudeDelta: 0.008,
-      longitudeDelta: 0.008,
-    };
+      // Trigger the GlassCard overlay (SearchResult) using the Feed data
+      setSearchResult({
+        name: title || "Echo Location",
+        address: address || "Pinned Location",
+        coords: { latitude, longitude },
+        // Show the actual image from the post, or fallback to Street View preview
+        image: image || `https://maps.googleapis.com/maps/api/streetview?size=600x300&location=${latitude},${longitude}&key=${GOOGLE_MAPS_APIKEY}`
+      });
 
-   
-    setTimeout(() => {
-      mapRef.current?.animateToRegion(region, 1500);
-    }, 500);
+      // Set destination immediately for navigation logic
+      setDestination({ latitude, longitude });
 
-    
-    if (autoShowDirections) {
-      setDestination(coords);
-      setShowDirections(true);
+      // Set selectedJournal so the Street View WebView knows what to load
+      setSelectedJournal({
+        _id: journalId,
+        location: { lat: latitude, lng: longitude }
+      });
+
+      // Animate to the specific journal location
+      setTimeout(() => {
+        mapRef.current?.animateToRegion(zoomRegion, 1500);
+
+        // Auto-start the blue line if requested
+        if (autoNavigate) {
+          setShowDirections(true);
+        }
+      }, 500);
+
+      // Clear params to prevent re-triggering on component updates
+      navigation.setParams({ zoomTo: undefined });
+      return;
     }
 
-  
-    navigation.setParams({
-      searchLocation: undefined,
-      location: undefined,
-      placeName: undefined,
-      title: undefined,         
-      locationName: undefined,  
-      placeAddress: undefined,
-      placeImage: undefined,
-      image: undefined,        
-      autoShowDirections: undefined
-    });
-  }
-}, [route.params]);
+    // --- 2. HANDLE SEARCH RESULTS / LOCATION PICKER ---
+    if (params.location || params.searchLocation) {
+      const incoming = params.searchLocation || {
+        coords: params.location,
+        name: params.placeName || params.title || "Community Meetup",
+        address: params.placeAddress || params.locationName || "",
+        image: params.placeImage || params.image || null,
+        autoShowDirections: params.autoShowDirections || false,
+      };
+
+      const { coords, name, address, image, autoShowDirections } = incoming;
+
+      setSearchResult({
+        name,
+        address,
+        coords,
+        image: image || `https://maps.googleapis.com/maps/api/streetview?size=600x300&location=${coords.latitude},${coords.longitude}&key=${GOOGLE_MAPS_APIKEY}`
+      });
+
+      const region = {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        latitudeDelta: 0.008,
+        longitudeDelta: 0.008,
+      };
+
+      setTimeout(() => {
+        mapRef.current?.animateToRegion(region, 1500);
+      }, 500);
+
+      if (autoShowDirections) {
+        setDestination(coords);
+        setShowDirections(true);
+      }
+
+      // Clean up all possible search navigation params
+      navigation.setParams({
+        searchLocation: undefined,
+        location: undefined,
+        placeName: undefined,
+        title: undefined,
+        locationName: undefined,
+        placeAddress: undefined,
+        placeImage: undefined,
+        image: undefined,
+        autoShowDirections: undefined
+      });
+    }
+  }, [route.params, list]);
 
   useEffect(() => {
     const userId = user?._id || user?.id;
@@ -492,35 +540,47 @@ const Atlas = () => {
             }}
           />
         )}
-  
-                        {userLocation && (
-                            <Marker
-                                coordinate={{
-                                    latitude: userLocation.latitude,
-                                    longitude: userLocation.longitude
-                                }}
-                                anchor={{ x: 0.5, y: 0.5 }}  
-                                flat={false}  
-                            >
-                                <View style={{
-                                    width: 30,  
-                                    height: 30,
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    transform: [{ rotate: `${arrowHeading}deg` }]
-                                }}>
-                                    <LottieView
-                                        source={require('../../assets/location-map.json')}  
-                                        autoPlay
-                                        loop
-                                        style={{
-                                            width: '100%',
-                                            height: '100%',
-                                        }}
-                                    />
-                                </View>
-                            </Marker>
-                        )}
+
+        {userLocation && (
+          <Marker
+            coordinate={{
+              latitude: userLocation.latitude,
+              longitude: userLocation.longitude
+            }}
+            anchor={{ x: 0.5, y: 0.5 }}
+            // STABILITY FIX: Setting this to false keeps the icon "standing" 
+            // upright even if you rotate or tilt the map.
+            flat={false}
+            // If you want the Rider to always face "North" (Up), set this to 0.
+            // If you want it to point where you are moving, keep arrowHeading.
+            rotation={showDirections ? arrowHeading : 0}
+          >
+            <View style={{
+              width: showDirections ? 50 : 35,
+              height: showDirections ? 50 : 35,
+              alignItems: 'center',
+              justifyContent: 'center',
+              // MIRROR EFFECT: Flipped horizontally
+              transform: [
+                { scaleX: showDirections ? -1 : 1 }
+              ]
+            }}>
+              <LottieView
+                source={
+                  showDirections
+                    ? require('../../assets/RIder.json')
+                    : require('../../assets/location-map.json')
+                }
+                autoPlay
+                loop
+                style={{
+                  width: '100%',
+                  height: '100%',
+                }}
+              />
+            </View>
+          </Marker>
+        )}
 
         {markers.map((journal) => (
           <Marker

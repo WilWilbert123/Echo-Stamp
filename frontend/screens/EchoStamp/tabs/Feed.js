@@ -93,15 +93,28 @@ const PostItem = memo(({ item, colors, isDark, onOpenGallery, onOpenComments }) 
         } catch (error) { console.log(error); }
     };
 
-    const handleViewEcho = () => {
-        navigation.navigate('Atlas', {
-            zoomTo: {
-                latitude: item.location.lat,
-                longitude: item.location.lng,
-                journalId: item._id
-            }
-        });
-    };
+  const handleViewEcho = () => {
+    navigation.navigate('Atlas', {
+        zoomTo: {
+           
+            latitude: item.location.lat,
+            longitude: item.location.lng,
+            
+       
+            journalId: item._id,
+            title: item.title,
+            
+          
+            address: item.location.address || "Pinned Location",
+            
+           
+            image: item.media?.[0] || null, 
+  
+            autoNavigate: true,  
+            autoStreetView: false 
+        }
+    });
+};
 
     return (
         <View style={[
