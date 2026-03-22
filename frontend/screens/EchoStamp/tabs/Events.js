@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
     liveText: { color: '#FFF', fontSize: 11, fontWeight: 'bold', letterSpacing: 1 },
     spotlightTitle: { fontSize: 26, fontWeight: '900' },
     
-    eventCard: { borderRadius: 24, borderWidth: 1, marginBottom: 20, overflow: 'hidden', elevation: 2 },
+    eventCard: { borderRadius: 24, borderWidth: 1, marginBottom: 20, overflow: 'hidden'  },
     eventImage: { width: '100%', height: 200 },
     eventDetails: { padding: 18 },
     row: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },

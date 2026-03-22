@@ -548,19 +548,17 @@ const Atlas = () => {
               longitude: userLocation.longitude
             }}
             anchor={{ x: 0.5, y: 0.5 }}
-            // STABILITY FIX: Setting this to false keeps the icon "standing" 
-            // upright even if you rotate or tilt the map.
+           
             flat={false}
-            // If you want the Rider to always face "North" (Up), set this to 0.
-            // If you want it to point where you are moving, keep arrowHeading.
+           
             rotation={showDirections ? arrowHeading : 0}
           >
             <View style={{
-              width: showDirections ? 50 : 35,
-              height: showDirections ? 50 : 35,
+              width: showDirections ? 35 : 35,
+              height: showDirections ? 35 : 35,
               alignItems: 'center',
               justifyContent: 'center',
-              // MIRROR EFFECT: Flipped horizontally
+           
               transform: [
                 { scaleX: showDirections ? -1 : 1 }
               ]
