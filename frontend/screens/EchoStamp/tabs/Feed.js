@@ -80,8 +80,7 @@ const PostItem = memo(({ item, colors, isDark, onOpenGallery, onOpenComments }) 
     const navigation = useNavigation();
     const [isLiked, setIsLiked] = useState(false);
     console.log("Post Media Array:", item.media);
-    // FIX: Use the user data attached to the journal entry (item.user), 
-    // not the global logged-in user.
+ 
     const author = item.userId;
     
     const mediaCount = item.media?.length || 0;
