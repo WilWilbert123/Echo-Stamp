@@ -14,6 +14,8 @@ export const getJournalsAsync = createAsyncThunk(
   'journals/fetchAll',
   async (userId, { rejectWithValue }) => {
     try {
+     
+      if (!userId) return rejectWithValue("User ID is missing");
       const response = await fetchJournals(userId);
       return response.data;
     } catch (error) {
@@ -22,14 +24,14 @@ export const getJournalsAsync = createAsyncThunk(
   }
 );
 
- 
 export const getGlobalJournalsAsync = createAsyncThunk(
   'journals/fetchGlobal',
   async (_, { getState, rejectWithValue }) => {
     try {
-     
-      const userId = getState().auth.user?.id; 
-     
+      
+      const authUser = getState().auth.user;
+      const userId = authUser?._id || authUser?.id || null; 
+ 
       const response = await fetchGlobalFeed(userId); 
       return response.data;
     } catch (error) {
@@ -86,10 +88,10 @@ const journalSlice = createSlice({
     error: null,
   },
   reducers: {
-    
     clearJournals: (state) => {
         state.list = [];
         state.globalList = [];
+        state.error = null;
     }
   },
   extraReducers: (builder) => {
@@ -106,7 +108,10 @@ const journalSlice = createSlice({
       })
 
       // --- Global Feed Fetch ---
-      .addCase(getGlobalJournalsAsync.pending, (state) => { state.globalLoading = true; })
+      .addCase(getGlobalJournalsAsync.pending, (state) => { 
+        state.globalLoading = true; 
+        state.error = null;  
+      })
       .addCase(getGlobalJournalsAsync.fulfilled, (state, action) => {
         state.globalLoading = false;
         state.globalList = action.payload;
@@ -119,27 +124,22 @@ const journalSlice = createSlice({
       // --- Add ---
       .addCase(addJournalAsync.fulfilled, (state, action) => {
         state.list.unshift(action.payload);
+        state.globalList.unshift(action.payload);  
       })
 
       // --- Delete ---
       .addCase(deleteJournalAsync.fulfilled, (state, action) => {
         state.list = state.list.filter((j) => j._id !== action.payload);
-        // Also remove from global list if it exists there
         state.globalList = state.globalList.filter((j) => j._id !== action.payload);
       })
 
       // --- Media Update ---
       .addCase(removeJournalMediaAsync.fulfilled, (state, action) => {
         const index = state.list.findIndex((j) => j._id === action.payload._id);
-        if (index !== -1) {
-          state.list[index] = action.payload;
-        }
+        if (index !== -1) state.list[index] = action.payload;
         
-       
         const globalIndex = state.globalList.findIndex((j) => j._id === action.payload._id);
-        if (globalIndex !== -1) {
-            state.globalList[globalIndex] = action.payload;
-        }
+        if (globalIndex !== -1) state.globalList[globalIndex] = action.payload;
       });
   },
 });

@@ -76,11 +76,12 @@ export const getAllEvents = () => API.get('/events');
 
 // --- Privacy & Visibility ---
 export const updatePrivacy = (data) => API.patch('/users/update-privacy', data);
-export const fetchGlobalFeed = (userId) => API.get(`/journals/global?userId=${userId}`);
 
-export const Config = { 
-  MAPS_SDK_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_SDK_KEY,
-  PLACES_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY,
-};
+
+// --- Updated fetchGlobalFeed ---
+export const fetchGlobalFeed = (userId) => {  const url = userId ? `/journals/global?userId=${userId}` : '/journals/global'; return API.get(url);};
+
+ 
+export const Config = { MAPS_SDK_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_SDK_KEY, PLACES_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY,};
 
 export default API;

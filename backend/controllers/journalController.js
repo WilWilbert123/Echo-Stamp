@@ -2,6 +2,7 @@ const Journal = require('../models/Journal');
 const User = require('../models/User');  
 const cloudinary = require('cloudinary').v2;
 const mongoose = require('mongoose');
+
 // --- HELPERS ---
 
 const getPublicIdFromUrl = (url) => {
@@ -32,20 +33,26 @@ const deleteFromCloudinary = async (url) => {
 };
 
 // --- CONTROLLERS ---
- 
+
 exports.getGlobalJournals = async (req, res) => {
     try {
-         
-        const currentUserId = req.user?.id; 
+    
+        const idFromQuery = req.query.userId;
+        const idFromAuth = req.user?.id;
+        const rawId = idFromQuery || idFromAuth;
  
+        let currentUserId = null;
+        if (rawId && rawId !== 'undefined' && mongoose.Types.ObjectId.isValid(rawId)) {
+            currentUserId = new mongoose.Types.ObjectId(rawId);
+        }
+
+   
         const publicUsers = await User.find({ isPublic: true }).select('_id');
-        
-        
         const publicUserIds = publicUsers.map(user => user._id);
 
-  
+      
         let query = { userId: { $in: publicUserIds } };
- 
+
         if (currentUserId) {
             query = {
                 $or: [
@@ -55,26 +62,34 @@ exports.getGlobalJournals = async (req, res) => {
             };
         }
 
+        // 5. Execute and Populate
         const journals = await Journal.find(query)
             .populate('userId', 'username firstName lastName') 
             .sort({ createdAt: -1 });
 
-        console.log(`Found ${journals.length} journals for feed.`);
+        console.log(`[Feed] Found ${journals.length} journals for User: ${currentUserId || 'Guest'}`);
         res.status(200).json(journals);
+        
     } catch (error) {
-        console.error("Global Feed Error:", error);
-        res.status(500).json({ message: error.message });
+        console.error("Global Feed Error:", error.message);
+        res.status(500).json({ message: "Internal Server Error", details: error.message });
     }
 };
 
-// Get all journals for a specific user  
+// Get all journals for a specific user   
 exports.getJournals = async (req, res) => {
     try {
         const { userId } = req.params;
-       
+        
+        // Safety check for user ID parameter
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ message: "Invalid User ID format" });
+        }
+
         const journals = await Journal.find({ userId })
-            .populate('userId', 'username')
+            .populate('userId', 'username firstName lastName')
             .sort({ createdAt: -1 });
+            
         res.status(200).json(journals);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -85,7 +100,9 @@ exports.getJournals = async (req, res) => {
 exports.createJournal = async (req, res) => {
     try {
         const newJournal = await Journal.create(req.body);
-        res.status(201).json(newJournal);
+        
+        const populatedJournal = await newJournal.populate('userId', 'username firstName lastName');
+        res.status(201).json(populatedJournal);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
@@ -121,7 +138,7 @@ exports.removeJournalMedia = async (req, res) => {
             id,
             { $pull: { media: mediaUri } },
             { new: true }
-        );
+        ).populate('userId', 'username firstName lastName');
 
         if (!journal) return res.status(404).json({ message: "Journal not found" });
         res.status(200).json(journal);

@@ -18,9 +18,9 @@ import {
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTheme } from '../../../context/ThemeContext';
-import { getJournalsAsync } from '../../../redux/journalSlice';
-
+import { getGlobalJournalsAsync } from '../../../redux/journalSlice';
 const { width, height } = Dimensions.get('window');
+
 
 // --- VIDEO CHECK LOGIC ---
 const checkIsVideo = (uri) => {
@@ -207,9 +207,8 @@ const PostItem = memo(({ item, colors, isDark, onOpenGallery, onOpenComments }) 
 const Feed = ({ filter }) => {
     const { colors, isDark } = useTheme(); 
     const dispatch = useDispatch();
-    
-    // Select the journal list from Redux
-    const { list: journals, loading } = useSelector((state) => state.journals);
+  
+    const { globalList: journals, globalLoading: loading } = useSelector((state) => state.journals);
     const user = useSelector((state) => state.auth?.user);
 
     const [refreshing, setRefreshing] = useState(false);
@@ -220,8 +219,8 @@ const Feed = ({ filter }) => {
     const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
   
     
-    const loadData = useCallback(() => {
-        dispatch(getJournalsAsync());  
+   const loadData = useCallback(() => {
+        dispatch(getGlobalJournalsAsync());  
     }, [dispatch]);
 
     useEffect(() => { 
