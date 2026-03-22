@@ -60,10 +60,7 @@ export const verify2faLogin = (data) => API.post('/users/login-2fa-verify', data
 
 // ---- delete account ----
 export const fullDeleteAccount = () => API.delete('/users/full-delete');
-
-//------Fetchglobal journal
-export const fetchGlobalFeed = () => API.get('/journals/feed/global');
-
+ 
 /* --- AI Chat Assistant --- */
 export const askAiAssistant = (message) => API.post('/chat/ai-assistant', { message });
 
@@ -77,6 +74,9 @@ export const fetchNearbyEvents = (lat, lng) => API.get(`/events/nearby?lat=${lat
 export const joinEvent = (eventId) => API.post(`/events/join/${eventId}`);
 export const getAllEvents = () => API.get('/events');
 
+// --- Privacy & Visibility ---
+export const updatePrivacy = (data) => API.patch('/users/update-privacy', data);
+export const fetchGlobalFeed = (userId) => API.get(`/journals/global?userId=${userId}`);
 
 export const Config = { 
   MAPS_SDK_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_SDK_KEY,

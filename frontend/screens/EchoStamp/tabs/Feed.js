@@ -1,4 +1,4 @@
-import { useNavigation } from '@react-navigation/native'; // Import navigation
+import { useNavigation } from '@react-navigation/native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Eye, Heart, MapPin, MessageCircle, MoreHorizontal, Play, Share2, X } from 'lucide-react-native';
 import React, { memo, useCallback, useEffect, useState } from 'react';
@@ -75,9 +75,15 @@ const GalleryVideoItem = ({ uri, isVisible }) => {
     );
 };
 
-const PostItem = memo(({ item, user, colors, isDark, onOpenGallery, onOpenComments }) => {
-    const navigation = useNavigation(); // Hook for navigation
+// --- POST ITEM ---
+const PostItem = memo(({ item, colors, isDark, onOpenGallery, onOpenComments }) => {
+    const navigation = useNavigation();
     const [isLiked, setIsLiked] = useState(false);
+    
+    // FIX: Use the user data attached to the journal entry (item.user), 
+    // not the global logged-in user.
+    const author = item.user; 
+    
     const mediaCount = item.media?.length || 0;
     const isMainVid = checkIsVideo(item.media?.[0]);
 
@@ -87,7 +93,6 @@ const PostItem = memo(({ item, user, colors, isDark, onOpenGallery, onOpenCommen
         } catch (error) { console.log(error); }
     };
 
-    // Navigate to Atlas and zoom
     const handleViewEcho = () => {
         navigation.navigate('Atlas', {
             zoomTo: {
@@ -110,11 +115,11 @@ const PostItem = memo(({ item, user, colors, isDark, onOpenGallery, onOpenCommen
             <View style={styles.userInfo}>
                 <View style={[styles.avatar, { backgroundColor: colors.primary + '30', borderWidth: 1, borderColor: colors.primary }]}>
                     <Text style={[styles.avatarLetter, { color: colors.primary }]}>
-                        {user?.username ? user.username.charAt(0).toUpperCase() : 'U'}
+                        {author?.username ? author.username.charAt(0).toUpperCase() : 'U'}
                     </Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                    <Text style={[styles.userName, { color: colors.textMain }]}>{user?.username || 'Explorer'}</Text>
+                    <Text style={[styles.userName, { color: colors.textMain }]}>{author?.username || 'Explorer'}</Text>
                     <View style={styles.locationRow}>
                         <MapPin size={10} color={colors.primary} style={{ marginTop: 2 }} />
                         <Text style={[styles.timeText, { color: colors.textSecondary }]}>
@@ -189,7 +194,7 @@ const PostItem = memo(({ item, user, colors, isDark, onOpenGallery, onOpenCommen
                 
                 <TouchableOpacity 
                     style={[styles.reactBtn, { backgroundColor: colors.primary }]} 
-                    onPress={handleViewEcho} // Logic to navigate to Atlas
+                    onPress={handleViewEcho}
                 >
                     <Eye size={14} color="#FFF" style={{ marginRight: 6 }} />
                     <Text style={styles.reactBtnText}>View Echo</Text>
@@ -202,6 +207,8 @@ const PostItem = memo(({ item, user, colors, isDark, onOpenGallery, onOpenCommen
 const Feed = ({ filter }) => {
     const { colors, isDark } = useTheme(); 
     const dispatch = useDispatch();
+    
+    // Select the journal list from Redux
     const { list: journals, loading } = useSelector((state) => state.journals);
     const user = useSelector((state) => state.auth?.user);
 
@@ -212,10 +219,12 @@ const Feed = ({ filter }) => {
     const [galleryImages, setGalleryImages] = useState([]);
     const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
 
+    // FIX: Update loadData to fetch ALL public journals
+    // If your backend action is set up for global feed, we don't need to pass a specific userId
+    // OR we pass a flag to tell the backend to fetch public posts.
     const loadData = useCallback(() => {
-        const userId = user?.id || user?._id;
-        if (userId) dispatch(getJournalsAsync(userId));
-    }, [dispatch, user]);
+        dispatch(getJournalsAsync()); // Fetching global public feed
+    }, [dispatch]);
 
     useEffect(() => { 
         loadData(); 
@@ -236,7 +245,6 @@ const Feed = ({ filter }) => {
     const renderItem = useCallback(({ item }) => (
         <PostItem 
             item={item} 
-            user={user} 
             colors={colors} 
             isDark={isDark} 
             onOpenGallery={openGallery} 
@@ -245,14 +253,14 @@ const Feed = ({ filter }) => {
                 setCommentModal(true);
             }} 
         />
-    ), [user, colors, isDark, openGallery]);
+    ), [colors, isDark, openGallery]);
 
     return (
         <View style={[styles.flex1, { backgroundColor: colors.background[0] }]}>
             {loading && journals.length === 0 ? (
                 <View style={styles.loaderContainer}>
                     <ActivityIndicator size="large" color={colors.primary} />
-                    <Text style={{ color: colors.textSecondary, marginTop: 15, fontWeight: '600' }}>Fetching your adventures...</Text>
+                    <Text style={{ color: colors.textSecondary, marginTop: 15, fontWeight: '600' }}>Fetching Echoes...</Text>
                 </View>
             ) : (
                 <FlatList
@@ -299,7 +307,7 @@ const Feed = ({ filter }) => {
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalContent, { backgroundColor: isDark ? '#121212' : '#FFF' }]}>
                         <View style={styles.modalHeader}>
-                            <View style={styles.modalHandle} />
+                            <div style={styles.modalHandle} />
                             <Text style={[styles.modalTitle, { color: colors.textMain }]}>Reflections</Text>
                         </View>
                         <FlatList
@@ -309,7 +317,9 @@ const Feed = ({ filter }) => {
                                 <View style={styles.commentRow}>
                                     <View style={[styles.commentAvatar, { backgroundColor: colors.primary + '20' }]} />
                                     <View style={{ flex: 1 }}>
-                                        <Text style={{ color: colors.textMain, fontWeight: '600', fontSize: 13 }}>User</Text>
+                                        <Text style={{ color: colors.textMain, fontWeight: '600', fontSize: 13 }}>
+                                            {item.username || 'Explorer'}
+                                        </Text>
                                         <Text style={{ color: colors.textSecondary, fontSize: 14, marginTop: 2 }}>{item.text}</Text>
                                     </View>
                                 </View>
@@ -352,7 +362,7 @@ const styles = StyleSheet.create({
     avatar: { width: 42, height: 42, borderRadius: 12, marginRight: 12, justifyContent: 'center', alignItems: 'center' },
     avatarLetter: { fontWeight: '800', fontSize: 16 },
     userName: { fontWeight: '800', fontSize: 15, letterSpacing: -0.3 },
-    timeText: {  fontSize: 11,   marginLeft: 4,   fontWeight: '500',  flex: 1,    lineHeight: 14  },
+    timeText: {  fontSize: 11,   marginLeft: 4,   fontWeight: '500',   flex: 1,    lineHeight: 14  },
     contentArea: { marginBottom: 15 },
     postTitle: { fontWeight: '900', fontSize: 20, marginBottom: 8, letterSpacing: -0.6 },
     postContent: { fontSize: 14, lineHeight: 22, opacity: 0.9 },

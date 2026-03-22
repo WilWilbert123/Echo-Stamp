@@ -10,7 +10,8 @@ const {
     verifyOnly,
     updateSecurity,
     verify2faLogin,
-    deleteFullAccount
+    deleteFullAccount,
+    updatePrivacy
 } = require('../controllers/userController');
 
 // --- Registration Flow ---
@@ -30,6 +31,9 @@ router.post('/login-2fa-verify', verify2faLogin);
 
 // -----Delete account -----
 router.delete('/full-delete', protect, deleteFullAccount);
+
+//-------Profile Visibility
+router.patch('/update-privacy', protect, updatePrivacy);
 
 // --- Authentication ---
 router.post('/login', loginUser);

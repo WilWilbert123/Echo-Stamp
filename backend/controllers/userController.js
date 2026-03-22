@@ -118,7 +118,8 @@ exports.verifyOtpAndRegister = async (req, res) => {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 username: user.username,
-                email: user.email
+                email: user.email,
+                isPublic: user.isPublic ?? false
             }
         });
     } catch (error) {
@@ -164,7 +165,8 @@ exports.loginUser = async (req, res) => {
                     firstName: user.firstName,  
                     lastName: user.lastName,    
                     username: user.username, 
-                    email: user.email 
+                    email: user.email,
+                    isPublic: user.isPublic ?? false
                 }
             });
         } else {
@@ -286,7 +288,8 @@ exports.verify2faLogin = async (req, res) => {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 username: user.username,
-                email: user.email
+                email: user.email,
+                isPublic: user.isPublic ?? false
             }
         });
     } catch (error) {
@@ -346,4 +349,24 @@ exports.deleteFullAccount = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+};
+
+exports.updatePrivacy = async (req, res) => {
+    try {
+        const { isPublic } = req.body;
+        const user = await User.findByIdAndUpdate(
+            req.user.id,
+            { isPublic },
+            { new: true }
+        ).select('-password');
+
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        return res.status(200).json({ 
+            message: "Privacy updated", 
+            isPublic: user.isPublic 
+        });
+    } catch (error) {
+        return res.status(500).json({ message: "Server error", error: error.message });
+    }
 };

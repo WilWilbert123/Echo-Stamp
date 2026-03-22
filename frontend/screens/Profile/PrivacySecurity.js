@@ -21,8 +21,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTheme } from '../../context/ThemeContext';
-import { logout } from '../../redux/authSlice';
+import { logout, updatePrivacy } from '../../redux/authSlice';
 import API, { fullDeleteAccount } from '../../services/api';
+
 
 const PrivacySecurity = ({ navigation }) => {
   const { colors, isDark } = useTheme();
@@ -47,13 +48,19 @@ const PrivacySecurity = ({ navigation }) => {
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
-
-  useEffect(() => {
+const [isPrivacyLoading, setIsPrivacyLoading] = useState(false);
+  
+useEffect(() => {
     if (user?.email) {
       checkInitialStatus();
     }
   }, [user?.email]);
-
+  useEffect(() => {
+    if (user?.isPublic !== undefined) {
+      setProfileVisible(user.isPublic);
+    }
+  }, [user?.isPublic]);
+  
   const getBioKey = () => {
     if (!user?.email) return "";
     const sanitizedEmail = user.email.toLowerCase().trim().replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -86,10 +93,10 @@ const PrivacySecurity = ({ navigation }) => {
   const calculateDirectorySize = async (uri) => {
     let totalSize = 0;
     const dir = new Directory(uri);
-    
+
     if (!dir.exists) return 0;
 
-    const contents = dir.list(); 
+    const contents = dir.list();
     for (const item of contents) {
       if (item instanceof File) {
         totalSize += item.size;
@@ -133,22 +140,29 @@ const PrivacySecurity = ({ navigation }) => {
         item.delete(); // Modern delete method
       }
       Alert.alert("Success", "Temporary cache cleared.");
-      handleFetchUsage(); 
+      handleFetchUsage();
     } catch (e) {
       Alert.alert("Error", "Failed to clear cache.");
     }
   };
 
   // --- Logic: Profile Visibility ---
-  const handleProfileVisibility = async (value) => {
+
+ const handleProfileVisibility = async (value) => {
+    setIsPrivacyLoading(true);  
     try {
-      setProfileVisible(value);
-      dispatch({ type: 'UPDATE_USER_DATA', payload: { isPublic: value } });
+        await updatePrivacyAPI({ isPublic: value });
+        dispatch(updatePrivacy(value));
+        setProfileVisible(value);
     } catch (error) {
-      setProfileVisible(!value);
-      Alert.alert("Error", "Could not update visibility.");
+        setProfileVisible(!value);
+        Alert.alert("Error", "Could not save setting.");
+    } finally {
+        setIsPrivacyLoading(false);  
     }
-  };
+};
+
+
 
   // --- Logic: Security ---
   const handleTogglePress = async (value) => {
@@ -202,10 +216,10 @@ const PrivacySecurity = ({ navigation }) => {
 
   const handlePermanentDelete = async () => {
     if (deleteConfirmationText !== 'DELETE') return;
-    const targetId = user?._id || user?.id; 
+    const targetId = user?._id || user?.id;
     setIsDeleting(true);
     try {
-      await fullDeleteAccount(targetId); 
+      await fullDeleteAccount(targetId);
       await AsyncStorage.clear();
       setDeleteModalVisible(false);
       Alert.alert("Account Deleted", "Wiped.", [{ text: "Goodbye", onPress: () => dispatch(logout()) }]);
@@ -258,12 +272,12 @@ const PrivacySecurity = ({ navigation }) => {
           <Text style={[styles.sectionTitle, { color: colors.primary }]}>SECURITY</Text>
           <SettingItem icon="finger-print-outline" title="Biometric Login" description="Use FaceID/Fingerprint" type="toggle" value={biometrics} onValueChange={handleTogglePress} />
           <SettingItem icon="shield-checkmark-outline" title="Two-Factor Auth" type="toggle" value={twoFactor} onValueChange={handleTwoFactorToggle} />
-          <SettingItem icon="key-outline" title="Change Password" onPress={() => {}} />
+          <SettingItem icon="key-outline" title="Change Password" onPress={() => { }} />
         </View>
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.primary }]}>PRIVACY & DATA</Text>
-          <SettingItem icon="eye-outline" title="Profile Visibility" description="Make profile searchable" type="toggle" value={profileVisible} onValueChange={handleProfileVisibility} />
+          <SettingItem icon="eye-outline" title="Profile Visibility" description="Make profile searchable" type="toggle" value={profileVisible} onValueChange={handleProfileVisibility} isLoading={isPrivacyLoading}/>
           <SettingItem icon="document-text-outline" title="Data Usage" description="Manage app storage & cache" onPress={handleFetchUsage} isLoading={isCalculating} />
           <SettingItem icon="trash-outline" title="Delete Account" description="Permanently wipe data" isDestructive={true} onPress={() => setDeleteModalVisible(true)} />
         </View>
