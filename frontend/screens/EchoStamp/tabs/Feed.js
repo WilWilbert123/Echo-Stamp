@@ -79,7 +79,7 @@ const GalleryVideoItem = ({ uri, isVisible }) => {
 const PostItem = memo(({ item, colors, isDark, onOpenGallery, onOpenComments }) => {
     const navigation = useNavigation();
     const [isLiked, setIsLiked] = useState(false);
-    
+    console.log("Post Media Array:", item.media);
     // FIX: Use the user data attached to the journal entry (item.user), 
     // not the global logged-in user.
     const author = item.userId;
@@ -339,36 +339,21 @@ const styles = StyleSheet.create({
     flex1: { flex: 1 },
     loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     listPadding: { paddingVertical: 15, paddingBottom: 100 },
-    card: { 
-        marginHorizontal: 16, 
-        borderRadius: 28, 
-        padding: 16, 
-        marginBottom: 20, 
-        borderWidth: 1,
-        ...Platform.select({
-            ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.1, shadowRadius: 12 },
-            android: {   }
-        })
-    },
-    userInfo: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 15 },  
-    locationRow: { 
-        flexDirection: 'row', 
-        alignItems: 'flex-start', 
-        marginTop: 2, 
-        paddingRight: 10 
-    },
+    card: { marginHorizontal: 16, borderRadius: 28, padding: 16, marginBottom: 20, borderWidth: 1, ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.1, shadowRadius: 12 }, android: {} }) },
+    userInfo: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 15 },
+    locationRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 2, paddingRight: 10 },
     avatar: { width: 42, height: 42, borderRadius: 12, marginRight: 12, justifyContent: 'center', alignItems: 'center' },
     avatarLetter: { fontWeight: '800', fontSize: 16 },
     userName: { fontWeight: '800', fontSize: 15, letterSpacing: -0.3 },
-    timeText: {  fontSize: 11,   marginLeft: 4,   fontWeight: '500',   flex: 1,    lineHeight: 14  },
+    timeText: { fontSize: 11, marginLeft: 4, fontWeight: '500', flex: 1, lineHeight: 14 },
     contentArea: { marginBottom: 15 },
     postTitle: { fontWeight: '900', fontSize: 20, marginBottom: 8, letterSpacing: -0.6 },
     postContent: { fontSize: 14, lineHeight: 22, opacity: 0.9 },
-    imageGrid: { flexDirection: 'row', height: 220, gap: 10, borderRadius: 24, overflow: 'hidden' },
-    gridImageMain: { flex: 2, height: '100%', backgroundColor: '#222', position: 'relative' },
-    sideImages: { flex: 1, gap: 10 },
-    sideImg: { flex: 1, width: '100%', backgroundColor: '#222' },
-    sideImgContainer: { flex: 1, position: 'relative' },
+    imageGrid: { flexDirection: 'row', height: 240, gap: 10, borderRadius: 24, overflow: 'hidden', marginTop: 5 },
+    gridImageMain: { flex: 2, height: '100%', backgroundColor: '#222', position: 'relative', overflow: 'hidden' },
+    sideImages: { flex: 1, gap: 10, height: '100%' },
+    sideImg: { flex: 1, width: '100%', height: '100%', backgroundColor: '#222', borderRadius: 0 },
+    sideImgContainer: { flex: 1, position: 'relative', height: '100%', overflow: 'hidden' },
     overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
     overlayText: { color: '#fff', fontSize: 20, fontWeight: '900' },
     interactionBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(128,128,128,0.08)' },
@@ -377,17 +362,9 @@ const styles = StyleSheet.create({
     statText: { fontSize: 14, fontWeight: '700' },
     reactBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 18 },
     reactBtnText: { color: '#FFF', fontWeight: '900', fontSize: 13 },
-    blackBg: { flex: 1, backgroundColor: '#000' }, 
-    gallerySlide: { 
-        width: width, 
-        height: height, 
-        justifyContent: 'center', 
-        alignItems: 'center' 
-    },
-    fullImg: { 
-        width: width, 
-        height: height * 0.8 
-    },
+    blackBg: { flex: 1, backgroundColor: '#000' },
+    gallerySlide: { width: width, height: height, justifyContent: 'center', alignItems: 'center' },
+    fullImg: { width: width, height: height * 0.8 },
     closeGallery: { position: 'absolute', top: 60, right: 25, zIndex: 20, backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 25 },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
     modalContent: { borderTopLeftRadius: 40, borderTopRightRadius: 40, padding: 24, height: '75%' },

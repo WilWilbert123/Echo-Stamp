@@ -1,7 +1,7 @@
 const Journal = require('../models/Journal');
 const User = require('../models/User');  
 const cloudinary = require('cloudinary').v2;
-
+const mongoose = require('mongoose');
 // --- HELPERS ---
 
 const getPublicIdFromUrl = (url) => {
@@ -35,23 +35,31 @@ const deleteFromCloudinary = async (url) => {
  
 exports.getGlobalJournals = async (req, res) => {
     try {
-        
-        const currentUserId = req.query.userId || (req.user ? req.user.id : null);
-
-      
+         
+        const currentUserId = req.user?.id; 
+ 
         const publicUsers = await User.find({ isPublic: true }).select('_id');
+        
+        
         const publicUserIds = publicUsers.map(user => user._id);
 
-        
-        const journals = await Journal.find({
-            $or: [
-                { userId: currentUserId },  
-                { userId: { $in: publicUserIds } }  
-            ]
-        })
-        .populate('userId', 'username firstName lastName')  
-        .sort({ createdAt: -1 });
+  
+        let query = { userId: { $in: publicUserIds } };
+ 
+        if (currentUserId) {
+            query = {
+                $or: [
+                    { userId: currentUserId },
+                    { userId: { $in: publicUserIds } }
+                ]
+            };
+        }
 
+        const journals = await Journal.find(query)
+            .populate('userId', 'username firstName lastName') 
+            .sort({ createdAt: -1 });
+
+        console.log(`Found ${journals.length} journals for feed.`);
         res.status(200).json(journals);
     } catch (error) {
         console.error("Global Feed Error:", error);
