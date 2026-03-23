@@ -63,7 +63,7 @@ const VideoPlayerItem = ({ uri, isVisible }) => {
 const Atlas = () => {
   const dispatch = useDispatch();
   const navigation = useNavigation();
-  const route = useRoute(); // Hook to receive data from Trending
+  const route = useRoute();  
   const insets = useSafeAreaInsets();
   const mapRef = useRef(null);
   const { colors, isDark } = useTheme();
@@ -98,7 +98,7 @@ const Atlas = () => {
     const params = route.params;
     if (!params) return;
 
-    // --- 1. HANDLE "VIEW ECHO" FROM FEED (Now mimics Search Result Overlay) ---
+     
     if (params.zoomTo) {
       const {
         latitude,
@@ -113,44 +113,43 @@ const Atlas = () => {
       const zoomRegion = {
         latitude: latitude,
         longitude: longitude,
-        latitudeDelta: 0.005, // Closer zoom for specific echoes
+        latitudeDelta: 0.005,  
         longitudeDelta: 0.005,
       };
 
-      // Trigger the GlassCard overlay (SearchResult) using the Feed data
+     
       setSearchResult({
         name: title || "Echo Location",
         address: address || "Pinned Location",
         coords: { latitude, longitude },
-        // Show the actual image from the post, or fallback to Street View preview
+       
         image: image || `https://maps.googleapis.com/maps/api/streetview?size=600x300&location=${latitude},${longitude}&key=${GOOGLE_MAPS_APIKEY}`
       });
 
-      // Set destination immediately for navigation logic
+   
       setDestination({ latitude, longitude });
-
-      // Set selectedJournal so the Street View WebView knows what to load
+ 
       setSelectedJournal({
         _id: journalId,
         location: { lat: latitude, lng: longitude }
       });
 
-      // Animate to the specific journal location
+    
       setTimeout(() => {
         mapRef.current?.animateToRegion(zoomRegion, 1500);
 
-        // Auto-start the blue line if requested
+       
         if (autoNavigate) {
           setShowDirections(true);
         }
       }, 500);
 
-      // Clear params to prevent re-triggering on component updates
+    
       navigation.setParams({ zoomTo: undefined });
       return;
     }
 
-    // --- 2. HANDLE SEARCH RESULTS / LOCATION PICKER ---
+   
     if (params.location || params.searchLocation) {
       const incoming = params.searchLocation || {
         coords: params.location,
@@ -185,7 +184,7 @@ const Atlas = () => {
         setShowDirections(true);
       }
 
-      // Clean up all possible search navigation params
+    
       navigation.setParams({
         searchLocation: undefined,
         location: undefined,
@@ -717,7 +716,7 @@ const Atlas = () => {
                   <View key={i} style={[styles.dot, { backgroundColor: i === activeMediaIndex ? colors.primary : '#555' }]} />
                 ))}
               </View>
-              <GlassCard style={[styles.enhancedDetails, { backgroundColor: isDark ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.9)' }]}>
+              <GlassCard style={[styles.enhancedDetails, { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255,255,255,0.9)' }]}>
                 <Text style={[styles.viewerTitle, { color: isDark ? '#fff' : '#000' }]}>{selectedJournal.title}</Text>
                 <Text style={[styles.viewerDescription, { color: isDark ? '#ccc' : '#444' }]}>{selectedJournal.description}</Text>
                 <Text style={{ fontSize: 12, color: colors.primary, marginTop: 8 }}>📍 {selectedJournal.location?.address}</Text>
