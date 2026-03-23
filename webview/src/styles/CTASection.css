@@ -1,41 +1,105 @@
 .cta-section-wrap {
-  text-align: center;
-  padding: 20px;
   position: relative;
+  width: 100%;
+  min-height: 80vh; /* Shorter than home, but fills the view */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 100px 40px 40px;
+  /* Maintains the gradient background you wanted to keep */
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.01), transparent);
+  overflow: hidden;
+}
+
+.cta-content-container {
+  max-width: 800px;
+  z-index: 2;
+  margin-bottom: 100px; /* Space for footer below */
 }
 
 .cta-title {
-  font-size: clamp(2.5rem, 7vw, 4rem);
-  font-weight: 800;
-  line-height: 1.1;
-  margin-bottom: 30px;
+  font-size: clamp(2.8rem, 8vw, 4.5rem);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -3px;
+  margin-bottom: 25px;
+  color: #fff;
 }
 
 .cta-subtitle {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 1.2rem;
-  margin-bottom: 40px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 1.15rem;
+  line-height: 1.6;
+  max-width: 550px;
+  margin: 0 auto 45px;
 }
 
-/* Background glow for the final page */
+/* Updated Glow - larger and softer */
 .end-glow-sphere {
   position: absolute;
-  top: 50%;
+  bottom: -10%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  width: 600px;
+  transform: translateX(-50%);
+  width: 800px;
   height: 600px;
-  background: radial-gradient(circle, rgba(112, 0, 255, 0.15) 0%, transparent 70%);
-  filter: blur(100px);
+  background: radial-gradient(circle, rgba(112, 0, 255, 0.12) 0%, transparent 70%);
+  filter: blur(120px);
   z-index: -1;
+  pointer-events: none;
 }
 
-.landing-footer-note {
-  position: absolute;
-  bottom: -100px; /* Sits at the very bottom of the page */
-  left: 0;
-  right: 0;
-  opacity: 0.3;
-  font-size: 0.8rem;
+/* Premium Footer Layout */
+.landing-footer {
+  width: 100%;
+  max-width: 1200px;
+  margin-top: auto; /* Pushes footer to the bottom of the flex container */
+  padding-top: 40px;
+}
+
+.footer-line {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  margin-bottom: 30px;
+}
+
+.footer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  align-items: center;
+  opacity: 0.4;
+  transition: opacity 0.3s ease;
+}
+
+.footer-content:hover {
+  opacity: 0.8;
+}
+
+.footer-links {
+  font-size: 0.85rem;
   letter-spacing: 1px;
+  font-weight: 500;
+}
+
+.footer-links span {
+  cursor: pointer;
+  padding: 0 10px;
+}
+
+.footer-links span:hover {
+  color: #00f2fe;
+}
+
+.copyright-text {
+  font-size: 0.75rem;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+  .cta-section-wrap { padding: 60px 20px 20px; }
+  .cta-title { font-size: 2.2rem; }
+  .cta-subtitle { font-size: 1rem; }
 }

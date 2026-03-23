@@ -1,52 +1,94 @@
 .feature-section-container {
   width: 100%;
-  max-width: 1200px;
-  padding: 40px;
+  max-width: 1400px;
+  margin: 0 auto;
+ background: linear-gradient(to bottom, rgba(255,255,255,0.01), transparent);
+  padding: 140px 40px 100px 40px; 
   display: flex;
   flex-direction: column;
   align-items: center;
   z-index: 2;
+  position: relative;
+  min-height: 100vh;  
+  padding-top:600px
 }
 
-.visual-demo-box {
+.content-header {
+  text-align: center;
+  margin-bottom: 60px;  
+  max-width: 900px;
+  width: 100%;
+}
+
+.badge-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.badge {
+  font-size: 0.75rem;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 700;
+}
+
+.feature-title {
+  font-size: clamp(1.5rem, 5vw, 2rem); 
+  font-weight: 850;
+  line-height: 1.1;
+  letter-spacing: -2px;
+  color: #fff;
+  margin: 0;
+  
+}
+
+.feature-subtitle {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.2;
+  max-width: 1200px;
+   
+}
+
+.feature-visual-wrapper {
   position: relative;
   width: 100%;
-  max-width: 800px;
-  height: 400px;
-  margin-top: 50px;
-  overflow: hidden;
+  max-width: 1100px;  
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  
+  padding: 0; 
+  margin-top: 20px;
 }
 
-/* The high-tech moving grid from your reference */
-.moving-grid-bg {
+.feature-full-img {
+  
+  width: 70%;
+  height: 70%;
+  display: block;
+  
+  filter: drop-shadow(0 40px 100px rgba(0, 0, 0, 0.9));
+  padding-bottom:30px;
+}
+
+.image-glow-base {
   position: absolute;
-  width: 200%;
-  height: 200%;
-  background-image: 
-    linear-gradient(rgba(0, 242, 254, 0.1) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 242, 254, 0.1) 1px, transparent 1px);
-  background-size: 50px 50px;
-  transform: perspective(500px) rotateX(60deg) translateY(0);
-  animation: gridFlow 20s linear infinite;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 70%;
+  height: 50%;
+  
+  background: radial-gradient(circle, rgba(0, 242, 254, 0.08) 0%, transparent 70%);
   z-index: -1;
+  pointer-events: none;
 }
 
-@keyframes gridFlow {
-  from { background-position: 0 0; }
-  to { background-position: 0 500px; }
-}
-
-.stat-row {
-  display: flex;
-  gap: 50px;
-  text-align: center;
-}
-
-.stat-item h3 {
-  font-size: 3.5rem;
-  font-weight: 800;
-  margin: 0;
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+  .feature-section-container { padding: 80px 20px; }
+  .feature-title { font-size: 2rem; }
+  .feature-subtitle { font-size: 1rem; }
 }

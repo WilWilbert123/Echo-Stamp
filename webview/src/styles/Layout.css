@@ -1,11 +1,12 @@
-.layout-wrapper {
-  position: relative;
+.page-container {
+  padding-top: 110px; /* Increased slightly to clear your fixed header */
   min-height: 100vh;
-  width: 100vw;
-  background-color: #030305; /* Deepest black */
-  overflow-x: hidden;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
+  align-items: center;
 }
 
 .content-area {

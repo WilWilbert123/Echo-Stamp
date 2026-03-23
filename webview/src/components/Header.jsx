@@ -1,25 +1,42 @@
+import { FaGooglePlay } from 'react-icons/fa';
 import '../styles/Header.css';
+ 
+import echoLogo from '../assets/echologo.ico';
 
-const Header = ({ scrollTo, onAuthClick }) => {
+const Header = ({ scrollTo }) => {
   return (
     <header className="main-header">
-      <div className="header-glass-pill">
-        <div className="logo" onClick={() => scrollTo(0)}>
-          ECHO<span className="dot">.</span>
+      <nav className="header-glass-pill" aria-label="Primary">
+        {/* Brand/Logo Section */}
+        <div className="logo-section" onClick={() => scrollTo(0)}>
+          <span className="glass-nav__mark">
+            <img 
+              src={echoLogo} 
+              alt="Echo Stamp Logo" 
+              className="glass-nav__logo" 
+            />
+          </span>
+          <span className="brand-name"><strong>Echo</strong></span>
         </div>
 
-        <nav className="nav-menu">
-          <span onClick={() => scrollTo(0)}>Solutions</span>
-          <span onClick={() => scrollTo(1)}>Technology</span>
-          <span onClick={() => scrollTo(1)}>Industries</span>
-          <span onClick={() => scrollTo(2)}>About Us</span>
-        </nav>
-
-        <div className="auth-buttons">
-          <button className="btn-login" onClick={() => onAuthClick('login')}>Login</button>
-          <button className="btn-signup" onClick={() => onAuthClick('signup')}>Sign Up</button>
+        {/* Navigation Links */}
+        <div className="nav-links">
+          <span onClick={() => scrollTo(1)}>Preview</span>
+          <span onClick={() => scrollTo(2)}>Features</span>
+          <span onClick={() => scrollTo(3)}>Ratings</span>
         </div>
-      </div>
+
+        {/* Play Store CTA */}
+        <a 
+          href="https://play.google.com/store" 
+          target="_blank" 
+          rel="noreferrer" 
+          className="glass-nav__cta"
+        >
+          <FaGooglePlay className="inline-icon" />
+          Play Store
+        </a>
+      </nav>
     </header>
   );
 };
