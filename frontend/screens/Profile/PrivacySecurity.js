@@ -172,7 +172,34 @@ const handleProfileVisibility = async (value) => {
     }
 };
 
+const handleChangePassword = async () => {
+    Alert.alert(
+      "Security Check",
+      "We need to verify your email before you can change your password.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Send Code",
+          onPress: async () => {
+            try {
 
+              await API.post('/users/forgot-password', {
+                email: user.email.toLowerCase().trim()
+              });
+
+
+              navigation.navigate('SecurityOtpVerify', {
+                email: user.email,
+                mode: 'reset'
+              });
+            } catch (err) {
+              Alert.alert("Error", "Could not send verification code.");
+            }
+          }
+        }
+      ]
+    );
+  };
 
   // --- Logic: Security ---
   const handleTogglePress = async (value) => {
@@ -282,7 +309,7 @@ const handleProfileVisibility = async (value) => {
           <Text style={[styles.sectionTitle, { color: colors.primary }]}>SECURITY</Text>
           <SettingItem icon="finger-print-outline" title="Biometric Login" description="Use FaceID/Fingerprint" type="toggle" value={biometrics} onValueChange={handleTogglePress} />
           <SettingItem icon="shield-checkmark-outline" title="Two-Factor Auth" type="toggle" value={twoFactor} onValueChange={handleTwoFactorToggle} />
-          <SettingItem icon="key-outline" title="Change Password" onPress={() => { }} />
+          <SettingItem icon="key-outline" title="Change Password" onPress={handleChangePassword} />
         </View>
 
         <View style={styles.section}>
