@@ -135,7 +135,7 @@ const Login = ({ navigation }) => {
                     <View style={styles.logoContainer}>
                         <Text style={[styles.logoText, { color: colors.primary }]}>ECHO</Text>
                         <Text style={[styles.welcomeTitle, { color: colors.textMain }]}>Welcome back!</Text>
-                        <Text style={[styles.subTitle, { color: colors.textSecondary }]}>Sign in to continue your journey</Text>
+                        
                     </View>
 
                     {/* ENHANCED FORM CARD */}
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     logoContainer: { alignItems: 'center', marginBottom: 30 },
     logoText: { fontSize: 48, fontWeight: '100', letterSpacing: 8, marginBottom: 5 },
     welcomeTitle: { fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
-    subTitle: { fontSize: 14, marginTop: 5, opacity: 0.8 },
+     
 
     // Form Card
     formCard: {
