@@ -8,9 +8,7 @@ const CTASection = ({ onExplore }) => {
       <div className="end-glow-sphere" />
       
       <div className="cta-content-container fade-in">
-        <div className="badge-wrapper">
-          <div className="badge">FINAL STEP</div>
-        </div>
+       
         
         <h2 className="cta-title">
           Ready to <br />
