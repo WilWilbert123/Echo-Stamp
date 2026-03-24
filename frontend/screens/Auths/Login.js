@@ -30,34 +30,28 @@ const Login = ({ navigation }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-   
+
     // --- BIOMETRIC STATE ---
     const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
-
-
+    const [showPassword, setShowPassword] = useState(false);
     const getBioKey = (targetEmail) => {
         if (!targetEmail) return "";
         const sanitized = targetEmail.toLowerCase().trim().replace(/[^a-zA-Z0-9._-]/g, '_');
         return `user_credentials_${sanitized}`;
     };
 
-  
     useEffect(() => {
         checkBiometrics();
     }, [email]);
 
     const checkBiometrics = async () => {
-
         if (!email.trim() || !email.includes('@')) {
             setIsBiometricAvailable(false);
             return;
         }
-
         try {
             const hasHardware = await LocalAuthentication.hasHardwareAsync();
             const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-
-            // Check for the specific key belonging to the typed email
             const key = getBioKey(email);
             const savedCreds = await SecureStore.getItemAsync(key);
 
@@ -107,14 +101,12 @@ const Login = ({ navigation }) => {
                 password: loginPassword
             });
 
-            // --- TWO FACTOR CHECK ---
             if (response.data.twoFactorRequired) {
                 navigation.navigate('OtpVerification', {
                     email: loginEmail,
                     mode: '2fa_login'
                 });
             } else {
-                // Regular Login flow
                 dispatch(setCredentials(response.data));
             }
 
@@ -129,6 +121,7 @@ const Login = ({ navigation }) => {
         <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
             <StatusBar barStyle={colors.status} />
 
+            {/* Header remains unchanged as requested */}
             <View style={[styles.headerBackground, { backgroundColor: colors.background[0] }]}>
                 <View style={[styles.blueWave, { backgroundColor: colors.primary, opacity: isDark ? 0.4 : 1 }]} />
                 <View style={[styles.darkWave, { backgroundColor: isDark ? '#1E293B' : '#637D8B', opacity: 0.6 }]} />
@@ -142,69 +135,98 @@ const Login = ({ navigation }) => {
                     <View style={styles.logoContainer}>
                         <Text style={[styles.logoText, { color: colors.primary }]}>ECHO</Text>
                         <Text style={[styles.welcomeTitle, { color: colors.textMain }]}>Welcome back!</Text>
+                        <Text style={[styles.subTitle, { color: colors.textSecondary }]}>Sign in to continue your journey</Text>
                     </View>
 
-                    <View style={styles.inputArea}>
-                        <View style={[styles.inputWrapper, { backgroundColor: isDark ? colors.glass : '#F3F3F3', borderColor: colors.glassBorder, borderWidth: isDark ? 1 : 0 }]}>
-                            <Ionicons name="person-outline" size={20} color={colors.textSecondary} />
-                            <TextInput
-                                placeholder="Username/Email"
-                                placeholderTextColor={isDark ? '#64748B' : '#999'}
-                                style={[styles.input, { color: colors.textMain }]}
-                                value={email}
-                                onChangeText={setEmail}
-                                autoCapitalize="none"
-                            />
-                        </View>
+                    {/* ENHANCED FORM CARD */}
+                    <View style={[styles.formCard, {
+                        backgroundColor: isDark ? 'rgba(30, 41, 59, 0.7)' : '#FFFFFF',
+                        shadowColor: isDark ? '#000' : '#64748B'
+                    }]}>
+                        <View style={styles.inputArea}>
+                            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Email Address</Text>
+                            <View style={[styles.inputWrapper, {
+                                backgroundColor: isDark ? colors.glass : '#F8FAFC',
+                                borderColor: isDark ? colors.glassBorder : '#E2E8F0'
+                            }]}>
+                                <Ionicons name="mail-outline" size={18} color={colors.primary} />
+                                <TextInput
+                                    placeholder="your@email.com"
+                                    placeholderTextColor={isDark ? '#475569' : '#94A3B8'}
+                                    style={[styles.input, { color: colors.textMain }]}
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    autoCapitalize="none"
+                                />
+                            </View>
 
-                        <View style={[styles.inputWrapper, { backgroundColor: isDark ? colors.glass : '#F3F3F3', borderColor: colors.glassBorder, borderWidth: isDark ? 1 : 0 }]}>
-                            <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
-                            <TextInput
-                                placeholder="Password"
-                                placeholderTextColor={isDark ? '#64748B' : '#999'}
-                                style={[styles.input, { color: colors.textMain }]}
-                                secureTextEntry
-                                value={password}
-                                onChangeText={setPassword}
-                            />
-                        </View>
+                            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Password</Text>
+                            <View style={[styles.inputWrapper, {
+                                backgroundColor: isDark ? colors.glass : '#F8FAFC',
+                                borderColor: isDark ? colors.glassBorder : '#E2E8F0'
+                            }]}>
+                                <Ionicons name="lock-closed-outline" size={18} color={colors.primary} />
+                                <TextInput
+                                    placeholder="••••••••"
+                                    placeholderTextColor={isDark ? '#475569' : '#94A3B8'}
+                                    style={[styles.input, { color: colors.textMain }]}
+                                    // CHANGE THIS LINE:
+                                    secureTextEntry={!showPassword}
+                                    value={password}
+                                    onChangeText={setPassword}
+                                />
 
-                        <TouchableOpacity
-                            style={styles.forgotBtn}
-                            activeOpacity={0.7}
-                            onPress={() => navigation.navigate('ForgotPassword')}
-                        >
-                            <Text style={[styles.forgotText, { color: colors.textSecondary }]}>Forgot Password?</Text>
-                        </TouchableOpacity>
-                    </View>
+                                {/* --- EYE ICON BUTTON --- */}
+                                <TouchableOpacity
+                                    onPress={() => setShowPassword(!showPassword)}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                >
+                                    <Ionicons
+                                        name={showPassword ? "eye-outline" : "eye-off-outline"}
+                                        size={20}
+                                        color={colors.textSecondary}
+                                    />
+                                </TouchableOpacity>
+                            </View>
 
-                    <View style={styles.actionRow}>
-                        <TouchableOpacity
-                            style={[styles.loginBtn, { flex: isBiometricAvailable ? 0.82 : 1 }]}
-                            onPress={handleLogin}
-                            disabled={loading}
-                        >
-                            <LinearGradient
-                                colors={isDark ? [colors.primary, '#0369A1'] : ['#8ECCE3', '#6AB8D2']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={styles.gradientBtn}
-                            >
-                                {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.loginBtnText}>LOG IN</Text>}
-                            </LinearGradient>
-                        </TouchableOpacity>
-
-                        {isBiometricAvailable && (
                             <TouchableOpacity
-                                style={[styles.biometricBtn, { backgroundColor: isDark ? colors.glass : '#F3F3F3', borderColor: colors.glassBorder }]}
-                                onPress={handleBiometricLogin}
+                                style={styles.forgotBtn}
+                                activeOpacity={0.7}
+                                onPress={() => navigation.navigate('ForgotPassword')}
                             >
-                                <Ionicons name="finger-print" size={28} color={colors.primary} />
+                                <Text style={[styles.forgotText, { color: colors.primary }]}>Forgot Password?</Text>
                             </TouchableOpacity>
-                        )}
+                        </View>
+
+                        <View style={styles.actionRow}>
+                            <TouchableOpacity
+                                style={[styles.loginBtn, { flex: isBiometricAvailable ? 0.8 : 1 }]}
+                                onPress={handleLogin}
+                                disabled={loading}
+                            >
+                                <LinearGradient
+                                    colors={isDark ? [colors.primary, '#0369A1'] : ['#47B5FF', '#06283D']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                    style={styles.gradientBtn}
+                                >
+                                    {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.loginBtnText}>LOG IN</Text>}
+                                </LinearGradient>
+                            </TouchableOpacity>
+
+                            {isBiometricAvailable && (
+                                <TouchableOpacity
+                                    style={[styles.biometricBtn, {
+                                        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.5)' : '#F1F5F9',
+                                        borderColor: isDark ? colors.glassBorder : '#E2E8F0'
+                                    }]}
+                                    onPress={handleBiometricLogin}
+                                >
+                                    <Ionicons name="finger-print" size={28} color={colors.primary} />
+                                </TouchableOpacity>
+                            )}
+                        </View>
                     </View>
-
-
 
                     <TouchableOpacity
                         style={styles.footer}
@@ -223,27 +245,60 @@ const Login = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     flex: { flex: 1 },
-    headerBackground: { position: 'absolute', top: 0, width: '100%', height: '25%' },
-    blueWave: { position: 'absolute', top: -50, right: -50, width: '120%', height: '80%', borderBottomLeftRadius: 300, transform: [{ rotate: '-10deg' }] },
-    darkWave: { position: 'absolute', top: -30, right: -80, width: '80%', height: '70%', borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] },
-    inner: { flex: 1, paddingHorizontal: 35, justifyContent: 'center', paddingTop: 80 },
-    logoContainer: { alignItems: 'center', marginBottom: 40 },
-    logoText: { fontSize: 50, fontWeight: '200', letterSpacing: 5, marginBottom: 10 },
-    welcomeTitle: { fontSize: 22, fontWeight: 'bold' },
-    inputArea: { marginBottom: 20 },
-    inputWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, paddingHorizontal: 15, height: 55, marginBottom: 15 },
-    input: { flex: 1, marginLeft: 10, fontSize: 14 },
-    forgotBtn: { alignSelf: 'flex-end' },
-    forgotText: { fontSize: 13, fontWeight: '500' },
-    actionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20 },
-    loginBtn: { height: 55, borderRadius: 12, overflow: 'hidden', elevation: 4 },
-    biometricBtn: { width: 55, height: 55, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 1, elevation: 2 },
-    gradientBtn: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    loginBtnText: { color: '#FFF', fontWeight: '800', fontSize: 15, letterSpacing: 1 },
+    headerBackground: { position: 'absolute', top: 0, width: '100%', height: '30%' },
+    blueWave: { position: 'absolute', top: -50, right: -50, width: '120%', height: '85%', borderBottomLeftRadius: 300, transform: [{ rotate: '-10deg' }] },
+    darkWave: { position: 'absolute', top: -30, right: -80, width: '80%', height: '75%', borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] },
+    inner: { flex: 1, paddingHorizontal: 25, justifyContent: 'center', paddingTop: 60 },
 
-    footer: { marginTop: 20, alignItems: 'center' },
-    footerText: { fontSize: 14 },
-    signUpText: { fontWeight: 'bold' },
+    // Logo Section
+    logoContainer: { alignItems: 'center', marginBottom: 30 },
+    logoText: { fontSize: 48, fontWeight: '100', letterSpacing: 8, marginBottom: 5 },
+    welcomeTitle: { fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
+    subTitle: { fontSize: 14, marginTop: 5, opacity: 0.8 },
+
+    // Form Card
+    formCard: {
+        borderRadius: 24,
+        padding: 25,
+        elevation: 8,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
+        borderWidth: Platform.OS === 'ios' ? 1 : 0,
+        borderColor: 'rgba(255,255,255,0.1)',
+    },
+    inputArea: { marginBottom: 10 },
+    inputLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        marginBottom: 8,
+        marginLeft: 4,
+        textTransform: 'uppercase',
+        letterSpacing: 1
+    },
+    inputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 15,
+        paddingHorizontal: 15,
+        height: 58,
+        marginBottom: 20,
+        borderWidth: 1,
+    },
+    input: { flex: 1, marginLeft: 12, fontSize: 15, fontWeight: '500' },
+    forgotBtn: { alignSelf: 'flex-end', marginTop: -5 },
+    forgotText: { fontSize: 13, fontWeight: '700' },
+
+    // Actions
+    actionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 25 },
+    loginBtn: { height: 58, borderRadius: 16, overflow: 'hidden', elevation: 4 },
+    biometricBtn: { width: 58, height: 58, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
+    gradientBtn: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    loginBtnText: { color: '#FFF', fontWeight: '900', fontSize: 16, letterSpacing: 1.5 },
+
+    footer: { marginTop: 30, alignItems: 'center' },
+    footerText: { fontSize: 15, fontWeight: '500' },
+    signUpText: { fontWeight: '800' },
 });
 
 export default Login;
