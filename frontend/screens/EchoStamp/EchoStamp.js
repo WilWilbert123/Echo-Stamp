@@ -14,7 +14,7 @@ import { useTheme } from '../../context/ThemeContext';
 
 import Events from '../EchoStamp/tabs/Events';
 import Explore from '../EchoStamp/tabs/Explore';
-import Feed from '../EchoStamp/tabs/Feed';
+import Feed from '../EchoStamp/tabs/Feed/Feed';
 import Saved from '../EchoStamp/tabs/Saved';
 import Trending from '../EchoStamp/tabs/Trending';
 
