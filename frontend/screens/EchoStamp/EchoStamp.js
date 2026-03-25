@@ -13,9 +13,9 @@ import { SceneMap, TabBar, TabView } from 'react-native-tab-view';
 import { useTheme } from '../../context/ThemeContext';
 
 import Events from '../EchoStamp/tabs/Events';
-import Explore from '../EchoStamp/tabs/Explore';
 import Feed from '../EchoStamp/tabs/Feed/Feed';
 import Saved from '../EchoStamp/tabs/Saved';
+import Explore from './tabs/Explore/Explore';
 import Trending from './tabs/Trending/Trending';
 
 const { width, height } = Dimensions.get('window');
