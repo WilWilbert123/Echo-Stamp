@@ -110,7 +110,7 @@ exports.askAiAssistant = async (req, res) => {
 
                 console.warn(`⚠️ Model ${modelName} failed (${status}): ${errorMsg}`);
 
-                // If it's a 429 (Quota) or 500 (Server Error), we continue to the next model
+        
                 if (status === 429 || status === 500 || status === 503) {
                     continue; 
                 } else {

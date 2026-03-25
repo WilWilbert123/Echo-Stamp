@@ -6,6 +6,7 @@ const chatSlice = createSlice({
         history: [],
         loading: false,
         error: null,
+        currentLocation: null,  
     },
     reducers: {
         setHistory: (state, action) => {
@@ -20,9 +21,20 @@ const chatSlice = createSlice({
         },
         setChatLoading: (state, action) => {
             state.loading = action.payload;
+        },
+       
+        updateChatLocation: (state, action) => {
+            state.currentLocation = action.payload;
         }
     },
 });
 
-export const { setHistory, addMessage, clearHistory, setChatLoading } = chatSlice.actions;
+export const { 
+    setHistory, 
+    addMessage, 
+    clearHistory, 
+    setChatLoading, 
+    updateChatLocation 
+} = chatSlice.actions;
+
 export default chatSlice.reducer;

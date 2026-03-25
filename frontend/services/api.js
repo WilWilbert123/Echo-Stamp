@@ -62,7 +62,11 @@ export const verify2faLogin = (data) => API.post('/users/login-2fa-verify', data
 export const fullDeleteAccount = () => API.delete('/users/full-delete');
  
 /* --- AI Chat Assistant --- */
-export const askAiAssistant = (message) => API.post('/chat/ai-assistant', { message });
+export const askAiAssistant = (message, coords = null) => 
+    API.post('/chat/ai-assistant', { 
+        message, 
+        location: coords  
+    });
 
 export const fetchChatHistory = () => API.get('/chat/history');
 export const clearChatHistory = () => API.delete('/chat/history');
