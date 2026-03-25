@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
 import {
-  Dimensions,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View
+    Dimensions,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SceneMap, TabBar, TabView } from 'react-native-tab-view';
 import { useTheme } from '../../context/ThemeContext';
 
 import Feed from '../EchoStamp/tabs/Feed/Feed';
-import Saved from '../EchoStamp/tabs/Saved';
 import Events from './tabs/Events/Events';
 import Explore from './tabs/Explore/Explore';
+import Saved from './tabs/Saved/Saved';
 import Trending from './tabs/Trending/Trending';
 
 const { width, height } = Dimensions.get('window');
