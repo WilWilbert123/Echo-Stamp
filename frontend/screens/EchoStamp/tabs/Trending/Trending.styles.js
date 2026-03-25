@@ -1,0 +1,35 @@
+import { Dimensions, StyleSheet } from 'react-native';
+
+const { width, height } = Dimensions.get('window');
+
+export const styles = StyleSheet.create({
+    container: { flex: 1 },
+    scrollContent: { paddingHorizontal: 20, paddingBottom: 50, paddingTop: 10 },
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, marginTop: 25 },
+    sectionTitle: { fontSize: 22, fontWeight: '900', marginLeft: 10 },
+    locationCard: { width: width * 0.75, height: 220, marginRight: 15 },
+    cardImage: { flex: 1, justifyContent: 'flex-end' },
+    cardBookmark: { position: 'absolute', top: 15, right: 15, backgroundColor: 'rgba(0,0,0,0.3)', padding: 8, borderRadius: 15 },
+    cardOverlay: { padding: 18, backgroundColor: 'rgba(0,0,0,0.5)', borderBottomLeftRadius: 25, borderBottomRightRadius: 25 },
+    locationName: { color: 'white', fontWeight: '900', fontSize: 18, marginBottom: 4 },
+    echoCount: { color: 'white', fontSize: 13, fontWeight: '700' },
+    tagGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    tagPill: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 25, borderWidth: 1 },
+    tagText: { fontWeight: '800', fontSize: 13 },
+    listItem: { flexDirection: 'row', alignItems: 'center', padding: 18, borderRadius: 25, marginBottom: 12, borderWidth: 1 },
+    rankCircle: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+    rankNum: { color: 'white', fontWeight: '900', fontSize: 15 },
+    listTextContent: { flex: 1 },
+    listTitle: { fontWeight: '800', fontSize: 16 },
+    listSub: { fontSize: 12, marginTop: 4, opacity: 0.7 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
+    modalContent: { height: height * 0.65, borderTopLeftRadius: 40, borderTopRightRadius: 40, padding: 25 },
+    modalHandle: { width: 50, height: 5, backgroundColor: '#334155', borderRadius: 3, marginBottom: 20, alignSelf: 'center' },
+    modalTitle: { fontSize: 24, fontWeight: '900', marginBottom: 20 },
+    streetViewContainer: { width: '100%', height: 200, borderRadius: 25, overflow: 'hidden' },
+    streetViewImg: { width: '100%', height: '100%' },
+    actionBtn: { width: '100%', height: 60, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+    actionBtnText: { color: 'white', fontWeight: '900', fontSize: 17 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: '100%', marginBottom: 15, position: 'relative' },
+    closeButton: { position: 'absolute', right: -10, top: -15, width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
+});

@@ -266,7 +266,7 @@ const Help = ({ navigation }) => {
                             <Text style={[styles.chatHeaderText, { color: colors.textMain }]}>Echo AI</Text>
                             <View style={styles.onlineStatus}>
                                 <View style={styles.statusDot} />
-                                <Text style={styles.statusText}>Online</Text>
+                                <Text style={{color:'green'}}>Online</Text>
                             </View>
                         </View>
                         <TouchableOpacity onPress={confirmDeleteHistory} style={styles.closeBtn}>
