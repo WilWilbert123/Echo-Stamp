@@ -23,6 +23,9 @@ import { useTheme } from '../../context/ThemeContext';
 import { setCredentials } from '../../redux/authSlice';
 import API from '../../services/api';
 
+// --- IMPORT YOUR REUSABLE COMPONENT ---
+import BrandedHeader from '../../components/BrandedHeader';
+
 const Login = ({ navigation }) => {
     const { colors, isDark } = useTheme();
     const dispatch = useDispatch();
@@ -34,6 +37,7 @@ const Login = ({ navigation }) => {
     // --- BIOMETRIC STATE ---
     const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    
     const getBioKey = (targetEmail) => {
         if (!targetEmail) return "";
         const sanitized = targetEmail.toLowerCase().trim().replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -119,13 +123,10 @@ const Login = ({ navigation }) => {
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
-            <StatusBar barStyle={colors.status} />
+            <StatusBar barStyle={colors.status} translucent backgroundColor="transparent" />
 
-            {/* Header remains unchanged as requested */}
-            <View style={[styles.headerBackground, { backgroundColor: colors.background[0] }]}>
-                <View style={[styles.blueWave, { backgroundColor: colors.primary, opacity: isDark ? 0.4 : 1 }]} />
-                <View style={[styles.darkWave, { backgroundColor: isDark ? '#1E293B' : '#637D8B', opacity: 0.6 }]} />
-            </View>
+            {/* --- REUSABLE BRANDED HEADER --- */}
+            <BrandedHeader colors={colors} isDark={isDark} />
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -135,7 +136,6 @@ const Login = ({ navigation }) => {
                     <View style={styles.logoContainer}>
                         <Text style={[styles.logoText, { color: colors.primary }]}>ECHO</Text>
                         <Text style={[styles.welcomeTitle, { color: colors.textMain }]}>Welcome back!</Text>
-                        
                     </View>
 
                     {/* ENHANCED FORM CARD */}
@@ -170,13 +170,11 @@ const Login = ({ navigation }) => {
                                     placeholder="••••••••"
                                     placeholderTextColor={isDark ? '#475569' : '#94A3B8'}
                                     style={[styles.input, { color: colors.textMain }]}
-                                    // CHANGE THIS LINE:
                                     secureTextEntry={!showPassword}
                                     value={password}
                                     onChangeText={setPassword}
                                 />
 
-                                {/* --- EYE ICON BUTTON --- */}
                                 <TouchableOpacity
                                     onPress={() => setShowPassword(!showPassword)}
                                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -245,16 +243,12 @@ const Login = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     flex: { flex: 1 },
-    headerBackground: { position: 'absolute', top: 0, width: '100%', height: '30%' },
-    blueWave: { position: 'absolute', top: -50, right: -50, width: '120%', height: '85%', borderBottomLeftRadius: 300, transform: [{ rotate: '-10deg' }] },
-    darkWave: { position: 'absolute', top: -30, right: -80, width: '80%', height: '75%', borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] },
     inner: { flex: 1, paddingHorizontal: 25, justifyContent: 'center', paddingTop: 60 },
 
     // Logo Section
     logoContainer: { alignItems: 'center', marginBottom: 30 },
     logoText: { fontSize: 48, fontWeight: '100', letterSpacing: 8, marginBottom: 5 },
     welcomeTitle: { fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
-     
 
     // Form Card
     formCard: {
