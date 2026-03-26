@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -15,8 +15,13 @@ import {
     View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+// THEME & API IMPORTS
 import { useTheme } from '../../context/ThemeContext';
 import API from '../../services/api';
+
+// BRAND COMPONENT
+import BrandedHeader from '../../components/BrandedHeader';
 
 const { width, height } = Dimensions.get('window');
 
@@ -40,7 +45,7 @@ const ForgotPassword = ({ navigation }) => {
             await API.post('/users/forgot-password', { 
                 email: cleanEmail 
             });
- 
+
             Alert.alert("Success", "A reset code has been sent to your email.");
             
             navigation.navigate('OtpVerification', { 
@@ -49,17 +54,14 @@ const ForgotPassword = ({ navigation }) => {
             });
             
         } catch (error) {
-           
             console.log("Forgot Password Request Info:", error.response?.status);
 
             let errorMessage = "Could not send reset code. Please try again.";
 
             if (error.response) {
-                // Handle 404 - Email not registered
                 if (error.response.status === 404) {
                     errorMessage = "This email is not registered in our system.";
                 } 
-                // Handle 500 - Resend Testing Limit / Server Error
                 else if (error.response.status === 500) {
                     errorMessage = "Email service restricted. Testing mode only allows sending to your own email.";
                 }
@@ -69,7 +71,6 @@ const ForgotPassword = ({ navigation }) => {
             }
 
             Alert.alert("Reset Failed", errorMessage);
-
         } finally {
             setLoading(false);
         }
@@ -77,37 +78,18 @@ const ForgotPassword = ({ navigation }) => {
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
-            <StatusBar barStyle={colors.status} />
+            <StatusBar barStyle={colors.status} translucent backgroundColor="transparent" />
 
-            {/* BRANDED WAVY HEADER */}
-            <View style={[styles.headerBackground, { backgroundColor: colors.background[0] }]}>
-                <View 
-                    style={[
-                        styles.blueWave, 
-                        { 
-                            backgroundColor: colors.primary, 
-                            opacity: isDark ? 0.2 : 0.8 
-                        }
-                    ]} 
-                />
-                <View 
-                    style={[
-                        styles.darkWave, 
-                        { 
-                            backgroundColor: isDark ? colors.textSecondary : colors.primary, 
-                            opacity: 0.15 
-                        }
-                    ]} 
-                />
-            </View>
+            {/* --- REUSABLE BRANDED HEADER --- */}
+            <BrandedHeader colors={colors} isDark={isDark} />
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
             >
-                <View style={[styles.content, { paddingTop: insets.top + 10 }]}>
+                <View style={[styles.content, { paddingTop: insets.top + 20 }]}>
 
-                    {/* Header Nav */}
+                    {/* Header Nav / Back Button */}
                     <View style={styles.navHeader}>
                         <TouchableOpacity
                             activeOpacity={0.7}
@@ -208,14 +190,11 @@ const ForgotPassword = ({ navigation }) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    headerBackground: { position: 'absolute', top: 0, width: '100%', height: height * 0.25 },
-    blueWave: { position: 'absolute', top: -50, right: -50, width: width * 1.2, height: height * 0.25, borderBottomLeftRadius: 300, transform: [{ rotate: '-10deg' }] },
-    darkWave: { position: 'absolute', top: -30, right: -80, width: width * 0.9, height: height * 0.2, borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] },
     content: { flex: 1, paddingHorizontal: 25 },
-    navHeader: { marginBottom: 15 },
+    navHeader: { marginBottom: 15, zIndex: 10 },
     backButton: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center' },
-    titleSection: { marginBottom: 30 },
-    mainTitle: { fontSize: 32, fontWeight: '900', marginBottom: 10 },
+    titleSection: { marginBottom: 30, marginTop: 10 },
+    mainTitle: { fontSize: 32, fontWeight: '900', marginBottom: 10, letterSpacing: -0.5 },
     subtitle: { fontSize: 15, lineHeight: 22, fontWeight: '500' },
     card: {
         padding: 24, borderRadius: 30,
