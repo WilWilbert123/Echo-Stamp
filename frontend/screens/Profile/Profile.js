@@ -16,16 +16,18 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useTheme } from '../../context/ThemeContext';
 import { logout } from '../../redux/authSlice';
 
+// --- IMPORT YOUR REUSABLE COMPONENT ---
+import BrandedHeader from '../../components/BrandedHeader';
+
 const { width, height } = Dimensions.get('window');
 
-const Profile = ({navigation}) => {
-    // Accessing your ThemeContext
+const Profile = ({ navigation }) => {
     const { isDark, colors, toggleTheme } = useTheme();
     const insets = useSafeAreaInsets();
     const dispatch = useDispatch();
     
     const { user } = useSelector((state) => state.auth); 
-    const { list } = useSelector((state) => state.echoes);
+    const { list = [] } = useSelector((state) => state.echoes || {});
 
     const statsData = useMemo(() => {
         const cities = list.map(echo => echo.location?.address?.split(',')[0]).filter(Boolean);
@@ -79,18 +81,16 @@ const Profile = ({navigation}) => {
     );
 
     return (
-        
         <LinearGradient colors={colors.background} style={styles.container}>
-            <StatusBar barStyle={colors.status} />
+            <StatusBar barStyle={colors.status} translucent backgroundColor="transparent" />
 
-            {/* Branded Header Waves */}
-              <View style={styles.headerBackground}>
-                            <View style={[styles.blueWave, { backgroundColor: colors.primary, opacity: isDark ? 0.3 : 0.8 }]} />
-                            <View style={[styles.darkWave, { backgroundColor: isDark ? '#1E293B' : '#637D8B' }]} />
-                        </View>
+            {/* --- REUSABLE BRANDED HEADER --- */}
+            <BrandedHeader colors={colors} isDark={isDark} />
+
             <ScrollView 
-                contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top - 20, paddingBottom: 120 }]}
+                contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20, paddingBottom: 120 }]}
                 showsVerticalScrollIndicator={false}
+                style={{ backgroundColor: 'transparent' }}
             >
                 {/* Profile Identity */}
                 <View style={styles.header}>
@@ -105,7 +105,6 @@ const Profile = ({navigation}) => {
                         </LinearGradient>
                     </View>
                     
-                    {/* Dynamic Text Colors */}
                     <Text style={[styles.userName, { color: colors.textMain }]}>
                         {user?.username || 'Explorer'}
                     </Text>
@@ -115,7 +114,7 @@ const Profile = ({navigation}) => {
                     </View>
                 </View>
 
-               
+                {/* Milestone Card */}
                 <View style={[styles.card, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
                     <View style={styles.progressHeader}>
                         <Text style={[styles.progressTitle, { color: colors.textMain }]}>Next Milestone</Text>
@@ -129,6 +128,7 @@ const Profile = ({navigation}) => {
                     </View>
                 </View>
 
+                {/* Stats Grid */}
                 <View style={styles.statsGrid}>
                     <View style={[styles.miniStat, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
                         <Text style={[styles.miniStatNum, { color: colors.textMain }]}>{list.length}</Text>
@@ -151,11 +151,8 @@ const Profile = ({navigation}) => {
                     />
                     <SettingItem icon="notifications-outline" title="Notifications" value="On" />
                     <SettingItem icon="shield-outline" title="Privacy & Security" isLast onPress={() => navigation.navigate('PrivacySecurity')} />        
-                 
-
-
                 </View>
-                        {/* Support Section */}
+
                 <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>SUPPORT</Text>
                 <View style={[styles.menuContainer, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
                     <SettingItem icon="help-buoy-outline" title="Help Center" onPress={() => navigation.navigate('Help')}/>
@@ -176,9 +173,6 @@ const Profile = ({navigation}) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-  headerBackground: { position: 'absolute', top: 0, width: '100%', height: height * 0.25 },
-    blueWave: { position: 'absolute', top: -50, right: -50, width: width * 1.2, height: height * 0.2, borderBottomLeftRadius: 300, transform: [{ rotate: '-10deg' }] },
-    darkWave: { position: 'absolute', top: -30, right: -80, width: width * 0.8, height: height * 0.18, opacity: 0.6, borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] },
     scrollContent: { paddingHorizontal: 20 },
     header: { alignItems: 'center', marginVertical: 30 },
     avatarWrapper: { width: 100, height: 100, borderRadius: 50, padding: 4, backgroundColor: 'rgba(255,255,255,0.2)', marginBottom: 16 },
@@ -206,7 +200,7 @@ const styles = StyleSheet.create({
     settingRight: { flexDirection: 'row', alignItems: 'center' },
     settingValue: { fontSize: 14, marginRight: 10, fontWeight: '500' },
     toggleTrack: { width: 44, height: 24, borderRadius: 12, padding: 3, justifyContent: 'center' },
-    toggleThumb: { width: 18, height: 18, borderRadius: 9, backgroundColor: '#581515' },
+    toggleThumb: { width: 18, height: 18, borderRadius: 9, backgroundColor: '#FFF' },
     logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 18, borderRadius: 24, marginTop: 10 },
     logoutText: { color: '#FF5252', fontWeight: '800', fontSize: 16, marginLeft: 10 },
     footerText: { textAlign: 'center', fontSize: 10, fontWeight: '700', marginTop: 25, opacity: 0.5 }
