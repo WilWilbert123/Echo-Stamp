@@ -17,12 +17,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
 // --- Redux Imports ---
-import { getJournalsAsync } from '../../redux/journalSlice';
- 
 import { getEchoesAsync } from '../../redux/echoSlice';
+import { getJournalsAsync } from '../../redux/journalSlice';
 
 import { EMOTION_ASSETS, EMOTION_CONFIG } from '../../constants/assets';
 import { useTheme } from '../../context/ThemeContext';
+
+// --- IMPORT YOUR REUSABLE COMPONENT ---
+import BrandedHeader from '../../components/BrandedHeader';
 
 const { width, height } = Dimensions.get('window');
 
@@ -32,7 +34,6 @@ const Insights = () => {
     const dispatch = useDispatch();
 
     // --- Selectors ---
- 
     const { user } = useSelector((state) => state.auth || {});
     const { list: echoesList = [] } = useSelector((state) => state.echoes || {});
     const { list: journalList = [] } = useSelector((state) => state.journals || {});
@@ -47,14 +48,10 @@ const Insights = () => {
         
         setRefreshing(true);
         try {
-            
             await Promise.all([
                 dispatch(getJournalsAsync(user._id)).unwrap(),
-               
                 dispatch(getEchoesAsync({ userId: user._id })).unwrap()
             ]);
-            
-          
             setChartKey(prev => prev + 1);
         } catch (error) {
             console.error("Data Sync Error:", error);
@@ -74,10 +71,11 @@ const Insights = () => {
         Ok: '#CDDC39', Rides: '#673AB7', Haha: '#FFEB3B', What: '#FF9800',
         Blee: '#F06292', Beach: '#03A9F4', Sneaking: '#634242', Crying: '#4703f4' , Drunk: '#000000' ,Thinking: '#ffffff'
     };
-const moodWeights = { 
-    'Play': 10, 'Fire': 9,  'Loved': 8,  'Walk': 7,  'Calm': 6,   'Ok': 5,  'Burnout': 3, 
-    'Sad': 2,  'Sick': 1, 'Haha': 9, 'Beach': 8, 'Drunk': 4, 'NoEnergy': 2,'Crying': 1
-};
+    
+    const moodWeights = { 
+        'Play': 10, 'Fire': 9,  'Loved': 8,  'Walk': 7,  'Calm': 6,   'Ok': 5,  'Burnout': 3, 
+        'Sad': 2,  'Sick': 1, 'Haha': 9, 'Beach': 8, 'Drunk': 4, 'NoEnergy': 2,'Crying': 1
+    };
 
     const parseDate = (dateData) => {
         if (!dateData) return null;
@@ -209,15 +207,15 @@ const moodWeights = {
     return (
         <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
             <StatusBar barStyle={colors.status} translucent backgroundColor="transparent" />
-            <View style={styles.headerBackground}>
-                <View style={[styles.blueWave, { backgroundColor: colors.primary, opacity: isDark ? 0.2 : 0.7 }]} />
-                <View style={[styles.darkWave, { backgroundColor: isDark ? '#334155' : '#94A3B8', opacity: 0.3 }]} />
-            </View>
+            
+            {/* --- REUSABLE BRANDED HEADER --- */}
+            <BrandedHeader colors={colors} isDark={isDark} />
 
             <ScrollView
                 contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20, paddingBottom: 120 }]}
                 showsVerticalScrollIndicator={false}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+                style={{ backgroundColor: 'transparent' }} // Ensure waves aren't covered
             >
                 <View style={styles.header}>
                     <Text style={[styles.headerTitle, { color: colors.textMain }]}>Insights</Text>
@@ -334,12 +332,8 @@ const moodWeights = {
     );
 };
 
-// ... Styles remain the same ...
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    headerBackground: { position: 'absolute', top: 0, width: '100%', height: height * 0.25 },
-    blueWave: { position: 'absolute', top: -50, right: -50, width: width * 1.2, height: height * 0.2, borderBottomLeftRadius: 300, transform: [{ rotate: '-10deg' }] },
-    darkWave: { position: 'absolute', top: -30, right: -80, width: width * 0.8, height: height * 0.18, borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] },
     scrollContent: { paddingHorizontal: 20 },
     header: { marginBottom: 25, marginTop: 10 },
     headerTitle: { fontSize: 38, fontWeight: '900', letterSpacing: -1.5 },

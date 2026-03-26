@@ -15,7 +15,7 @@ const BrandedHeader = ({ colors, isDark }) => {
 const styles = StyleSheet.create({
     headerBackground: { 
         position: 'absolute', 
-        top: 30, 
+        top: 5, 
         left: 0,
         right: 0,
         width: width, 
