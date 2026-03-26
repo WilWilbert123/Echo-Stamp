@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -16,13 +16,14 @@ import {
     View
 } from 'react-native';
 
-// REDUX IMPORTS
+// REDUX / CONTEXT IMPORTS
 import { useTheme } from '../../context/ThemeContext';
 // API IMPORT
 import { requestOtp } from '../../services/api';
+// BRAND COMPONENT
+import BrandedHeader from '../../components/BrandedHeader';
 
-// Get dimensions outside the component or use fixed values to prevent keyboard-flicker
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const Signup = ({ navigation }) => {
     const { colors, isDark } = useTheme();
@@ -80,7 +81,6 @@ const Signup = ({ navigation }) => {
             navigation.navigate('OtpVerification', { email: userData.email });
 
         } catch (error) {
-            // Detailed Logging for Debugging
             console.log("--- Signup Error Detail ---");
             if (error.response) {
                 console.log("Status:", error.response.status);
@@ -92,9 +92,7 @@ const Signup = ({ navigation }) => {
             let errorMessage = "Something went wrong. Please try again.";
 
             if (error.message === 'Network Error') {
-                errorMessage = "Network Error: Cannot connect to server. If you are testing locally, check your IP. If on Render, the server might be starting up.";
-            } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-                errorMessage = "The server is taking too long to respond (Waking up). Please wait a moment and try again.";
+                errorMessage = "Network Error: Cannot connect to server.";
             } else if (error.response?.data?.message) {
                 errorMessage = error.response.data.message;
             }
@@ -105,27 +103,16 @@ const Signup = ({ navigation }) => {
         }
     };
 
-   
-    const dynamicStyles = useMemo(() => ({
-        headerBackground: { height: SCREEN_HEIGHT * 0.25 },
-        blueWave: { width: SCREEN_WIDTH * 1.2, height: SCREEN_HEIGHT * 0.2 },
-        darkWave: { width: SCREEN_WIDTH * 0.8, height: SCREEN_HEIGHT * 0.18 },
-    }), []);
-
     return (
         <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
-            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+            <StatusBar barStyle={colors.status} translucent backgroundColor="transparent" />
             
-            <View style={[styles.headerBackground, dynamicStyles.headerBackground, { backgroundColor: colors.background[0] }]}>
-                <View style={[styles.blueWave, dynamicStyles.blueWave, { backgroundColor: colors.primary, opacity: isDark ? 0.4 : 1 }]} />
-                <View style={[styles.darkWave, dynamicStyles.darkWave, { backgroundColor: isDark ? '#1E293B' : '#637D8B', opacity: 0.6 }]} />
-            </View>
+            {/* --- REUSABLE BRANDED HEADER --- */}
+            <BrandedHeader colors={colors} isDark={isDark} />
 
             <KeyboardAvoidingView 
-               
-                behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} 
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
                 style={styles.flex}
-              
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
             >
                 <ScrollView 
@@ -210,24 +197,28 @@ const Signup = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     flex: { flex: 1 },
-    scrollContent: { flexGrow: 1, paddingTop: 60 },
-    headerBackground: { position: 'absolute', top: 0, width: '100%' },
-    blueWave: { position: 'absolute', top: -50, right: -50, borderBottomLeftRadius: 300, transform: [{ rotate: '-10deg' }] },
-    darkWave: { position: 'absolute', top: -30, right: -80, borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] },
-    inner: { paddingHorizontal: 35, paddingVertical: 40 },
+    scrollContent: { flexGrow: 1, paddingTop: 100 },  
+    inner: { paddingHorizontal: 30, paddingBottom: 40 },
     headerArea: { alignItems: 'center', marginBottom: 25 },
-    title: { fontSize: 26, fontWeight: 'bold' },
-    subtitle: { fontSize: 13, marginTop: 5 },
+    title: { fontSize: 28, fontWeight: '900', letterSpacing: -0.5 },
+    subtitle: { fontSize: 14, marginTop: 5, fontWeight: '500' },
     formContainer: { marginBottom: 10 },
-    inputWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, paddingHorizontal: 15, height: 50, marginBottom: 12 },
+    inputWrapper: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        borderRadius: 16, 
+        paddingHorizontal: 15, 
+        height: 56, 
+        marginBottom: 12 
+    },
     inputIcon: { marginRight: 10 },
-    input: { flex: 1, fontSize: 14 },
-    createBtn: { height: 50, borderRadius: 12, overflow: 'hidden', marginTop: 10, elevation: 4 },
+    input: { flex: 1, fontSize: 15, fontWeight: '500' },
+    createBtn: { height: 56, borderRadius: 16, overflow: 'hidden', marginTop: 10, elevation: 4 },
     gradient: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    createBtnText: { color: '#FFF', fontSize: 15, fontWeight: '800', letterSpacing: 1 },
+    createBtnText: { color: '#FFF', fontSize: 16, fontWeight: '900', letterSpacing: 1.5 },
     footerLink: { marginTop: 20, marginBottom: 20, alignItems: 'center' },
-    footerText: { fontSize: 13 },
-    loginLink: { fontWeight: 'bold' },
+    footerText: { fontSize: 14, fontWeight: '500' },
+    loginLink: { fontWeight: '800' },
 });
 
 export default Signup;
