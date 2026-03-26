@@ -19,12 +19,10 @@ import { useDispatch } from 'react-redux';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 
+import BrandedHeader from '../../components/BrandedHeader';
 import { useTheme } from '../../context/ThemeContext';
 import { setCredentials } from '../../redux/authSlice';
 import API from '../../services/api';
-
-// --- IMPORT YOUR REUSABLE COMPONENT ---
-import BrandedHeader from '../../components/BrandedHeader';
 
 const Login = ({ navigation }) => {
     const { colors, isDark } = useTheme();
@@ -123,9 +121,8 @@ const Login = ({ navigation }) => {
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
-            <StatusBar barStyle={colors.status} translucent backgroundColor="transparent" />
+            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
 
-            {/* --- REUSABLE BRANDED HEADER --- */}
             <BrandedHeader colors={colors} isDark={isDark} />
 
             <KeyboardAvoidingView
@@ -140,19 +137,20 @@ const Login = ({ navigation }) => {
 
                     {/* ENHANCED FORM CARD */}
                     <View style={[styles.formCard, {
-                        backgroundColor: isDark ? 'rgba(30, 41, 59, 0.7)' : '#FFFFFF',
-                        shadowColor: isDark ? '#000' : '#64748B'
+                        backgroundColor: isDark ? colors.glass : '#FFFFFF',
+                        shadowColor: isDark ? '#000' : colors.primary,
+                        borderColor: colors.glassBorder,
                     }]}>
                         <View style={styles.inputArea}>
                             <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Email Address</Text>
                             <View style={[styles.inputWrapper, {
-                                backgroundColor: isDark ? colors.glass : '#F8FAFC',
+                                backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : '#F8FAFC',
                                 borderColor: isDark ? colors.glassBorder : '#E2E8F0'
                             }]}>
                                 <Ionicons name="mail-outline" size={18} color={colors.primary} />
                                 <TextInput
                                     placeholder="your@email.com"
-                                    placeholderTextColor={isDark ? '#475569' : '#94A3B8'}
+                                    placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#94A3B8'}
                                     style={[styles.input, { color: colors.textMain }]}
                                     value={email}
                                     onChangeText={setEmail}
@@ -162,13 +160,13 @@ const Login = ({ navigation }) => {
 
                             <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Password</Text>
                             <View style={[styles.inputWrapper, {
-                                backgroundColor: isDark ? colors.glass : '#F8FAFC',
+                                backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : '#F8FAFC',
                                 borderColor: isDark ? colors.glassBorder : '#E2E8F0'
                             }]}>
                                 <Ionicons name="lock-closed-outline" size={18} color={colors.primary} />
                                 <TextInput
                                     placeholder="••••••••"
-                                    placeholderTextColor={isDark ? '#475569' : '#94A3B8'}
+                                    placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#94A3B8'}
                                     style={[styles.input, { color: colors.textMain }]}
                                     secureTextEntry={!showPassword}
                                     value={password}
@@ -203,12 +201,19 @@ const Login = ({ navigation }) => {
                                 disabled={loading}
                             >
                                 <LinearGradient
-                                    colors={isDark ? [colors.primary, '#0369A1'] : ['#47B5FF', '#06283D']}
+                                    // Use dynamic colors from ThemeContext
+                                    colors={isDark ? [colors.primary, '#0369A1'] : [colors.primary, colors.accent || '#06283D']}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 0 }}
                                     style={styles.gradientBtn}
                                 >
-                                    {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.loginBtnText}>LOG IN</Text>}
+                                    {loading ? (
+                                        <ActivityIndicator color="#FFF" />
+                                    ) : (
+                                        <Text style={[styles.loginBtnText, { color: colors.primary === '#FFFFFF' ? '#000' : '#FFF' }]}>
+                                            LOG IN
+                                        </Text>
+                                    )}
                                 </LinearGradient>
                             </TouchableOpacity>
 
@@ -244,13 +249,9 @@ const styles = StyleSheet.create({
     container: { flex: 1 },
     flex: { flex: 1 },
     inner: { flex: 1, paddingHorizontal: 25, justifyContent: 'center', paddingTop: 60 },
-
-    // Logo Section
     logoContainer: { alignItems: 'center', marginBottom: 30 },
     logoText: { fontSize: 48, fontWeight: '100', letterSpacing: 8, marginBottom: 5 },
     welcomeTitle: { fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
-
-    // Form Card
     formCard: {
         borderRadius: 24,
         padding: 25,
@@ -258,8 +259,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.1,
         shadowRadius: 20,
-        borderWidth: Platform.OS === 'ios' ? 1 : 0,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1,
     },
     inputArea: { marginBottom: 10 },
     inputLabel: {
@@ -282,14 +282,11 @@ const styles = StyleSheet.create({
     input: { flex: 1, marginLeft: 12, fontSize: 15, fontWeight: '500' },
     forgotBtn: { alignSelf: 'flex-end', marginTop: -5 },
     forgotText: { fontSize: 13, fontWeight: '700' },
-
-    // Actions
     actionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 25 },
     loginBtn: { height: 58, borderRadius: 16, overflow: 'hidden', elevation: 4 },
     biometricBtn: { width: 58, height: 58, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
     gradientBtn: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    loginBtnText: { color: '#FFF', fontWeight: '900', fontSize: 16, letterSpacing: 1.5 },
-
+    loginBtnText: { fontWeight: '900', fontSize: 16, letterSpacing: 1.5 },
     footer: { marginTop: 30, alignItems: 'center' },
     footerText: { fontSize: 15, fontWeight: '500' },
     signUpText: { fontWeight: '800' },

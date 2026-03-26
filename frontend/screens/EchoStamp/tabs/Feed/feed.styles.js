@@ -13,7 +13,7 @@ export const styles = StyleSheet.create({
         borderWidth: 1, 
         ...Platform.select({ 
             ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.1, shadowRadius: 12 }, 
-            android: { elevation: 4 } 
+            android: {  } 
         }) 
     },
     userInfo: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 15 },

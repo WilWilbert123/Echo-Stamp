@@ -125,11 +125,12 @@ const CreateEcho = ({ navigation }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
-      <StatusBar barStyle={colors.status} />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
+      {/* Dynamic Header Background */}
       <View style={styles.headerBackground}>
-        <View style={[styles.blueWave, { backgroundColor: colors.primary, opacity: isDark ? 0.3 : 0.8 }]} />
-        <View style={[styles.darkWave, { backgroundColor: isDark ? '#1E293B' : '#637D8B', opacity: 0.6 }]} />
+        <View style={[styles.blueWave, { backgroundColor: colors.primary, opacity: isDark ? 0.2 : 0.6 }]} />
+        <View style={[styles.darkWave, { backgroundColor: colors.accent, opacity: isDark ? 0.1 : 0.3 }]} />
       </View>
 
       <KeyboardAvoidingView
@@ -143,22 +144,22 @@ const CreateEcho = ({ navigation }) => {
           <View style={styles.navHeader}>
             <TouchableOpacity
               onPress={() => navigation.goBack()}
-              style={[styles.backButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
+              style={[styles.backButton, { backgroundColor: colors.glass, borderColor: colors.glassBorder, borderWidth: 1 }]}
             >
-              <Ionicons name="chevron-back" size={24} color={isDark ? "#FFF" : colors.primary} />
+              <Ionicons name="chevron-back" size={24} color={colors.textMain} />
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: isDark ? '#FFF' : colors.primary }]}>New Echo</Text>
-            <View style={{ width: 40 }} />
+            <Text style={[styles.headerTitle, { color: colors.textMain }]}>New Echo</Text>
+            <View style={{ width: 44 }} />
           </View>
 
           {/* Location Bar */}
-          <View style={[styles.locationStatus, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]}>
+          <View style={[styles.locationStatus, { backgroundColor: colors.glass, borderColor: colors.glassBorder, borderWidth: 1 }]}>
             <Ionicons
               name={address && !address.includes("denied") ? "location" : "location-outline"}
               size={14}
               color={colors.primary}
             />
-            <Text numberOfLines={1} style={[styles.locationStatusText, { color: isDark ? '#FFF' : colors.textMain }]}>
+            <Text numberOfLines={1} style={[styles.locationStatusText, { color: colors.textSecondary }]}>
               {isLocating ? "Finding your spot..." : address || "Location ready"}
             </Text>
           </View>
@@ -167,16 +168,16 @@ const CreateEcho = ({ navigation }) => {
           <View style={[styles.solidCard, {
             backgroundColor: isDark ? colors.glass : '#FFF',
             borderColor: colors.glassBorder,
-            borderWidth: isDark ? 1 : 0
+            borderWidth: 1
           }]}>
             <View style={styles.labelRow}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>What happened?</Text>
+              <Text style={[styles.label, { color: colors.primary }]}>What happened?</Text>
               <Text style={[styles.counter, { color: colors.textSecondary }]}>{title.length}/500</Text>
             </View>
             <TextInput
               style={[styles.input, { color: colors.textMain }]}
               placeholder="Name this moment..."
-              placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)"}
+              placeholderTextColor={colors.textSecondary + '80'} // Adds 50% opacity to theme text color
               value={title}
               onChangeText={setTitle}
               maxLength={500}
@@ -194,13 +195,13 @@ const CreateEcho = ({ navigation }) => {
                 </TouchableOpacity>
               </>
             ) : (
-              <View style={[styles.searchBarContainer, { backgroundColor: isDark ? colors.glass : '#F1F5F9' }]}>
+              <View style={[styles.searchBarContainer, { backgroundColor: colors.glass, borderColor: colors.glassBorder, borderWidth: 1 }]}>
                 <Ionicons name="search" size={16} color={colors.primary} style={{ marginLeft: 10 }} />
                 <TextInput
                   autoFocus
                   style={[styles.searchInput, { color: colors.textMain }]}
                   placeholder="Search emotions..."
-                  placeholderTextColor={isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)"}
+                  placeholderTextColor={colors.textSecondary + '80'}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                 />
@@ -234,7 +235,7 @@ const CreateEcho = ({ navigation }) => {
                       borderWidth: isSelected ? 2 : 1,
                     },
                     isSelected && {
-                      backgroundColor: isDark ? 'rgba(56,189,248,0.1)' : 'rgba(56,189,248,0.05)',
+                      backgroundColor: colors.primary + '15', // Theme color with very low opacity
                     }
                   ]}
                 >
@@ -242,13 +243,12 @@ const CreateEcho = ({ navigation }) => {
                     source={animationFile}
                     autoPlay
                     loop={isSelected}  
-                    style={{ width: 80, height: 80 }}
+                    style={{ width: 70, height: 70 }}
                   />
                   <Text
                     style={[
                       styles.emotionText,
-                      { color: colors.textSecondary },
-                      isSelected && { color: colors.primary, fontWeight: '800' }
+                      { color: isSelected ? colors.primary : colors.textSecondary, fontWeight: isSelected ? '900' : '600' }
                     ]}
                   >
                     {item.label}
@@ -256,22 +256,19 @@ const CreateEcho = ({ navigation }) => {
                 </TouchableOpacity>
               );
             })}
-            {filteredEmotions.length === 0 && (
-              <Text style={{ color: colors.textSecondary, marginLeft: 10, marginTop: 40 }}>No results found...</Text>
-            )}
           </ScrollView>
 
           {/* Details Card */}
           <View style={[styles.solidCard, {
             backgroundColor: isDark ? colors.glass : '#FFF',
             borderColor: colors.glassBorder,
-            borderWidth: isDark ? 1 : 0
+            borderWidth: 1
           }]}>
-            <Text style={[styles.label, { color: colors.textSecondary, marginBottom: 10 }]}>ADD MORE DETAIL</Text>
+            <Text style={[styles.label, { color: colors.primary, marginBottom: 10 }]}>ADD MORE DETAIL</Text>
             <TextInput
               style={[styles.input, styles.textArea, { color: colors.textMain }]}
               placeholder="Capture the small things..."
-              placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)"}
+              placeholderTextColor={colors.textSecondary + '80'}
               value={description}
               onChangeText={setDescription}
               multiline
@@ -291,13 +288,19 @@ const CreateEcho = ({ navigation }) => {
                 activeOpacity={0.8}
               >
                 <LinearGradient
-                  colors={isDark ? [colors.primary, '#0369A1'] : ['#8ECCE3', '#6AB8D2']}
+                  colors={isDark ? [colors.primary, '#0369A1'] : [colors.primary, colors.accent]}
                   style={styles.buttonGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                 >
-                  <Text style={styles.buttonText}>Anchor Memory</Text>
-                  <Ionicons name="bookmark" size={20} color="#FFF" />
+                  <Text style={[styles.buttonText, { color: colors.primary === '#FFFFFF' ? '#000' : '#FFF' }]}>
+                    Anchor Memory
+                  </Text>
+                  <Ionicons 
+                    name="bookmark" 
+                    size={20} 
+                    color={colors.primary === '#FFFFFF' ? '#000' : '#FFF'} 
+                  />
                 </LinearGradient>
               </TouchableOpacity>
             )}
@@ -316,30 +319,28 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
   navHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   backButton: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 22, fontWeight: '900' },
+  headerTitle: { fontSize: 24, fontWeight: '900', letterSpacing: -0.5 },
   locationStatus: { flexDirection: 'row', alignItems: 'center', marginBottom: 25, paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, alignSelf: 'center' },
   locationStatusText: { fontSize: 12, marginLeft: 6, fontWeight: '700' },
-  solidCard: { padding: 20, borderRadius: 24, marginBottom: 20, ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10 }, android: {} }) },
+  solidCard: { padding: 20, borderRadius: 24, marginBottom: 20 },
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  label: { fontWeight: '800', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 },
+  label: { fontWeight: '800', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.5 },
   counter: { fontSize: 11, fontWeight: '600' },
   input: { fontSize: 17, fontWeight: '500', lineHeight: 24 },
   textArea: { minHeight: 120 },
-  // New Header Styles
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, paddingRight: 10 },
   sectionLabel: { fontSize: 11, fontWeight: '800', marginLeft: 10, letterSpacing: 1.5 },
   searchIconButton: { padding: 5, borderRadius: 10 },
   searchBarContainer: { flex: 1, flexDirection: 'row', alignItems: 'center', height: 40, borderRadius: 20, marginLeft: 10 },
   searchInput: { flex: 1, fontSize: 14, paddingHorizontal: 10, fontWeight: '600' },
-  // Emotion List
   emotionScrollView: { marginBottom: 25 },
   emotionScrollContent: { paddingHorizontal: 5, gap: 12 },
-  emotionBox: { width: 90, height: 95, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
-  emotionText: { fontSize: 11, fontWeight: '700' },
+  emotionBox: { width: 95, height: 105, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
+  emotionText: { fontSize: 11, marginTop: 4 },
   footer: { marginTop: 10, alignItems: 'center' },
   mainButton: { width: '100%', height: 60, borderRadius: 30, overflow: 'hidden' },
   buttonGradient: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  buttonText: { color: '#FFF', fontSize: 18, fontWeight: '800' },
+  buttonText: { fontSize: 18, fontWeight: '800' },
 });
 
 export default CreateEcho;

@@ -20,12 +20,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
+import ThemeModal from '../../components/ThemeModal';
 import { useTheme } from '../../context/ThemeContext';
-import { logout } from '../../redux/authSlice';
-import API, { fullDeleteAccount } from '../../services/api';
- 
-import { updatePrivacy as updatePrivacyAction } from '../../redux/authSlice';
-import { updatePrivacy as updatePrivacyAPI } from '../../services/api';
+import { logout, updatePrivacy as updatePrivacyAction } from '../../redux/authSlice';
+import API, { fullDeleteAccount, updatePrivacy as updatePrivacyAPI } from '../../services/api';
 
 const PrivacySecurity = ({ navigation }) => {
   const { colors, isDark } = useTheme();
@@ -39,7 +37,7 @@ const PrivacySecurity = ({ navigation }) => {
   const [isModalVisible, setModalVisible] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
-
+  const [modalOpen, setModalOpen] = useState(false);
   // --- Data Usage States ---
   const [isUsageModalVisible, setUsageModalVisible] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -50,11 +48,11 @@ const PrivacySecurity = ({ navigation }) => {
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
-const [isPrivacyLoading, setIsPrivacyLoading] = useState(false);
-  
+  const [isPrivacyLoading, setIsPrivacyLoading] = useState(false);
 
 
-useEffect(() => {
+
+  useEffect(() => {
     if (user?.email) {
       checkInitialStatus();
     }
@@ -64,7 +62,7 @@ useEffect(() => {
       setProfileVisible(user.isPublic);
     }
   }, [user?.isPublic]);
-  
+
   const getBioKey = () => {
     if (!user?.email) return "";
     const sanitizedEmail = user.email.toLowerCase().trim().replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -150,29 +148,29 @@ useEffect(() => {
     }
   };
 
-  
 
-// --- Logic: Profile Visibility ---
-const handleProfileVisibility = async (value) => {
-    setIsPrivacyLoading(true);  
+
+  // --- Logic: Profile Visibility ---
+  const handleProfileVisibility = async (value) => {
+    setIsPrivacyLoading(true);
     try {
-       
-        await updatePrivacyAPI({ isPublic: value }); 
-    
-        dispatch(updatePrivacyAction(value)); 
-        
-        setProfileVisible(value);
-        console.log("Successfully saved to DB and Redux:", value);
-    } catch (error) {
-        console.error("Privacy Toggle Error:", error);
-        setProfileVisible(!value); 
-        Alert.alert("Error", "Could not save setting.");
-    } finally {
-        setIsPrivacyLoading(false);  
-    }
-};
 
-const handleChangePassword = async () => {
+      await updatePrivacyAPI({ isPublic: value });
+
+      dispatch(updatePrivacyAction(value));
+
+      setProfileVisible(value);
+      console.log("Successfully saved to DB and Redux:", value);
+    } catch (error) {
+      console.error("Privacy Toggle Error:", error);
+      setProfileVisible(!value);
+      Alert.alert("Error", "Could not save setting.");
+    } finally {
+      setIsPrivacyLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
     Alert.alert(
       "Security Check",
       "We need to verify your email before you can change your password.",
@@ -305,6 +303,8 @@ const handleChangePassword = async () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+
+
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.primary }]}>SECURITY</Text>
           <SettingItem icon="finger-print-outline" title="Biometric Login" description="Use FaceID/Fingerprint" type="toggle" value={biometrics} onValueChange={handleTogglePress} />
@@ -314,11 +314,28 @@ const handleChangePassword = async () => {
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.primary }]}>PRIVACY & DATA</Text>
-          <SettingItem icon="eye-outline" title="Profile Visibility" description="Make profile searchable" type="toggle" value={profileVisible} onValueChange={handleProfileVisibility} isLoading={isPrivacyLoading}/>
-          <SettingItem icon="document-text-outline" title="Data Usage" description="Manage app storage & cache" onPress={handleFetchUsage} isLoading={isCalculating} />
+          <SettingItem icon="eye-outline" title="Profile Visibility" description="Make profile searchable" type="toggle" value={profileVisible} onValueChange={handleProfileVisibility} isLoading={isPrivacyLoading} />
+
+        </View>
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.primary }]}>DARK MODE & LIGHT MODE</Text>
+          <SettingItem
+            icon="color-palette-outline"
+            title="Appearance"
+            description="Switch between light and dark mode"
+            onPress={() => setModalOpen(true)}
+          />
+        </View>
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.primary }]}>DELETE ACCOUNT</Text>
+
           <SettingItem icon="trash-outline" title="Delete Account" description="Permanently wipe data" isDestructive={true} onPress={() => setDeleteModalVisible(true)} />
         </View>
       </ScrollView>
+      <ThemeModal
+        visible={modalOpen}
+        onClose={() => setModalOpen(false)}
+      />
 
       {/* --- DATA USAGE MODAL --- */}
       <Modal visible={isUsageModalVisible} transparent animationType="slide">
