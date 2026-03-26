@@ -28,7 +28,7 @@ const lightColors = {
   // Soft Arctic Palette
   background: ['#F8FAFC', '#F1F5F9', '#E2E8F0'], 
   textMain: '#0F172A',         
-  textSecondary: '#64748B',     
+  textSecondary: '#000204',     
   cardText: '#1E293B',
   cardDesc: '#475569',
   primary: '#4F46E5',         
@@ -43,7 +43,7 @@ const darkColors = {
   
   background: ['#0F172A', '#1E293B', '#0F172A'], 
   textMain: '#F8FAFC',         
-  textSecondary: '#94A3B8',    
+  textSecondary: '#ffffff',    
   cardText: '#F1F5F9',
   cardDesc: '#CBD5E1',
   primary: '#6366F1',          

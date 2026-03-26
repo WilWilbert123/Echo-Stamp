@@ -12,6 +12,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SceneMap, TabBar, TabView } from 'react-native-tab-view';
 import { useTheme } from '../../context/ThemeContext';
 
+// --- IMPORT YOUR REUSABLE COMPONENT ---
+import BrandedHeader from '../../components/BrandedHeader';
+
 import Feed from '../EchoStamp/tabs/Feed/Feed';
 import Events from './tabs/Events/Events';
 import Explore from './tabs/Explore/Explore';
@@ -82,11 +85,8 @@ const EchoStamp = () => {
         <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
             
-            {/* --- Branded Header Waves --- */}
-            <View style={styles.headerBackground}>
-                <View style={[styles.blueWave, { backgroundColor: colors.primary, opacity: isDark ? 0.3 : 0.8 }]} />
-                <View style={[styles.darkWave, { backgroundColor: isDark ? '#1E293B' : '#637D8B' }]} />
-            </View>
+            {/* --- REUSABLE BRANDED HEADER --- */}
+            <BrandedHeader colors={colors} isDark={isDark} />
 
             <SafeAreaView style={styles.flex1}>
                 <View style={styles.header}>
@@ -99,8 +99,9 @@ const EchoStamp = () => {
                     renderTabBar={renderTabBar}
                     onIndexChange={setIndex}
                     initialLayout={{ width: layout.width }}
-                    // This ensures the scenes don't have their own conflicting backgrounds
+                    // Ensures background content doesn't block the waves
                     sceneContainerStyle={{ backgroundColor: 'transparent' }}
+                    style={{ backgroundColor: 'transparent' }}
                 />
             </SafeAreaView>
         </View>
@@ -111,35 +112,9 @@ export default EchoStamp;
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    flex1: { flex: 1 ,paddingTop:20},
-    // Branded Wave Styles
-    headerBackground: { 
-        position: 'absolute', 
-        top: 0, 
-        width: '100%', 
-        height: height * 0.25 
-    },
-    blueWave: { 
-        position: 'absolute', 
-        top: -50, 
-        right: -50, 
-        width: width * 1.2, 
-        height: height * 0.2, 
-        borderBottomLeftRadius: 300, 
-        transform: [{ rotate: '-10deg' }] 
-    },
-    darkWave: { 
-        position: 'absolute', 
-        top: -30, 
-        right: -80, 
-        width: width * 0.8, 
-        height: height * 0.18, 
-        opacity: 0.6, 
-        borderBottomLeftRadius: 200, 
-        transform: [{ rotate: '-5deg' }] 
-    },
+    flex1: { flex: 1, paddingTop: 20 },
     // Content Styles
-    header: { paddingHorizontal: 20  },
+    header: { paddingHorizontal: 20 },
     mainTitle: { fontSize: 34, fontWeight: '900', letterSpacing: -1 },
     tabBar: { 
         backgroundColor: 'transparent', 
