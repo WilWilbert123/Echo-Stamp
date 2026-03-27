@@ -370,3 +370,18 @@ exports.updatePrivacy = async (req, res) => {
         return res.status(500).json({ message: "Server error", error: error.message });
     }
 };
+
+// --- FETCH ALL USERS (For Chat/Messages) ---
+exports.getAllUsers = async (req, res) => {
+    try {
+     
+        const users = await User.find({ _id: { $ne: req.user.id } })
+            .select('firstName lastName username isPublic');
+
+        return res.status(200).json(users);
+    } catch (error) {
+        console.error("FETCH USERS ERROR:", error);
+        return res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+

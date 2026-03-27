@@ -5,11 +5,11 @@ import { useTheme } from '../context/ThemeContext';
 
 // Import your screens
 import Atlas from '../screens/Atlas/Atlas';
+import Messages from '../screens/Chat/Messages';
 import EchoStamp from '../screens/EchoStamp/EchoStamp';
 import Home from '../screens/Home/Home';
 import Insights from '../screens/Insight/Insights';
 import Profile from '../screens/Profile/Profile';
-
 const Tab = createBottomTabNavigator();
 
 const MainTabs = () => {
@@ -62,6 +62,22 @@ const MainTabs = () => {
         options={{ tabBarIcon: ({ color }) => <Ionicons name="analytics-outline" size={24} color={color} /> }} 
       />
       
+       <Tab.Screen 
+        name="Messages" 
+        component={Messages} 
+        options={{ 
+          tabBarLabel: 'Chat',
+          tabBarIcon: ({ color }) => <Ionicons name="chatbubbles" size={22} color={color} />,
+          tabBarBadge: 3, 
+          tabBarBadgeStyle: { 
+            backgroundColor: colors.accent, 
+            color: '#000', 
+            fontSize: 10,
+            lineHeight: 14
+          }
+        }} 
+      />
+
       <Tab.Screen 
         name="Profile" 
         component={Profile} 

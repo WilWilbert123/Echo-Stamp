@@ -5,7 +5,7 @@ import chatReducer from './chatSlice';
 import echoReducer from './echoSlice';
 import eventReducer from './eventSlice';
 import journalReducer from './journalSlice';
-
+import messageReducer from './messageSlice';
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +14,7 @@ export const store = configureStore({
     journals: journalReducer,
     chat: chatReducer,
     events: eventReducer,
+    messages: messageReducer,
   },
   middleware: (getDefaultMiddleware) => 
     getDefaultMiddleware({

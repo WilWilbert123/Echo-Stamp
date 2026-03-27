@@ -85,7 +85,17 @@ export const updatePrivacy = (data) => API.patch('/users/update-privacy', data);
 // --- Updated fetchGlobalFeed ---
 export const fetchGlobalFeed = (userId) => {  const url = userId ? `/journals/global?userId=${userId}` : '/journals/global'; return API.get(url);};
 
- 
+// messages
+export const fetchMessages = (userId) => API.get(`/messages/${userId}`);
+export const postMessage = (messageData) => API.post('/messages', messageData);
+
+// Optional: Mark messages as read
+export const markAsRead = (messageId) => API.put(`/messages/${messageId}/read`);
+
+
+ //fetch all user
+ export const fetchAllUsers = () => API.get('/users/all');
+
 export const Config = { MAPS_SDK_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_SDK_KEY, PLACES_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY,};
 
 export default API;

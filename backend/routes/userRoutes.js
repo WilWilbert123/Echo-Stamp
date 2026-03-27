@@ -11,7 +11,8 @@ const {
     updateSecurity,
     verify2faLogin,
     deleteFullAccount,
-    updatePrivacy
+    updatePrivacy,
+    getAllUsers
 } = require('../controllers/userController');
 
 // --- Registration Flow ---
@@ -34,6 +35,10 @@ router.delete('/full-delete', protect, deleteFullAccount);
 
 //-------Profile Visibility
 router.patch('/update-privacy', protect, updatePrivacy);
+
+//get all user
+router.get('/all', protect, getAllUsers);
+
 
 // --- Authentication ---
 router.post('/login', loginUser);
