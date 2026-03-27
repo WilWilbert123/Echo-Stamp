@@ -18,11 +18,14 @@ import {
   View
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
+
+// Components & Context
+import BrandedHeader from '../../components/BrandedHeader';
 import { EMOTION_ASSETS, EMOTION_CONFIG } from '../../constants/assets';
 import { useTheme } from '../../context/ThemeContext';
 import { addEchoAsync } from '../../redux/echoSlice';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 const CreateEcho = ({ navigation }) => {
   const { isDark, colors } = useTheme();
@@ -40,7 +43,6 @@ const CreateEcho = ({ navigation }) => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
 
-  // Filtered Emotions Logic
   const filteredEmotions = EMOTION_CONFIG.filter((item) =>
     item.label.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -125,22 +127,20 @@ const CreateEcho = ({ navigation }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
 
-      {/* Dynamic Header Background */}
-      <View style={styles.headerBackground}>
-        <View style={[styles.blueWave, { backgroundColor: colors.primary, opacity: isDark ? 0.2 : 0.6 }]} />
-        <View style={[styles.darkWave, { backgroundColor: colors.accent, opacity: isDark ? 0.1 : 0.3 }]} />
-      </View>
+      {/* 1. BRANDED HEADER APPLIED HERE */}
+      <BrandedHeader colors={colors} isDark={isDark} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
         <ScrollView
-          contentContainerStyle={[styles.scrollContent, { paddingTop: Platform.OS === 'ios' ? 60 : 40 }]}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          {/* Custom Navigation Row */}
           <View style={styles.navHeader}>
             <TouchableOpacity
               onPress={() => navigation.goBack()}
@@ -177,7 +177,7 @@ const CreateEcho = ({ navigation }) => {
             <TextInput
               style={[styles.input, { color: colors.textMain }]}
               placeholder="Name this moment..."
-              placeholderTextColor={colors.textSecondary + '80'} // Adds 50% opacity to theme text color
+              placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#94A3B8'}
               value={title}
               onChangeText={setTitle}
               maxLength={500}
@@ -185,7 +185,7 @@ const CreateEcho = ({ navigation }) => {
             />
           </View>
 
-          {/* Emotion Section Header with Search */}
+          {/* Emotion Section */}
           <View style={styles.sectionHeaderRow}>
             {!isSearching ? (
               <>
@@ -201,7 +201,7 @@ const CreateEcho = ({ navigation }) => {
                   autoFocus
                   style={[styles.searchInput, { color: colors.textMain }]}
                   placeholder="Search emotions..."
-                  placeholderTextColor={colors.textSecondary + '80'}
+                  placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#94A3B8'}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                 />
@@ -235,7 +235,7 @@ const CreateEcho = ({ navigation }) => {
                       borderWidth: isSelected ? 2 : 1,
                     },
                     isSelected && {
-                      backgroundColor: colors.primary + '15', // Theme color with very low opacity
+                      backgroundColor: colors.primary + '15', 
                     }
                   ]}
                 >
@@ -268,7 +268,7 @@ const CreateEcho = ({ navigation }) => {
             <TextInput
               style={[styles.input, styles.textArea, { color: colors.textMain }]}
               placeholder="Capture the small things..."
-              placeholderTextColor={colors.textSecondary + '80'}
+              placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : '#94A3B8'}
               value={description}
               onChangeText={setDescription}
               multiline
@@ -288,6 +288,7 @@ const CreateEcho = ({ navigation }) => {
                 activeOpacity={0.8}
               >
                 <LinearGradient
+                  // 2. UPDATED DYNAMIC GRADIENT COLORS
                   colors={isDark ? [colors.primary, '#0369A1'] : [colors.primary, colors.accent]}
                   style={styles.buttonGradient}
                   start={{ x: 0, y: 0 }}
@@ -313,10 +314,7 @@ const CreateEcho = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  headerBackground: { position: 'absolute', top: 0, width: '100%', height: height * 0.25 },
-  blueWave: { position: 'absolute', top: -50, right: -50, width: width * 1.3, height: height * 0.2, borderBottomLeftRadius: 300, transform: [{ rotate: '-10deg' }] },
-  darkWave: { position: 'absolute', top: -30, right: -80, width: width * 0.9, height: height * 0.18, borderBottomLeftRadius: 200, transform: [{ rotate: '-5deg' }] },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 100, paddingTop: 50 },
   navHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   backButton: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: 24, fontWeight: '900', letterSpacing: -0.5 },

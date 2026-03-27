@@ -56,7 +56,7 @@ const Home = () => {
   const dispatch = useDispatch();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  
+
   // Use toggleTheme directly from context
   const { isDark, colors, toggleTheme } = useTheme();
 
@@ -97,8 +97,8 @@ const Home = () => {
   };
 
   const renderRightActions = (id) => (
-    <Pressable 
-      style={styles.deleteAction} 
+    <Pressable
+      style={styles.deleteAction}
       onPress={() => handleDelete(id)}
     >
       <LinearGradient colors={['#EF4444', '#991B1B']} style={styles.deleteGradient}>
@@ -114,10 +114,10 @@ const Home = () => {
 
     return (
       <Swipeable renderRightActions={() => renderRightActions(item._id)} overshootRight={false}>
-        <AnimatedPressable 
+        <AnimatedPressable
           style={[
-            styles.echoCard, 
-            { 
+            styles.echoCard,
+            {
               backgroundColor: isDark ? colors.glass : '#FFF',
               borderColor: colors.glassBorder,
             }
@@ -127,7 +127,7 @@ const Home = () => {
           {isDark && Platform.OS === 'ios' && (
             <BlurView intensity={15} style={StyleSheet.absoluteFill} tint="dark" />
           )}
-          
+
           <View style={styles.cardHeader}>
             <View style={styles.titleContainer}>
               <Text style={[styles.echoTitle, { color: colors.textMain }]}>{item.title}</Text>
@@ -166,7 +166,7 @@ const Home = () => {
       <BrandedHeader colors={colors} isDark={isDark} />
 
       <View style={[styles.contentWrapper, { paddingTop: insets.top + 20 }]}>
-        
+
         <View style={styles.headerContainer}>
           <View style={styles.headerTop}>
             <View>
@@ -175,21 +175,21 @@ const Home = () => {
                 {user?.username || "Explorer"}
               </Text>
             </View>
-            
+
             {/* Direct toggle for Dark/Light mode */}
-            <AnimatedPressable 
-                onPress={toggleTheme} 
-                style={[styles.themeToggle, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}
+            <AnimatedPressable
+              onPress={toggleTheme}
+              style={[styles.themeToggle, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}
             >
-              <Ionicons 
-                name={isDark ? "sunny" : "moon"} 
-                size={20} 
-                color={isDark ? colors.accent : colors.primary} 
+              <Ionicons
+                name={isDark ? "sunny" : "moon"}
+                size={20}
+                color={isDark ? colors.accent : colors.primary}
               />
             </AnimatedPressable>
           </View>
 
-          <View style={[styles.searchWrapper, { 
+          <View style={[styles.searchWrapper, {
             backgroundColor: colors.glass,
             borderColor: colors.glassBorder
           }]}>
@@ -206,10 +206,10 @@ const Home = () => {
 
         {status === 'loading' && !refreshing ? (
           <View style={styles.loaderContainer}>
-             <LottieView 
-                source={require('../../assets/Loadingblue.json')} 
-                autoPlay loop style={{width: 100, height: 100}} 
-             />
+            <LottieView
+              source={require('../../assets/Loadingblue.json')}
+              autoPlay loop style={{ width: 100, height: 100 }}
+            />
           </View>
         ) : (
           <FlatList
@@ -222,9 +222,9 @@ const Home = () => {
             style={{ backgroundColor: 'transparent' }}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <LottieView 
-                  source={require('../../assets/empty_ghost.json')} 
-                  autoPlay loop style={styles.emptyLottie} 
+                <LottieView
+                  source={require('../../assets/empty_ghost.json')}
+                  autoPlay loop style={styles.emptyLottie}
                 />
                 <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No anchor entries yet.</Text>
               </View>
@@ -232,18 +232,18 @@ const Home = () => {
           />
         )}
 
-       <TouchableOpacity 
-          style={styles.fab} 
+        <TouchableOpacity
+          style={styles.fab}
           onPress={() => navigation.navigate('Create')}
         >
-          <LinearGradient 
-            colors={isDark ? [colors.primary, '#0369A1'] : [colors.primary, '#6AB8D2']} 
+          <LinearGradient
+            colors={isDark ? [colors.primary, '#0369A1'] : [colors.primary, '#6AB8D2']}
             style={styles.fabGradient}
           >
-            <Ionicons 
-                name="add" 
-                size={32} 
-                color={colors.primary === '#FFFFFF' ? '#000' : '#FFF'} 
+            <Ionicons
+              name="add"
+              size={32}
+              color={colors.primary === '#FFFFFF' ? '#000' : '#FFF'}
             />
           </LinearGradient>
         </TouchableOpacity>
@@ -263,15 +263,15 @@ const styles = StyleSheet.create({
   searchWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 20, paddingHorizontal: 16, height: 56, borderWidth: 1 },
   searchInput: { flex: 1, marginLeft: 12, fontSize: 16, fontWeight: '500' },
   listContent: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 150 },
-  echoCard: { 
-    borderRadius: 32, 
-    padding: 24, 
-    marginBottom: 16, 
+  echoCard: {
+    borderRadius: 32,
+    padding: 24,
+    marginBottom: 16,
     borderWidth: 1,
     overflow: 'hidden',
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20 },
-      android: { elevation: 4 }
+      android: {  }
     })
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
   cardFooter: { flexDirection: 'row', alignItems: 'center', paddingTop: 16, borderTopWidth: 1 },
   locationText: { flex: 1, fontSize: 12, marginLeft: 8, fontWeight: '600', opacity: 0.6 },
   fab: { position: 'absolute', bottom: 90, right: 20, width: 64, height: 64 },
-  fabGradient: { flex: 1, borderRadius: 24, justifyContent: 'center', alignItems: 'center'  },
+  fabGradient: { flex: 1, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
   deleteAction: { width: 90, height: '88%', marginBottom: 16 },
   deleteGradient: { flex: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 32, marginLeft: 10 },
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
