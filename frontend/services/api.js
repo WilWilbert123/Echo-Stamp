@@ -100,7 +100,7 @@ export const updateMessage = (id, content) => API.patch(`/messages/${id}`, { con
 export const removeMessage = (id) => API.delete(`/messages/${id}`);
 
 // Optional: Mark messages as read
-export const markAsRead = (messageId) => API.put(`/messages/${messageId}/read`);
+export const markAsRead = (otherUserId) => API.put(`/messages/read/${otherUserId}`);
 
 
  //fetch all user

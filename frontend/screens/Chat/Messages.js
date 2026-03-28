@@ -28,6 +28,7 @@ import {
     editMessageAction,
     getChatHistory,
     getConversationsList,
+    markAsReadAction,
     sendMessageAction
 } from '../../redux/messageSlice';
 import { fetchAllUsers } from '../../services/api';
@@ -75,6 +76,7 @@ const Messages = () => {
         dispatch(clearChat());
         setSelectedUser(user);
         dispatch(getChatHistory(user._id));
+        dispatch(markAsReadAction(user._id)); // Mark as read when opening
     };
 
     // --- 3. Real-time Polling ---
@@ -176,30 +178,39 @@ const Messages = () => {
 
     const renderChatItem = ({ item }) => (
         <Swipeable 
-            renderRightActions={() => renderRightActions(item._id, item.firstName)}
+            renderRightActions={() => renderRightActions(item._id, item.user?.firstName || 'User')}
             overshootRight={false}
         >
             <TouchableOpacity 
                 style={[styles.chatCard, { borderBottomColor: colors.glassBorder, backgroundColor: colors.background[0] }]} 
-                onPress={() => handleSelectUser(item)}
+                onPress={() => item.user && handleSelectUser(item.user)}
             >
                 <View style={styles.avatarContainer}>
                     <View style={[styles.avatar, { backgroundColor: colors.glass, justifyContent: 'center', alignItems: 'center' }]}>
                         <Text style={{ color: colors.textMain, fontSize: 18, fontWeight: '700' }}>
-                            {item.firstName?.[0]}{item.lastName?.[0]}
+                            {item.user?.firstName?.[0] || '?'}{item.user?.lastName?.[0] || ''}
                         </Text>
                     </View>
                     <View style={[styles.onlineBadge, { borderColor: colors.background[0] }]} />
                 </View>
                 <View style={styles.chatInfo}>
                     <View style={styles.chatHeader}>
-                        <Text style={[styles.userName, { color: colors.textMain }]}>{item.firstName} {item.lastName}</Text>
-                        <Text style={[styles.timeText, { color: colors.textSecondary }]}>@{item.username}</Text>
+                        <Text style={[styles.userName, { color: colors.textMain, fontWeight: item?.unreadCount > 0 ? '900' : '700' }]}>
+                            {item?.user?.firstName || 'User'} {item?.user?.lastName || ''}
+                        </Text>
+                        <Text style={[styles.timeText, { color: item?.unreadCount > 0 ? colors.primary : colors.textSecondary }]}>
+                            {item.lastMessageTime ? new Date(item.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </Text>
                     </View>
                     <View style={styles.messageRow}>
-                        <Text numberOfLines={1} style={[styles.lastMessage, { color: colors.textSecondary }]}>
-                            Tap to chat with {item.firstName}
+                        <Text numberOfLines={1} style={[styles.lastMessage, { color: item?.unreadCount > 0 ? colors.textMain : colors.textSecondary, fontWeight: item?.unreadCount > 0 ? '600' : '400' }]}>
+                            {item?.lastMessage || 'No messages yet'}
                         </Text>
+                        {item?.unreadCount > 0 && (
+                            <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]}>
+                                <Text style={styles.unreadText}>{item.unreadCount}</Text>
+                            </View>
+                        )}
                     </View>
                 </View>
             </TouchableOpacity>
@@ -333,41 +344,45 @@ const Messages = () => {
             {loadingUsers ? (
                 <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator color={colors.primary} /></View>
             ) : (
-                <FlatList
-                    data={conversations.filter(u => `${u.firstName} ${u.lastName}`.toLowerCase().includes(search.toLowerCase()))}
-                    keyExtractor={(item) => item._id}
-                    renderItem={renderChatItem}
-                    contentContainerStyle={styles.listContent}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadUsers(true)} tintColor={colors.primary} />}
-                    ListHeaderComponent={
-                        <>
-                            <View style={styles.headerPadding}>
-                                <Text style={[styles.screenTitle, { color: colors.textMain }]}>Messages</Text>
-                                <View style={[styles.searchContainer, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
-                                    <Ionicons name="search" size={18} color={colors.textSecondary} />
-                                    <TextInput
-                                        placeholder="Search contacts..."
-                                        placeholderTextColor={colors.textSecondary + '80'}
-                                        style={[styles.searchInput, { color: colors.textMain }]}
-                                        value={search}
-                                        onChangeText={setSearch}
-                                    />
-                                </View>
-                            </View>
+                <>
+                    <View style={styles.headerPadding}>
+                        <Text style={[styles.screenTitle, { color: colors.textMain }]}>Messages</Text>
+                        <View style={[styles.searchContainer, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
+                            <Ionicons name="search" size={18} color={colors.textSecondary} />
+                            <TextInput
+                                placeholder="Search contacts..."
+                                placeholderTextColor={colors.textSecondary + '80'}
+                                style={[styles.searchInput, { color: colors.textMain }]}
+                                value={search}
+                                onChangeText={setSearch}
+                            />
+                        </View>
+                    </View>
 
-                            <ScrollView 
-                                horizontal 
-                                showsHorizontalScrollIndicator={false} 
-                                style={styles.activeUsersScroll} 
-                                contentContainerStyle={styles.activeUsersContent}
-                            >
-                                {allUsers.map(renderActiveUser)}
-                            </ScrollView>
+                    <View>
+                        <ScrollView 
+                            horizontal 
+                            showsHorizontalScrollIndicator={false} 
+                            style={styles.activeUsersScroll} 
+                            contentContainerStyle={styles.activeUsersContent}
+                        >
+                            {allUsers.map(renderActiveUser)}
+                        </ScrollView>
+                    </View>
 
-                            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>RECENT MESSAGES</Text>
-                        </>
-                    }
-                />
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>RECENT MESSAGES</Text>
+
+                    <FlatList
+                        data={conversations.filter(c => {
+                            const fullName = c?.user ? `${c.user.firstName} ${c.user.lastName}` : '';
+                            return fullName.toLowerCase().includes(search.toLowerCase());
+                        })}
+                        keyExtractor={(item) => item._id}
+                        renderItem={renderChatItem}
+                        contentContainerStyle={styles.listContent}
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadUsers(true)} tintColor={colors.primary} />}
+                    />
+                </>
             )}
         </View>
     );
@@ -396,6 +411,8 @@ const styles = StyleSheet.create({
     userName: { fontSize: 17, fontWeight: '700' },
     timeText: { fontSize: 12 },
     messageRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+    unreadBadge: { minWidth: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
+    unreadText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
     lastMessage: { fontSize: 14, flex: 1 },
 
     fullChatContainer: { flex: 1 }, 

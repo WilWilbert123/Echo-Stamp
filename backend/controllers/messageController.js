@@ -109,19 +109,50 @@ exports.getConversations = async (req, res) => {
     try {
         const myId = req.user._id;
         
-        // Find all conversation documents where I am a participant
+        // Find conversations and sort by updatedAt (latest activity)
         const conversations = await Message.find({ participants: myId })
-            .populate('participants', 'firstName lastName username');
+            .populate('participants', 'firstName lastName username')
+            .sort({ updatedAt: -1 });
 
-        // Extract the "other" user profile from each conversation
-        const chatPartners = conversations.map(conv => 
-            conv.participants.find(p => p._id.toString() !== myId.toString())
-        ).filter(Boolean);
+        const conversationList = conversations.map(conv => {
+            const otherUser = conv.participants.find(p => p._id.toString() !== myId.toString());
+            if (!otherUser) return null;
 
-        res.status(200).json(chatPartners);
+            const lastMsg = conv.messages[conv.messages.length - 1];
+            const unreadCount = conv.messages.filter(m => 
+                m.sender.toString() !== myId.toString() && !m.isRead
+            ).length;
+
+            return {
+                _id: otherUser._id, // Used for navigation/ID
+                user: otherUser,
+                lastMessage: lastMsg ? lastMsg.content : "No messages yet",
+                lastMessageTime: lastMsg ? lastMsg.createdAt : conv.updatedAt,
+                unreadCount
+            };
+        }).filter(Boolean);
+
+        res.status(200).json(conversationList);
     } catch (error) {
         console.error("GET_CONVERSATIONS_ERROR:", error);
         res.status(500).json({ message: 'Server Error: Could not fetch conversation list', error: error.message });
+    }
+};
+
+exports.markAsRead = async (req, res) => {
+    try {
+        const myId = req.user._id;
+        const { otherUserId } = req.params;
+
+        await Message.updateOne(
+            { participants: { $all: [myId, otherUserId] } },
+            { $set: { "messages.$[msg].isRead": true } },
+            { arrayFilters: [{ "msg.sender": otherUserId, "msg.isRead": false }], multi: true }
+        );
+
+        res.status(200).json({ message: "Messages marked as read" });
+    } catch (error) {
+        res.status(500).json({ message: 'Error marking messages as read' });
     }
 };
 

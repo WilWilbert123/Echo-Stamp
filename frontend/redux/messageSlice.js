@@ -75,6 +75,18 @@ export const deleteConversationAction = createAsyncThunk(
     }
 );
 
+export const markAsReadAction = createAsyncThunk(
+    'messages/markRead',
+    async (otherUserId, thunkAPI) => {
+        try {
+            await messageService.markAsRead(otherUserId);
+            return otherUserId;
+        } catch (error) {
+            return thunkAPI.rejectWithValue(error.response?.data);
+        }
+    }
+);
+
 const messageSlice = createSlice({
     name: 'messages',
     initialState: {
@@ -129,6 +141,13 @@ const messageSlice = createSlice({
             // Delete Message
             .addCase(deleteMessageAction.fulfilled, (state, action) => {
                 state.activeConversation = state.activeConversation.filter(m => m._id !== action.payload);
+            })
+            // Mark as Read
+            .addCase(markAsReadAction.fulfilled, (state, action) => {
+                const conv = state.conversations.find(c => c._id === action.payload);
+                if (conv) {
+                    conv.unreadCount = 0;
+                }
             })
             // Delete Entire Conversation
             .addCase(deleteConversationAction.fulfilled, (state, action) => {
