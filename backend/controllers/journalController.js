@@ -207,3 +207,70 @@ exports.addReply = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// Edit Comment
+exports.editComment = async (req, res) => {
+    try {
+        const { id, commentId } = req.params;
+        const { text } = req.body;
+        const userId = req.user.id;
+
+        const journal = await Journal.findOneAndUpdate(
+            { _id: id, "comments._id": commentId, "comments.userId": userId },
+            { $set: { "comments.$.text": text } },
+            { new: true }
+        ).populate('userId', 'username firstName lastName');
+
+        if (!journal) return res.status(404).json({ message: "Comment not found or unauthorized" });
+        res.status(200).json(journal);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Delete Comment
+exports.deleteComment = async (req, res) => {
+    try {
+        const { id, commentId } = req.params;
+        const userId = req.user.id;
+
+        const journal = await Journal.findOneAndUpdate(
+            { _id: id },
+            { $pull: { comments: { _id: commentId, userId: userId } } },
+            { new: true }
+        ).populate('userId', 'username firstName lastName');
+
+        if (!journal) return res.status(404).json({ message: "Unauthorized or not found" });
+        res.status(200).json(journal);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Edit Reply
+exports.editReply = async (req, res) => {
+    try {
+        const { id, commentId, replyId } = req.params;
+        const { text } = req.body;
+        const userId = req.user.id;
+
+        const journal = await Journal.findOneAndUpdate(
+            { 
+                _id: id, 
+                "comments._id": commentId,
+                "comments.replies._id": replyId,
+                "comments.replies.userId": userId 
+            },
+            { $set: { "comments.$[comment].replies.$[reply].text": text } },
+            { 
+                arrayFilters: [{ "comment._id": commentId }, { "reply._id": replyId }],
+                new: true 
+            }
+        ).populate('userId', 'username firstName lastName');
+
+        if (!journal) return res.status(404).json({ message: "Reply not found or unauthorized" });
+        res.status(200).json(journal);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};

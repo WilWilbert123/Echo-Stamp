@@ -9,7 +9,10 @@ const {
     getGlobalJournals,
     toggleLike,
     addComment,
-    addReply
+    addReply,
+    editComment,
+    deleteComment,
+    editReply
 } = require('../controllers/journalController');
 
 
@@ -23,6 +26,9 @@ router.patch('/:id/media', protect, removeJournalMedia);
 router.post('/:id/like', protect, toggleLike);
 router.post('/:id/comment', protect, addComment);
 router.post('/:id/comment/:commentId/reply', protect, addReply);
+router.patch('/:id/comment/:commentId', protect, editComment);
+router.delete('/:id/comment/:commentId', protect, deleteComment);
+router.patch('/:id/comment/:commentId/reply/:replyId', protect, editReply);
 
 
 module.exports = router;

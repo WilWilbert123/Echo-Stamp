@@ -1,24 +1,61 @@
 import { Send } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Modal, Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useDispatch } from 'react-redux';
-import { addCommentAsync, addReplyAsync } from '../../../../../redux/journalSlice';
+import { Alert, FlatList, KeyboardAvoidingView, Modal, Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
+import { addCommentAsync, addReplyAsync, deleteCommentAsync, editCommentAsync, editReplyAsync } from '../../../../../redux/journalSlice';
 import { styles } from '../feed.styles';
 
 const CommentModal = ({ visible, post, colors, isDark, onClose }) => {
     const dispatch = useDispatch();
+    const currentUser = useSelector(state => state.auth.user);
     const [text, setText] = useState('');
-    const [replyTo, setReplyTo] = useState(null); // Stores commentId if replying
+    const [activeEdit, setActiveEdit] = useState(null); // { type: 'comment'|'reply', commentId, replyId }
+    const [replyTo, setReplyTo] = useState(null); 
 
     const handleSubmit = () => {
         if (!text.trim()) return;
-        if (replyTo) {
+        
+        if (activeEdit) {
+            if (activeEdit.type === 'comment') {
+                dispatch(editCommentAsync({ id: post._id, commentId: activeEdit.commentId, text: text.trim() }));
+            } else {
+                dispatch(editReplyAsync({ id: post._id, commentId: activeEdit.commentId, replyId: activeEdit.replyId, text: text.trim() }));
+            }
+        } else if (replyTo) {
             dispatch(addReplyAsync({ id: post._id, commentId: replyTo, text: text.trim() }));
         } else {
             dispatch(addCommentAsync({ id: post._id, text: text.trim() }));
         }
+        
         setText('');
         setReplyTo(null);
+        setActiveEdit(null);
+    };
+
+    const handleLongPress = (item, type, commentId = null) => {
+        const isMe = item.userId === (currentUser?._id || currentUser?.id);
+        if (!isMe) return;
+
+        Alert.alert(
+            "Action",
+            "Choose what to do with this reflection",
+            [
+                { text: "Edit", onPress: () => {
+                    setText(item.text);
+                    setActiveEdit({ 
+                        type, 
+                        commentId: type === 'comment' ? item._id : commentId, 
+                        replyId: type === 'reply' ? item._id : null 
+                    });
+                }},
+                type === 'comment' ? { 
+                    text: "Delete", 
+                    style: "destructive", 
+                    onPress: () => dispatch(deleteCommentAsync({ id: post._id, commentId: item._id })) 
+                } : null,
+                { text: "Cancel", style: "cancel" }
+            ].filter(Boolean)
+        );
     };
 
     return (
@@ -37,7 +74,9 @@ const CommentModal = ({ visible, post, colors, isDark, onClose }) => {
                         keyExtractor={(item) => item._id}
                         renderItem={({ item }) => (
                             <View style={{ marginBottom: 15 }}>
-                                <View style={styles.commentRow}>
+                                <TouchableOpacity 
+                                    onLongPress={() => handleLongPress(item, 'comment')}
+                                    style={styles.commentRow}>
                                     <View style={[styles.commentAvatar, { backgroundColor: colors.primary + '20' }]} />
                                     <View style={{ flex: 1 }}>
                                         <Text style={{ color: colors.textMain, fontWeight: '700', fontSize: 13 }}>
@@ -48,10 +87,14 @@ const CommentModal = ({ visible, post, colors, isDark, onClose }) => {
                                             <Text style={{ color: colors.primary, fontSize: 12, marginTop: 5, fontWeight: '600' }}>Reply</Text>
                                         </TouchableOpacity>
                                     </View>
-                                </View>
+                                </TouchableOpacity>
+
                                 {/* Nested Replies */}
                                 {item.replies?.map((reply) => (
-                                    <View key={reply._id} style={[styles.commentRow, { marginLeft: 40, marginTop: 10 }]}>
+                                    <TouchableOpacity 
+                                        key={reply._id} 
+                                        onLongPress={() => handleLongPress(reply, 'reply', item._id)}
+                                        style={[styles.commentRow, { marginLeft: 40, marginTop: 10 }]}>
                                         <View style={[styles.commentAvatar, { width: 24, height: 24, backgroundColor: colors.accent + '20' }]} />
                                         <View style={{ flex: 1 }}>
                                             <Text style={{ color: colors.textMain, fontWeight: '700', fontSize: 12 }}>
@@ -59,7 +102,7 @@ const CommentModal = ({ visible, post, colors, isDark, onClose }) => {
                                             </Text>
                                             <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{reply.text}</Text>
                                         </View>
-                                    </View>
+                                    </TouchableOpacity>
                                 ))}
                             </View>
                         )}
@@ -73,7 +116,11 @@ const CommentModal = ({ visible, post, colors, isDark, onClose }) => {
                         borderTopColor: colors.glassBorder 
                     }}>
                         <TextInput
-                            placeholder={replyTo ? "Write a reply..." : "Add a comment..."}
+                            placeholder={
+                                activeEdit 
+                                    ? `Editing ${activeEdit.type}...` 
+                                    : (replyTo ? "Write a reply..." : "Add a comment...")
+                            }
                             placeholderTextColor={colors.textSecondary}
                             style={{ flex: 1, color: colors.textMain, paddingVertical: 10, fontSize: 15 }}
                             value={text}

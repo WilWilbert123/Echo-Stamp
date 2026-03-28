@@ -6,8 +6,11 @@ import {
     fetchJournals,
     likeJournal,
     postJournal,
+    removeComment,
     removeMediaFromJournal,
-    replyToComment
+    replyToComment,
+    updateComment,
+    updateReply
 } from '../services/api';
 
 // --- Async Thunks ---
@@ -115,6 +118,42 @@ export const addReplyAsync = createAsyncThunk(
   }
 );
 
+export const editCommentAsync = createAsyncThunk(
+  'journals/editComment',
+  async ({ id, commentId, text }, { rejectWithValue }) => {
+    try {
+      const response = await updateComment(id, commentId, text);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || "Error editing comment");
+    }
+  }
+);
+
+export const deleteCommentAsync = createAsyncThunk(
+  'journals/deleteComment',
+  async ({ id, commentId }, { rejectWithValue }) => {
+    try {
+      const response = await removeComment(id, commentId);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || "Error deleting comment");
+    }
+  }
+);
+
+export const editReplyAsync = createAsyncThunk(
+  'journals/editReply',
+  async ({ id, commentId, replyId, text }, { rejectWithValue }) => {
+    try {
+      const response = await updateReply(id, commentId, replyId, text);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || "Error editing reply");
+    }
+  }
+);
+
 // --- Slice Definition ---
 
 const journalSlice = createSlice({
@@ -182,7 +221,7 @@ const journalSlice = createSlice({
       })
       // --- Interactions (Like/Comment/Reply) ---
       .addMatcher(
-        (action) => [toggleLikeAsync.fulfilled.type, addCommentAsync.fulfilled.type, addReplyAsync.fulfilled.type].includes(action.type),
+        (action) => [toggleLikeAsync.fulfilled.type, addCommentAsync.fulfilled.type, addReplyAsync.fulfilled.type, editCommentAsync.fulfilled.type, deleteCommentAsync.fulfilled.type, editReplyAsync.fulfilled.type].includes(action.type),
         (state, action) => {
             const index = state.list.findIndex((j) => j._id === action.payload._id);
             if (index !== -1) state.list[index] = action.payload;
