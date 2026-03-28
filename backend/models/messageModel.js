@@ -17,6 +17,7 @@ const conversationSchema = new mongoose.Schema({
             trim: true
         },
         isRead: { type: Boolean, default: false },
+        isEdited: { type: Boolean, default: false },
         createdAt: { type: Date, default: Date.now }
     }]
 }, { timestamps: true });

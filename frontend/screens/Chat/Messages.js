@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     FlatList,
     KeyboardAvoidingView,
     Platform,
@@ -17,7 +18,13 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import BrandedHeader from '../../components/BrandedHeader';
 import { useTheme } from '../../context/ThemeContext';
-import { clearChat, getChatHistory, sendMessageAction } from '../../redux/messageSlice';
+import {
+    clearChat,
+    deleteMessageAction,
+    editMessageAction,
+    getChatHistory,
+    sendMessageAction
+} from '../../redux/messageSlice';
 import API from '../../services/api';
 
 const Messages = () => {
@@ -33,6 +40,7 @@ const Messages = () => {
     const [search, setSearch] = useState('');
     const [selectedUser, setSelectedUser] = useState(null);
     const [message, setMessage] = useState('');
+    const [editingMessage, setEditingMessage] = useState(null);
     const [users, setUsers] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -87,16 +95,40 @@ const Messages = () => {
     // --- 5. Send Message Logic ---
     const handleSendMessage = () => {
         if (!selectedUser || message.trim().length === 0) return;
-
         const messageText = message.trim();
-        
-    
-        dispatch(sendMessageAction({
-            receiverId: selectedUser._id,
-            content: messageText
-        }));
+
+        if (editingMessage) {
+            dispatch(editMessageAction({ messageId: editingMessage._id, content: messageText }));
+            setEditingMessage(null);
+        } else {
+            dispatch(sendMessageAction({
+                receiverId: selectedUser._id,
+                content: messageText
+            }));
+        }
 
         setMessage('');
+    };
+
+    const handleLongPressMessage = (item, isMe) => {
+        if (!isMe) return;
+
+        Alert.alert(
+            "Message Options",
+            "Choose an action",
+            [
+                { text: "Edit", onPress: () => {
+                    setEditingMessage(item);
+                    setMessage(item.content);
+                }},
+                { 
+                    text: "Delete", 
+                    onPress: () => dispatch(deleteMessageAction(item._id)), 
+                    style: "destructive" 
+                },
+                { text: "Cancel", style: "cancel" }
+            ]
+        );
     };
 
     // --- RENDER HELPERS ---
@@ -185,7 +217,10 @@ const Messages = () => {
                                 const isMe = senderId && currentUserId && senderId === currentUserId;
 
                                 return (
-                                    <View style={[
+                                    <TouchableOpacity 
+                                        onLongPress={() => handleLongPressMessage(item, isMe)}
+                                        delayLongPress={500}
+                                        style={[
                                         styles.messageContainer, 
                                         { alignItems: isMe ? 'flex-end' : 'flex-start' }
                                     ]}>
@@ -200,11 +235,16 @@ const Messages = () => {
                                             <Text style={{ color: isMe ? '#FFF' : colors.textMain, fontSize: 15, lineHeight: 20 }}>
                                                 {item.content}
                                             </Text>
-                                            <Text style={[styles.bubbleTime, { color: isMe ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>
-                                                {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </Text>
+                                            <View style={{ flexDirection: 'row', alignSelf: 'flex-end', alignItems: 'center' }}>
+                                                {item.isEdited && (
+                                                    <Text style={{ fontSize: 9, color: isMe ? 'rgba(255,255,255,0.5)' : colors.textSecondary, marginRight: 4 }}>Edited</Text>
+                                                )}
+                                                <Text style={[styles.bubbleTime, { color: isMe ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>
+                                                    {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </Text>
+                                            </View>
                                         </View>
-                                    </View>
+                                    </TouchableOpacity>
                                 );
                             }}
                         />
@@ -212,6 +252,14 @@ const Messages = () => {
                 </View>
 
                 {/* Input Area */}
+                {editingMessage && (
+                    <View style={{ backgroundColor: colors.glass, paddingHorizontal: 15, paddingVertical: 5, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 12, color: colors.primary, fontWeight: '600' }}>Editing message...</Text>
+                        <TouchableOpacity onPress={() => { setEditingMessage(null); setMessage(''); }}>
+                            <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+                        </TouchableOpacity>
+                    </View>
+                )}
                 <View style={[styles.inputWrapper, { backgroundColor: colors.background[0], borderTopColor: colors.glassBorder }]}>
                     <TouchableOpacity style={styles.iconBtn}>
                         <Ionicons name="happy-outline" size={24} color={colors.textSecondary} />
@@ -291,7 +339,7 @@ const Messages = () => {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    headerPadding: { paddingHorizontal: 20, marginBottom: 15 },
+    headerPadding: { paddingHorizontal: 20, marginBottom: 15,paddingTop: Platform.OS === 'ios' ? 40 : 30},
     screenTitle: { fontSize: 32, fontWeight: '900', marginBottom: 15 },
     searchContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, height: 48, borderRadius: 24, borderWidth: 1 },
     searchInput: { flex: 1, marginLeft: 10, fontSize: 16 },

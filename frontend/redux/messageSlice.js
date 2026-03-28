@@ -27,6 +27,30 @@ export const sendMessageAction = createAsyncThunk(
     }
 );
 
+export const editMessageAction = createAsyncThunk(
+    'messages/edit',
+    async ({ messageId, content }, thunkAPI) => {
+        try {
+            const response = await messageService.updateMessage(messageId, content);
+            return response.data;
+        } catch (error) {
+            return thunkAPI.rejectWithValue(error.response.data);
+        }
+    }
+);
+
+export const deleteMessageAction = createAsyncThunk(
+    'messages/delete',
+    async (messageId, thunkAPI) => {
+        try {
+            await messageService.removeMessage(messageId);
+            return messageId;
+        } catch (error) {
+            return thunkAPI.rejectWithValue(error.response.data);
+        }
+    }
+);
+
 const messageSlice = createSlice({
     name: 'messages',
     initialState: {
@@ -63,6 +87,15 @@ const messageSlice = createSlice({
                 // If the message isn't already there from an optimistic update
                 const exists = state.activeConversation.find(m => m._id === action.payload._id);
                 if (!exists) state.activeConversation.push(action.payload);
+            })
+            // Edit Message
+            .addCase(editMessageAction.fulfilled, (state, action) => {
+                const index = state.activeConversation.findIndex(m => m._id === action.payload._id);
+                if (index !== -1) state.activeConversation[index] = action.payload;
+            })
+            // Delete Message
+            .addCase(deleteMessageAction.fulfilled, (state, action) => {
+                state.activeConversation = state.activeConversation.filter(m => m._id !== action.payload);
             });
     },
 });

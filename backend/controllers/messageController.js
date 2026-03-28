@@ -36,8 +36,7 @@ exports.sendMessage = async (req, res) => {
     }
 };
 
-// @desc    Get conversation between two users
-// @route   GET /api/messages/:userId
+ 
 exports.getMessages = async (req, res) => {
     try {
         const otherUserId = req.params.userId;
@@ -71,5 +70,52 @@ exports.getConversations = async (req, res) => {
     } catch (error) {
         console.error("GET_CONVERSATIONS_ERROR:", error);
         res.status(500).json({ message: 'Server Error: Could not fetch conversation list', error: error.message });
+    }
+};
+
+exports.editMessage = async (req, res) => {
+    try {
+        const { messageId } = req.params;
+        const { content } = req.body;
+        const myId = req.user._id;
+
+        const conversation = await Message.findOneAndUpdate(
+            { 
+                "messages._id": messageId, 
+                "messages.sender": myId 
+            },
+            { 
+                $set: { 
+                    "messages.$.content": content,
+                    "messages.$.isEdited": true 
+                } 
+            },
+            { new: true }
+        );
+
+        if (!conversation) return res.status(404).json({ message: "Message not found or unauthorized" });
+        
+        const updatedMessage = conversation.messages.id(messageId);
+        res.status(200).json(updatedMessage);
+    } catch (error) {
+        res.status(500).json({ message: 'Error editing message' });
+    }
+};
+
+exports.deleteMessage = async (req, res) => {
+    try {
+        const { messageId } = req.params;
+        const myId = req.user._id;
+
+        const conversation = await Message.findOneAndUpdate(
+            { "messages._id": messageId, "messages.sender": myId },
+            { $pull: { messages: { _id: messageId } } },
+            { new: true }
+        );
+
+        if (!conversation) return res.status(404).json({ message: "Message not found or unauthorized" });
+        res.status(200).json({ message: "Deleted", messageId });
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting message' });
     }
 };
