@@ -1,9 +1,35 @@
 const Message = require('../models/messageModel');
+const User = require('../models/User');
+const axios = require('axios');
+
+const sendPushNotification = async (expoPushToken, title, body, data) => {
+    const message = {
+        to: expoPushToken,
+        sound: 'default',
+        title: title,
+        body: body,
+        data: data,
+    };
+
+    try {
+        const response = await axios.post('https://exp.host/--/api/v2/push/send', message, {
+            headers: {
+                'Accept': 'application/json',
+                'Accept-encoding': 'gzip, deflate',
+                'Content-Type': 'application/json',
+            },
+        });
+        console.log("[Push Notification] Success:", response.data);
+    } catch (error) {
+        console.error("Error sending push notification:", error.response?.data || error.message);
+    }
+};
 
 exports.sendMessage = async (req, res) => {
     try {
         const { receiverId, content } = req.body;
-        const senderId = req.user._id; // Using _id for consistency with other controllers
+        const senderId = req.user._id;
+        const senderName = req.user.firstName || "Someone";
 
         if (!receiverId || !content) {
             return res.status(400).json({ message: 'Receiver ID and content are required' });
@@ -29,6 +55,18 @@ exports.sendMessage = async (req, res) => {
         }
 
         const newMessage = conversation.messages[conversation.messages.length - 1];
+
+        // Push Notification Logic
+        const receiver = await User.findById(receiverId);
+        if (receiver && receiver.pushToken && receiver.notificationsEnabled) {
+            sendPushNotification(
+                receiver.pushToken,
+                `New message from ${senderName}`,
+                content,
+                { senderId: senderId }
+            );
+        }
+
         res.status(201).json(newMessage);
     } catch (error) {
         console.error("SEND_MESSAGE_ERROR:", error);

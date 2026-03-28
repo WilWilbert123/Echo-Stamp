@@ -1,9 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
+import * as Device from 'expo-device';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Notifications from 'expo-notifications';
 import React, { useMemo } from 'react';
 import {
     Alert,
     Dimensions,
+    Platform,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -14,10 +18,19 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTheme } from '../../context/ThemeContext';
-import { logout } from '../../redux/authSlice';
+import { logout, setCredentials } from '../../redux/authSlice';
+import { updatePrivacy } from '../../services/api';
 
 // --- IMPORT YOUR REUSABLE COMPONENT ---
 import BrandedHeader from '../../components/BrandedHeader';
+
+Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+    }),
+});
 
 const { width, height } = Dimensions.get('window');
 
@@ -26,7 +39,7 @@ const Profile = ({ navigation }) => {
     const insets = useSafeAreaInsets();
     const dispatch = useDispatch();
     
-    const { user } = useSelector((state) => state.auth); 
+    const { user, token: authToken } = useSelector((state) => state.auth); 
     const { list = [] } = useSelector((state) => state.echoes || {});
 
     const statsData = useMemo(() => {
@@ -36,6 +49,59 @@ const Profile = ({ navigation }) => {
         const level = Math.floor(list.length / 50) + 1;
         return { unique, progress, level };
     }, [list]);
+
+    const registerForPushNotificationsAsync = async () => {
+        if (Platform.OS === 'android') {
+            await Notifications.setNotificationChannelAsync('default', {
+                name: 'default',
+                importance: Notifications.AndroidImportance.MAX,
+            });
+        }
+
+        if (!Device.isDevice) {
+            Alert.alert('Must use physical device for Push Notifications');
+            return null;
+        }
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
+        if (existingStatus !== 'granted') {
+            const { status } = await Notifications.requestPermissionsAsync();
+            finalStatus = status;
+        }
+        if (finalStatus !== 'granted') {
+            Alert.alert('Failed to get push token for push notification!');
+            return null;
+        }
+
+        try {
+            const projectId = Constants?.expoConfig?.extra?.eas?.projectId || Constants?.easConfig?.projectId;
+            const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+            return token;
+        } catch (e) {
+            console.error("Error getting push token:", e);
+            return null;
+        }
+    };
+
+    const handleNotificationToggle = async () => {
+        const isEnabling = user?.notificationsEnabled === false;
+        let token = user?.pushToken;
+
+        if (isEnabling && !token) {
+            token = await registerForPushNotificationsAsync();
+        }
+
+        try {
+            const response = await updatePrivacy({ 
+                notificationsEnabled: isEnabling,
+                pushToken: token 
+            });
+            
+            // Update Redux state so the toggle UI updates immediately
+            dispatch(setCredentials({ user: response.data.user, token: authToken }));
+            Alert.alert("Success", `Notifications turned ${isEnabling ? 'On' : 'Off'}`);
+        } catch (e) { Alert.alert("Error", "Could not update notification settings"); }
+    };
 
     const handleLogout = () => {
         Alert.alert("Log Out", "Are you sure?", [
@@ -149,7 +215,13 @@ const Profile = ({ navigation }) => {
                         onPress={toggleTheme}
                         isToggle
                     />
-                    <SettingItem icon="notifications-outline" title="Notifications" value="On" />
+                    <SettingItem 
+                        icon="notifications-outline" 
+                        title="Notifications" 
+                        value={user?.notificationsEnabled ? "On" : "Off"} 
+                        onPress={handleNotificationToggle}
+                        isToggle={user?.notificationsEnabled}
+                    />
                     <SettingItem icon="shield-outline" title="Privacy & Security" isLast onPress={() => navigation.navigate('PrivacySecurity')} />        
                 </View>
 

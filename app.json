@@ -2,7 +2,7 @@
   "expo": {
     "name": "Echo Stamp",
     "slug": "Echo-Stamp",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/ES2.png",
     "scheme": "echostamp",
@@ -12,6 +12,7 @@
       "supportsTablet": true
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/ES2.png",
@@ -55,7 +56,8 @@
       "expo-secure-store",
       "expo-video",
       "expo-image-picker",
-      "expo-location"
+      "expo-location",
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true,

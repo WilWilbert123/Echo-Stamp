@@ -353,10 +353,10 @@ exports.deleteFullAccount = async (req, res) => {
 
 exports.updatePrivacy = async (req, res) => {
     try {
-        const { isPublic } = req.body;
+        const { isPublic, notificationsEnabled, pushToken } = req.body;
         const user = await User.findByIdAndUpdate(
             req.user.id,
-            { isPublic },
+            { isPublic, notificationsEnabled, pushToken },
             { new: true }
         ).select('-password');
 
@@ -364,7 +364,8 @@ exports.updatePrivacy = async (req, res) => {
 
         return res.status(200).json({ 
             message: "Privacy updated", 
-            isPublic: user.isPublic 
+            isPublic: user.isPublic,
+            user // Return the full user object to update Redux
         });
     } catch (error) {
         return res.status(500).json({ message: "Server error", error: error.message });
@@ -384,4 +385,3 @@ exports.getAllUsers = async (req, res) => {
         return res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
-

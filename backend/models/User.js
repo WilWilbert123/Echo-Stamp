@@ -8,7 +8,9 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     twoFactorEnabled: { type: Boolean, default: false },
-    isPublic: { type: Boolean, default: false,required: true },
+    isPublic: { type: Boolean, default: false, required: true },
+    pushToken: { type: String, default: null },
+    notificationsEnabled: { type: Boolean, default: true },
 }, { timestamps: true });
 
 userSchema.pre('save', async function () {

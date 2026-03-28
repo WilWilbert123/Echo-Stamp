@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "352787548681",
+    "project_id": "echo-stamp-eeb70",
+    "storage_bucket": "echo-stamp-eeb70.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:352787548681:android:26675cdfb8e707272286d8",
+        "android_client_info": {
+          "package_name": "com.wilbert03.EchoStamp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA6622TdXUMdpVQVJpDAttAUxAjN6GAfq8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
