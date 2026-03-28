@@ -88,6 +88,7 @@ export const fetchGlobalFeed = (userId) => {  const url = userId ? `/journals/gl
 // messages
 export const fetchMessages = (userId) => API.get(`/messages/${userId}`);
 export const postMessage = (messageData) => API.post('/messages', messageData);
+export const fetchConversations = () => API.get('/messages/conversations');
 
 // Optional: Mark messages as read
 export const markAsRead = (messageId) => API.put(`/messages/${messageId}/read`);
