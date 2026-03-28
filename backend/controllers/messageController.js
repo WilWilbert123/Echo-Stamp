@@ -9,15 +9,20 @@ exports.sendMessage = async (req, res) => {
             return res.status(400).json({ message: 'Receiver ID and content are required' });
         }
 
-        // Find conversation or create one, then push the new message into the array
-        const conversation = await Message.findOneAndUpdate(
+        // Attempt to update the existing conversation first
+        let conversation = await Message.findOneAndUpdate(
             { participants: { $all: [senderId, receiverId] } },
-            { 
-                $push: { messages: { sender: senderId, content } },
-                $setOnInsert: { participants: [senderId, receiverId] }
-            },
-            { new: true, upsert: true }
+            { $push: { messages: { sender: senderId, content } } },
+            { new: true }
         );
+
+        // If no conversation exists, create a new one
+        if (!conversation) {
+            conversation = await Message.create({
+                participants: [senderId, receiverId],
+                messages: [{ sender: senderId, content }]
+            });
+        }
 
         if (!conversation || !conversation.messages) {
             return res.status(500).json({ message: 'Failed to update conversation' });
@@ -64,6 +69,7 @@ exports.getConversations = async (req, res) => {
 
         res.status(200).json(chatPartners);
     } catch (error) {
-        res.status(500).json({ message: 'Server Error: Could not fetch conversation list' });
+        console.error("GET_CONVERSATIONS_ERROR:", error);
+        res.status(500).json({ message: 'Server Error: Could not fetch conversation list', error: error.message });
     }
 };
