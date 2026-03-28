@@ -17,4 +17,9 @@ router.post('/', protect, createJournal);
 router.delete('/:id', protect, deleteJournal);
 router.patch('/:id/media', protect, removeJournalMedia);
 
+router.post('/:id/like', protect, toggleLike);
+router.post('/:id/comment', protect, addComment);
+router.post('/:id/comment/:commentId/reply', protect, addReply);
+
+
 module.exports = router;
