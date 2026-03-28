@@ -119,3 +119,19 @@ exports.deleteMessage = async (req, res) => {
         res.status(500).json({ message: 'Error deleting message' });
     }
 };
+
+exports.deleteConversation = async (req, res) => {
+    try {
+        const { otherUserId } = req.params;
+        const myId = req.user._id;
+
+        const conversation = await Message.findOneAndDelete({
+            participants: { $all: [myId, otherUserId] }
+        });
+
+        if (!conversation) return res.status(404).json({ message: "Conversation not found" });
+        res.status(200).json({ message: "Conversation deleted", otherUserId });
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting conversation' });
+    }
+};

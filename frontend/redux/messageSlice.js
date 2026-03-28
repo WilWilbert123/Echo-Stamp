@@ -63,6 +63,18 @@ export const deleteMessageAction = createAsyncThunk(
     }
 );
 
+export const deleteConversationAction = createAsyncThunk(
+    'messages/deleteConversation',
+    async (otherUserId, thunkAPI) => {
+        try {
+            await messageService.removeConversation(otherUserId);
+            return otherUserId;
+        } catch (error) {
+            return thunkAPI.rejectWithValue(error.response?.data || "Error deleting conversation");
+        }
+    }
+);
+
 const messageSlice = createSlice({
     name: 'messages',
     initialState: {
@@ -117,6 +129,10 @@ const messageSlice = createSlice({
             // Delete Message
             .addCase(deleteMessageAction.fulfilled, (state, action) => {
                 state.activeConversation = state.activeConversation.filter(m => m._id !== action.payload);
+            })
+            // Delete Entire Conversation
+            .addCase(deleteConversationAction.fulfilled, (state, action) => {
+                state.conversations = state.conversations.filter(c => c._id !== action.payload);
             });
     },
 });

@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -6,6 +7,7 @@ import {
     FlatList,
     KeyboardAvoidingView,
     Platform,
+    Pressable,
     RefreshControl,
     SafeAreaView,
     ScrollView,
@@ -13,13 +15,15 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { useDispatch, useSelector } from 'react-redux';
 import BrandedHeader from '../../components/BrandedHeader';
 import { useTheme } from '../../context/ThemeContext';
 import {
     clearChat,
+    deleteConversationAction,
     deleteMessageAction,
     editMessageAction,
     getChatHistory,
@@ -111,6 +115,21 @@ const Messages = () => {
         setMessage('');
     };
 
+    const handleDeleteConversation = (otherUserId, name) => {
+        Alert.alert(
+            "Delete Conversation",
+            `Are you sure you want to delete your entire chat history with ${name}? This cannot be undone.`,
+            [
+                { text: "Cancel", style: "cancel" },
+                { 
+                    text: "Delete", 
+                    onPress: () => dispatch(deleteConversationAction(otherUserId)),
+                    style: "destructive" 
+                }
+            ]
+        );
+    };
+
     const handleLongPressMessage = (item, isMe) => {
         if (!isMe) return;
 
@@ -133,6 +152,17 @@ const Messages = () => {
     };
 
     // --- RENDER HELPERS ---
+    const renderRightActions = (id, name) => (
+        <Pressable
+            style={styles.deleteAction}
+            onPress={() => handleDeleteConversation(id, name)}
+        >
+            <LinearGradient colors={['#EF4444', '#991B1B']} style={styles.deleteGradient}>
+                <Ionicons name="trash-outline" size={24} color="white" />
+            </LinearGradient>
+        </Pressable>
+    );
+
     const renderActiveUser = (item) => (
         <TouchableOpacity key={item._id} style={styles.activeUserItem} onPress={() => handleSelectUser(item)}>
             <View style={[styles.activeAvatarWrapper, { borderColor: colors.primary }]}>
@@ -145,30 +175,35 @@ const Messages = () => {
     );
 
     const renderChatItem = ({ item }) => (
-        <TouchableOpacity 
-            style={[styles.chatCard, { borderBottomColor: colors.glassBorder }]} 
-            onPress={() => handleSelectUser(item)}
+        <Swipeable 
+            renderRightActions={() => renderRightActions(item._id, item.firstName)}
+            overshootRight={false}
         >
-            <View style={styles.avatarContainer}>
-                <View style={[styles.avatar, { backgroundColor: colors.glass, justifyContent: 'center', alignItems: 'center' }]}>
-                     <Text style={{ color: colors.textMain, fontSize: 18, fontWeight: '700' }}>
-                        {item.firstName?.[0]}{item.lastName?.[0]}
-                    </Text>
+            <TouchableOpacity 
+                style={[styles.chatCard, { borderBottomColor: colors.glassBorder, backgroundColor: colors.background[0] }]} 
+                onPress={() => handleSelectUser(item)}
+            >
+                <View style={styles.avatarContainer}>
+                    <View style={[styles.avatar, { backgroundColor: colors.glass, justifyContent: 'center', alignItems: 'center' }]}>
+                        <Text style={{ color: colors.textMain, fontSize: 18, fontWeight: '700' }}>
+                            {item.firstName?.[0]}{item.lastName?.[0]}
+                        </Text>
+                    </View>
+                    <View style={[styles.onlineBadge, { borderColor: colors.background[0] }]} />
                 </View>
-                <View style={[styles.onlineBadge, { borderColor: colors.background[0] }]} />
-            </View>
-            <View style={styles.chatInfo}>
-                <View style={styles.chatHeader}>
-                    <Text style={[styles.userName, { color: colors.textMain }]}>{item.firstName} {item.lastName}</Text>
-                    <Text style={[styles.timeText, { color: colors.textSecondary }]}>@{item.username}</Text>
+                <View style={styles.chatInfo}>
+                    <View style={styles.chatHeader}>
+                        <Text style={[styles.userName, { color: colors.textMain }]}>{item.firstName} {item.lastName}</Text>
+                        <Text style={[styles.timeText, { color: colors.textSecondary }]}>@{item.username}</Text>
+                    </View>
+                    <View style={styles.messageRow}>
+                        <Text numberOfLines={1} style={[styles.lastMessage, { color: colors.textSecondary }]}>
+                            Tap to chat with {item.firstName}
+                        </Text>
+                    </View>
                 </View>
-                <View style={styles.messageRow}>
-                    <Text numberOfLines={1} style={[styles.lastMessage, { color: colors.textSecondary }]}>
-                        Tap to chat with {item.firstName}
-                    </Text>
-                </View>
-            </View>
-        </TouchableOpacity>
+            </TouchableOpacity>
+        </Swipeable>
     );
 
     // --- CHAT WINDOW (DETAIL VIEW) ---
@@ -375,7 +410,9 @@ const styles = StyleSheet.create({
     inputWrapper: { flexDirection: 'row', alignItems: 'center', padding: 12, borderTopWidth: 1, paddingBottom: Platform.OS === 'ios' ? 20 : 80 },
     chatInput: { flex: 1, maxHeight: 100, borderRadius: 22, paddingHorizontal: 18, marginHorizontal: 10, fontSize: 16, paddingTop: 10, paddingBottom: 10 },
     iconBtn: { padding: 5 },
-    sendBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' }
+    sendBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+    deleteAction: { width: 90, height: '100%' },
+    deleteGradient: { flex: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 20, marginVertical: 8, marginLeft: 10, marginRight: 20 },
 });
 
 export default Messages;
