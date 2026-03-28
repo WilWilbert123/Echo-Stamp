@@ -41,3 +41,6 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Firebase Service Account Keys
+echo-stamp-eeb70-firebase-adminsdk-*.json

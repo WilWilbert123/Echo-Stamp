@@ -19,7 +19,19 @@ const sendPushNotification = async (expoPushToken, title, body, data) => {
                 'Content-Type': 'application/json',
             },
         });
-        console.log("[Push Notification] Success:", response.data);
+
+        // Expo returns an array of receipts in the 'data' field
+        const tickets = response.data.data;
+        
+        // If we sent one message, we check the first ticket
+        const ticket = Array.isArray(tickets) ? tickets[0] : response.data;
+        
+        if (ticket.status === 'error') {
+            console.error("[Push Notification] Expo Error:", ticket.message);
+        } else {
+            console.log("[Push Notification] Sent to Expo successfully. ID:", ticket.id || 'N/A');
+        }
+
     } catch (error) {
         console.error("Error sending push notification:", error.response?.data || error.message);
     }
@@ -65,6 +77,8 @@ exports.sendMessage = async (req, res) => {
                 content,
                 { senderId: senderId }
             );
+        } else if (receiver) {
+            console.log(`[Push Notification] Skipped for user ${receiverId}: Token exists: ${!!receiver.pushToken}, Enabled: ${receiver.notificationsEnabled}`);
         }
 
         res.status(201).json(newMessage);
