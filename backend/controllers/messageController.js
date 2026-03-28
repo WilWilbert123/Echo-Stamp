@@ -3,7 +3,11 @@ const Message = require('../models/messageModel');
 exports.sendMessage = async (req, res) => {
     try {
         const { receiverId, content } = req.body;
-        const senderId = req.user.id; 
+        const senderId = req.user._id; // Using _id for consistency with other controllers
+
+        if (!receiverId || !content) {
+            return res.status(400).json({ message: 'Receiver ID and content are required' });
+        }
 
         // Find conversation or create one, then push the new message into the array
         const conversation = await Message.findOneAndUpdate(
@@ -15,10 +19,15 @@ exports.sendMessage = async (req, res) => {
             { new: true, upsert: true }
         );
 
+        if (!conversation || !conversation.messages) {
+            return res.status(500).json({ message: 'Failed to update conversation' });
+        }
+
         const newMessage = conversation.messages[conversation.messages.length - 1];
         res.status(201).json(newMessage);
     } catch (error) {
-        res.status(500).json({ message: 'Server Error: Could not send message' });
+        console.error("SEND_MESSAGE_ERROR:", error);
+        res.status(500).json({ message: 'Server Error: Could not send message', error: error.message });
     }
 };
 
@@ -27,7 +36,7 @@ exports.sendMessage = async (req, res) => {
 exports.getMessages = async (req, res) => {
     try {
         const otherUserId = req.params.userId;
-        const myId = req.user.id;
+        const myId = req.user._id;
 
         const conversation = await Message.findOne({
             participants: { $all: [myId, otherUserId] }
@@ -35,13 +44,14 @@ exports.getMessages = async (req, res) => {
 
         res.status(200).json(conversation ? conversation.messages : []);
     } catch (error) {
-        res.status(500).json({ message: 'Server Error: Could not fetch messages' });
+        console.error("GET_MESSAGES_ERROR:", error);
+        res.status(500).json({ message: 'Server Error: Could not fetch messages', error: error.message });
     }
 };
 
 exports.getConversations = async (req, res) => {
     try {
-        const myId = req.user.id;
+        const myId = req.user._id;
         
         // Find all conversation documents where I am a participant
         const conversations = await Message.find({ participants: myId })
