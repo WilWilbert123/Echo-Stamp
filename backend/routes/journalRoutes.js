@@ -6,7 +6,10 @@ const {
     createJournal, 
     deleteJournal, 
     removeJournalMedia, 
-    getGlobalJournals 
+    getGlobalJournals,
+    toggleLike,
+    addComment,
+    addReply
 } = require('../controllers/journalController');
 
 
