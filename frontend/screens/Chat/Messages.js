@@ -393,7 +393,7 @@ const Messages = () => {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    headerPadding: { paddingHorizontal: 20, marginBottom: 15,paddingTop: Platform.OS === 'ios' ? 40 : 30},
+    headerPadding: { paddingHorizontal: 20, marginBottom: 15,paddingTop: Platform.OS === 'ios' ? 40 : 40},
     screenTitle: { fontSize: 32, fontWeight: '900', marginBottom: 15 },
     searchContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, height: 48, borderRadius: 24, borderWidth: 1 },
     searchInput: { flex: 1, marginLeft: 10, fontSize: 16 },
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
     lastMessage: { fontSize: 14, flex: 1 },
 
     fullChatContainer: { flex: 1 }, 
-    chatViewHeader: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 1, paddingTop: Platform.OS === 'ios' ? 40 : 30 },
+    chatViewHeader: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 1, paddingTop: Platform.OS === 'ios' ? 40 : 50 },
     headerAvatar: { width: 44, height: 44, borderRadius: 22 },
     
     // THE KEY STYLES FOR ALIGNMENT
