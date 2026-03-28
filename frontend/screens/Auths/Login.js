@@ -1,8 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
     KeyboardAvoidingView,
     Platform,
@@ -18,6 +16,7 @@ import { useDispatch } from 'react-redux';
 // --- BIOMETRIC IMPORTS ---
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
+import GlassButton from '../../components/GlassButton';
 
 import BrandedHeader from '../../components/BrandedHeader';
 import { useTheme } from '../../context/ThemeContext';
@@ -195,27 +194,19 @@ const Login = ({ navigation }) => {
                         </View>
 
                         <View style={styles.actionRow}>
-                            <TouchableOpacity
-                                style={[styles.loginBtn, { flex: isBiometricAvailable ? 0.8 : 1 }]}
+                            <GlassButton
+                                title="LOG IN"
                                 onPress={handleLogin}
-                                disabled={loading}
-                            >
-                                <LinearGradient
-                                    // Use dynamic colors from ThemeContext
-                                    colors={isDark ? [colors.primary, '#0369A1'] : [colors.primary, colors.accent || '#06283D']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 0 }}
-                                    style={styles.gradientBtn}
-                                >
-                                    {loading ? (
-                                        <ActivityIndicator color="#FFF" />
-                                    ) : (
-                                        <Text style={[styles.loginBtnText, { color: colors.primary === '#FFFFFF' ? '#000' : '#FFF' }]}>
-                                            LOG IN
-                                        </Text>
-                                    )}
-                                </LinearGradient>
-                            </TouchableOpacity>
+                                loading={loading}
+                                style={[
+                                    styles.loginBtn, 
+                                    { flex: isBiometricAvailable ? 0.8 : 1, backgroundColor: 'transparent' }
+                                ]}
+                                textStyle={[
+                                    styles.loginBtnText, 
+                                    { color: colors.primary === '#FFFFFF' ? '#000' : colors.primary }
+                                ]}
+                            />
 
                             {isBiometricAvailable && (
                                 <TouchableOpacity
@@ -283,7 +274,7 @@ const styles = StyleSheet.create({
     forgotBtn: { alignSelf: 'flex-end', marginTop: -5 },
     forgotText: { fontSize: 13, fontWeight: '700' },
     actionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 25 },
-    loginBtn: { height: 58, borderRadius: 16, overflow: 'hidden', elevation: 4 },
+    loginBtn: { height: 58, borderRadius: 16, overflow: 'hidden'  },
     biometricBtn: { width: 58, height: 58, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
     gradientBtn: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loginBtnText: { fontWeight: '900', fontSize: 16, letterSpacing: 1.5 },

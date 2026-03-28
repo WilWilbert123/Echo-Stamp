@@ -1,8 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
     Dimensions,
     KeyboardAvoidingView,
@@ -22,6 +20,7 @@ import API from '../../services/api';
 
 // BRAND COMPONENT
 import BrandedHeader from '../../components/BrandedHeader';
+import GlassButton from '../../components/GlassButton';
 
 const { width, height } = Dimensions.get('window');
 
@@ -96,7 +95,7 @@ const ForgotPassword = ({ navigation }) => {
                             onPress={() => navigation.goBack()}
                             style={[
                                 styles.backButton, 
-                                { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }
+                                { backgroundColor: colors.glassBorder }
                             ]}
                         >
                             <Ionicons name="chevron-back" size={24} color={isDark ? colors.primary : colors.textMain} />
@@ -124,7 +123,7 @@ const ForgotPassword = ({ navigation }) => {
                             <View style={[
                                 styles.inputWrapper,
                                 {
-                                    backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : '#F1F5F9',
+                                    backgroundColor: colors.background[1],
                                     borderColor: isFocused ? colors.primary : 'transparent',
                                     borderWidth: 1.5
                                 }
@@ -149,28 +148,18 @@ const ForgotPassword = ({ navigation }) => {
                             </View>
                         </View>
 
-                        <TouchableOpacity
-                            activeOpacity={0.8}
-                            style={styles.mainButton}
+                        <GlassButton
+                            title="Send Reset Code"
                             onPress={handleResetPassword}
-                            disabled={loading}
-                        >
-                            <LinearGradient
-                                colors={isDark ? [colors.primary, '#0ea5e9'] : [colors.primary, '#475569']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={styles.buttonGradient}
-                            >
-                                {loading ? (
-                                    <ActivityIndicator color="#FFF" />
-                                ) : (
-                                    <>
-                                        <Text style={styles.buttonText}>Send Reset Code</Text>
-                                        <Ionicons name="paper-plane" size={18} color="#FFF" />
-                                    </>
-                                )}
-                            </LinearGradient>
-                        </TouchableOpacity>
+                            loading={loading}
+                            style={styles.mainButton}
+                            textStyle={[
+                                styles.buttonText,
+                                { 
+                                    color: colors.primary === '#FFFFFF' ? '#000' : (isDark ? '#FFF' : colors.primary) 
+                                }
+                            ]}
+                        />
                     </View>
 
                     <TouchableOpacity

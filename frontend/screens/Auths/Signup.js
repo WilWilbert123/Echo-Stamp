@@ -1,8 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
     Dimensions,
     KeyboardAvoidingView,
@@ -22,6 +20,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { requestOtp } from '../../services/api';
 // BRAND COMPONENT
 import BrandedHeader from '../../components/BrandedHeader';
+import GlassButton from '../../components/GlassButton';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -161,23 +160,18 @@ const Signup = ({ navigation }) => {
                             ))}
                         </View>
 
-                        <TouchableOpacity 
-                            style={styles.createBtn} 
+                        <GlassButton
+                            title="CREATE"
                             onPress={handleSignup}
-                            disabled={loading}
-                        >
-                            <LinearGradient
-                                colors={isDark ? [colors.primary, '#0369A1'] : ['#8ECCE3', '#6AB8D2']}
-                                start={{x: 0, y: 0}} end={{x: 1, y: 0}}
-                                style={styles.gradient}
-                            >
-                                {loading ? (
-                                    <ActivityIndicator color="#FFF" />
-                                ) : (
-                                    <Text style={styles.createBtnText}>CREATE</Text>
-                                )}
-                            </LinearGradient>
-                        </TouchableOpacity>
+                            loading={loading}
+                            style={styles.createBtn}
+                            textStyle={[
+                                styles.createBtnText, 
+                                { 
+                                    color: colors.primary === '#FFFFFF' ? '#000' : (isDark ? '#FFF' : colors.primary) 
+                                }
+                            ]}
+                        />
 
                         <TouchableOpacity 
                             style={styles.footerLink} 
@@ -213,7 +207,7 @@ const styles = StyleSheet.create({
     },
     inputIcon: { marginRight: 10 },
     input: { flex: 1, fontSize: 15, fontWeight: '500' },
-    createBtn: { height: 56, borderRadius: 16, overflow: 'hidden', marginTop: 10, elevation: 4 },
+    createBtn: { height: 56, borderRadius: 16, overflow: 'hidden', marginTop: 10  },
     gradient: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     createBtnText: { color: '#FFF', fontSize: 16, fontWeight: '900', letterSpacing: 1.5 },
     footerLink: { marginTop: 20, marginBottom: 20, alignItems: 'center' },

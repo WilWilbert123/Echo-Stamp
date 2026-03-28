@@ -1,10 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import LottieView from 'lottie-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Dimensions,
   KeyboardAvoidingView,
@@ -21,6 +19,7 @@ import { useDispatch, useSelector } from 'react-redux';
 
 // Components & Context
 import BrandedHeader from '../../components/BrandedHeader';
+import GlassButton from '../../components/GlassButton';
 import { EMOTION_ASSETS, EMOTION_CONFIG } from '../../constants/assets';
 import { useTheme } from '../../context/ThemeContext';
 import { addEchoAsync } from '../../redux/echoSlice';
@@ -279,32 +278,22 @@ const CreateEcho = ({ navigation }) => {
 
           {/* Footer Action */}
           <View style={styles.footer}>
-            {loading ? (
-              <ActivityIndicator size="large" color={colors.primary} />
-            ) : (
-              <TouchableOpacity
-                style={styles.mainButton}
-                onPress={handleSave}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  // 2. UPDATED DYNAMIC GRADIENT COLORS
-                  colors={isDark ? [colors.primary, '#0369A1'] : [colors.primary, colors.accent]}
-                  style={styles.buttonGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Text style={[styles.buttonText, { color: colors.primary === '#FFFFFF' ? '#000' : '#FFF' }]}>
-                    Anchor Memory
-                  </Text>
-                  <Ionicons 
-                    name="bookmark" 
-                    size={20} 
-                    color={colors.primary === '#FFFFFF' ? '#000' : '#FFF'} 
-                  />
-                </LinearGradient>
-              </TouchableOpacity>
-            )}
+            <GlassButton
+              onPress={handleSave}
+              loading={loading}
+              style={styles.mainButton}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Text style={[styles.buttonText, { color: colors.primary === '#FFFFFF' ? '#000' : '#FFF' }]}>
+                  Anchor Memory
+                </Text>
+                <Ionicons 
+                  name="bookmark" 
+                  size={20} 
+                  color={colors.primary === '#FFFFFF' ? '#000' : '#FFF'} 
+                />
+              </View>
+            </GlassButton>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
