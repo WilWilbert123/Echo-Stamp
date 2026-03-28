@@ -212,8 +212,8 @@ const Messages = () => {
             <SafeAreaView style={{ flex: 1, backgroundColor: colors.background[0] }}>
                 <KeyboardAvoidingView 
                     style={{ flex: 1 }}
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}
                 >
                 {/* Header */}
                 <View style={[styles.chatViewHeader, { borderBottomColor: colors.glassBorder }]}>
