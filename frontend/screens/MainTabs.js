@@ -21,7 +21,9 @@ const MainTabs = () => {
   
   // Get conversations from Redux
   const { conversations } = useSelector((state) => state.messages);
-  const badgeCount = conversations?.length || 0;
+  
+  // Sum up all unread messages across all conversations
+  const badgeCount = conversations?.reduce((acc, conv) => acc + (conv.unreadCount || 0), 0) || 0;
 
   useEffect(() => {
     // Fetch conversations on mount to update the badge

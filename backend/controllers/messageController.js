@@ -147,7 +147,11 @@ exports.markAsRead = async (req, res) => {
         await Message.updateOne(
             { participants: { $all: [myId, otherUserId] } },
             { $set: { "messages.$[msg].isRead": true } },
-            { arrayFilters: [{ "msg.sender": otherUserId, "msg.isRead": false }], multi: true }
+            { 
+                arrayFilters: [{ "msg.sender": otherUserId, "msg.isRead": false }], 
+                multi: true,
+                timestamps: false 
+            }
         );
 
         res.status(200).json({ message: "Messages marked as read" });

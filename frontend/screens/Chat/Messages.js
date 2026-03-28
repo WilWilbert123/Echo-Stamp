@@ -373,10 +373,13 @@ const Messages = () => {
                     <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>RECENT MESSAGES</Text>
 
                     <FlatList
-                        data={conversations.filter(c => {
-                            const fullName = c?.user ? `${c.user.firstName} ${c.user.lastName}` : '';
-                            return fullName.toLowerCase().includes(search.toLowerCase());
-                        })}
+                        data={conversations
+                            .filter(c => {
+                                const fullName = c?.user ? `${c.user.firstName} ${c.user.lastName}` : '';
+                                return fullName.toLowerCase().includes(search.toLowerCase());
+                            })
+                            .sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime))
+                        }
                         keyExtractor={(item) => item._id}
                         renderItem={renderChatItem}
                         contentContainerStyle={styles.listContent}
