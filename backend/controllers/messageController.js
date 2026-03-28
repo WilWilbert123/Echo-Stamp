@@ -222,3 +222,36 @@ exports.deleteConversation = async (req, res) => {
         res.status(500).json({ message: 'Error deleting conversation' });
     }
 };
+
+exports.initiateCall = async (req, res) => {
+    try {
+        const { receiverId, roomId, type } = req.body; // type: 'video' or 'audio'
+
+        if (!receiverId || !roomId || !type) {
+            return res.status(400).json({ message: "Missing required call parameters" });
+        }
+
+        const senderId = req.user._id;
+        const senderName = `${req.user.firstName} ${req.user.lastName}`;
+
+        const receiver = await User.findById(receiverId);
+        if (receiver && receiver.pushToken && receiver.notificationsEnabled) {
+            await sendPushNotification(
+                receiver.pushToken,
+                `Incoming ${type} call`,
+                `${senderName} is calling you...`,
+                { 
+                    type: 'CALL_INVITATION', 
+                    senderId, 
+                    senderName, 
+                    roomId,
+                    callType: type 
+                }
+            );
+            return res.status(200).json({ message: "Call initiated" });
+        }
+        res.status(404).json({ message: "User is offline or unavailable" });
+    } catch (error) {
+        res.status(500).json({ message: "Error initiating call" });
+    }
+};

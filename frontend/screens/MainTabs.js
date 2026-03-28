@@ -1,5 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useNavigation } from '@react-navigation/native';
+import * as Notifications from 'expo-notifications';
 import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
@@ -18,17 +20,50 @@ const Tab = createBottomTabNavigator();
 const MainTabs = () => {
   const { colors, isDark } = useTheme();
   const dispatch = useDispatch();
+  const navigation = useNavigation();
   
-  // Get conversations from Redux
+  
   const { conversations } = useSelector((state) => state.messages);
   
-  // Sum up all unread messages across all conversations
+  
   const badgeCount = conversations?.reduce((acc, conv) => acc + (conv.unreadCount || 0), 0) || 0;
 
   useEffect(() => {
-    // Fetch conversations on mount to update the badge
+    
     dispatch(getConversationsList());
   }, [dispatch]);
+
+  // --- CALL LISTENER ---
+  useEffect(() => {
+    
+    const subscription = Notifications.addNotificationReceivedListener(notification => {
+      const data = notification.request.content.data;
+      if (data.type === 'CALL_INVITATION') {
+        
+        navigation.navigate('VideoCall', {
+            recipient: { _id: data.senderId, firstName: data.senderName }, 
+            roomId: data.roomId, 
+            callType: data.callType, 
+            isCaller: false 
+        });
+      }
+    });
+
+   
+    const responseSubscription = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data;
+      if (data.type === 'CALL_INVITATION') {
+        navigation.navigate('VideoCall', {
+            recipient: { _id: data.senderId, firstName: data.senderName }, 
+            roomId: data.roomId, 
+            callType: data.callType, 
+            isCaller: false 
+        });
+      }
+    });
+
+    return () => { subscription.remove(); responseSubscription.remove(); };
+  }, []);
 
   return (
     <Tab.Navigator

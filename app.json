@@ -7,9 +7,12 @@
     "icon": "./assets/images/ES2.png",
     "scheme": "echostamp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow Echo Stamp to access your camera for video calls.",
+        "NSMicrophoneUsageDescription": "Allow Echo Stamp to access your microphone for voice calls."
+      }
     },
     "android": {
       "googleServicesFile": "./google-services.json",
@@ -27,7 +30,11 @@
         "ACCESS_FINE_LOCATION",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
-        "CAMERA"
+        "CAMERA",
+        "RECORD_AUDIO",
+        "MODIFY_AUDIO_SETTINGS",
+        "BLUETOOTH",
+        "BLUETOOTH_CONNECT"
       ],
       "config": {
         "googleMaps": {
@@ -40,7 +47,6 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router",
       [
         "expo-splash-screen",
         {

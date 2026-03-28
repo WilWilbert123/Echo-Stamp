@@ -102,6 +102,8 @@ export const removeMessage = (id) => API.delete(`/messages/${id}`);
 // Optional: Mark messages as read
 export const markAsRead = (otherUserId) => API.put(`/messages/read/${otherUserId}`);
 
+// Call signaling
+export const startCall = (callData) => API.post('/messages/call/initiate', callData);
 
  //fetch all user
  export const fetchAllUsers = () => API.get('/users/all');
