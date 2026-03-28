@@ -14,6 +14,18 @@ export const getChatHistory = createAsyncThunk(
     }
 );
 
+export const getConversationsList = createAsyncThunk(
+    'messages/getConversations',
+    async (_, thunkAPI) => {
+        try {
+            const response = await messageService.fetchConversations();
+            return response.data;
+        } catch (error) {
+            return thunkAPI.rejectWithValue(error.response?.data || "Error fetching conversations");
+        }
+    }
+);
+
 // Async thunk to send a message
 export const sendMessageAction = createAsyncThunk(
     'messages/send',
@@ -55,6 +67,7 @@ const messageSlice = createSlice({
     name: 'messages',
     initialState: {
         activeConversation: [],
+        conversations: [],
         loading: false,
         sending: false,
         error: null,
@@ -77,6 +90,14 @@ const messageSlice = createSlice({
             .addCase(getChatHistory.fulfilled, (state, action) => {
                 state.loading = false;
                 state.activeConversation = action.payload;
+            })
+            // Get Conversations List
+            .addCase(getConversationsList.pending, (state) => {
+                state.loading = true;
+            })
+            .addCase(getConversationsList.fulfilled, (state, action) => {
+                state.loading = false;
+                state.conversations = action.payload;
             })
             // Send Message
             .addCase(sendMessageAction.pending, (state) => {

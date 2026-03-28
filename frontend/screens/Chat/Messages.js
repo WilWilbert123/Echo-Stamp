@@ -23,9 +23,10 @@ import {
     deleteMessageAction,
     editMessageAction,
     getChatHistory,
+    getConversationsList,
     sendMessageAction
 } from '../../redux/messageSlice';
-import API from '../../services/api';
+import { fetchAllUsers } from '../../services/api';
 
 const Messages = () => {
     const dispatch = useDispatch();
@@ -33,7 +34,7 @@ const Messages = () => {
     const flatListRef = useRef(null);
     
     // Redux State
-    const { activeConversation, loading: messagesLoading } = useSelector((state) => state.messages);
+    const { activeConversation, conversations, loading: messagesLoading } = useSelector((state) => state.messages);
     const { user: currentUser } = useSelector((state) => state.auth); 
     
     // Local State
@@ -41,25 +42,25 @@ const Messages = () => {
     const [selectedUser, setSelectedUser] = useState(null);
     const [message, setMessage] = useState('');
     const [editingMessage, setEditingMessage] = useState(null);
-    const [users, setUsers] = useState([]);
+    const [allUsers, setAllUsers] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
-    // --- 1. Fetch Users List ---
+    // --- 1. Fetch Conversations and Directory ---
     const loadUsers = useCallback(async (isRefreshing = false) => {
         if (isRefreshing) setRefreshing(true);
         else setLoadingUsers(true);
         try {
-            const response = await API.get('/users/all'); 
-            const otherUsers = response.data.filter(u => u._id !== currentUser?._id);
-            setUsers(otherUsers);
+            await dispatch(getConversationsList()).unwrap();
+            const usersRes = await fetchAllUsers();
+            setAllUsers(usersRes.data);
         } catch (error) {
-            console.error("Fetch Users Error:", error.message, error.config?.url);
+            console.error("Fetch Conversations Error:", error);
         } finally {
             setLoadingUsers(false);
             setRefreshing(false);
         }
-    }, [currentUser]);
+    }, [dispatch]);
 
     useEffect(() => {
         loadUsers();
@@ -298,7 +299,7 @@ const Messages = () => {
                 <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator color={colors.primary} /></View>
             ) : (
                 <FlatList
-                    data={users.filter(u => `${u.firstName} ${u.lastName}`.toLowerCase().includes(search.toLowerCase()))}
+                    data={conversations.filter(u => `${u.firstName} ${u.lastName}`.toLowerCase().includes(search.toLowerCase()))}
                     keyExtractor={(item) => item._id}
                     renderItem={renderChatItem}
                     contentContainerStyle={styles.listContent}
@@ -325,7 +326,7 @@ const Messages = () => {
                                 style={styles.activeUsersScroll} 
                                 contentContainerStyle={styles.activeUsersContent}
                             >
-                                {users.slice(0, 8).map(renderActiveUser)}
+                                {allUsers.map(renderActiveUser)}
                             </ScrollView>
 
                             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>RECENT MESSAGES</Text>

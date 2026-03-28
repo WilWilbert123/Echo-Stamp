@@ -1,10 +1,13 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import {
-  deleteJournal,
-  fetchGlobalFeed,
-  fetchJournals,
-  postJournal,
-  removeMediaFromJournal
+    commentJournal,
+    deleteJournal,
+    fetchGlobalFeed,
+    fetchJournals,
+    likeJournal,
+    postJournal,
+    removeMediaFromJournal,
+    replyToComment
 } from '../services/api';
 
 // --- Async Thunks ---
@@ -76,6 +79,42 @@ export const removeJournalMediaAsync = createAsyncThunk(
   }
 );
 
+export const toggleLikeAsync = createAsyncThunk(
+  'journals/like',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await likeJournal(id);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || "Error liking journal");
+    }
+  }
+);
+
+export const addCommentAsync = createAsyncThunk(
+  'journals/comment',
+  async ({ id, text }, { rejectWithValue }) => {
+    try {
+      const response = await commentJournal(id, text);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || "Error adding comment");
+    }
+  }
+);
+
+export const addReplyAsync = createAsyncThunk(
+  'journals/reply',
+  async ({ id, commentId, text }, { rejectWithValue }) => {
+    try {
+      const response = await replyToComment(id, commentId, text);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || "Error adding reply");
+    }
+  }
+);
+
 // --- Slice Definition ---
 
 const journalSlice = createSlice({
@@ -140,7 +179,18 @@ const journalSlice = createSlice({
         
         const globalIndex = state.globalList.findIndex((j) => j._id === action.payload._id);
         if (globalIndex !== -1) state.globalList[globalIndex] = action.payload;
-      });
+      })
+      // --- Interactions (Like/Comment/Reply) ---
+      .addMatcher(
+        (action) => [toggleLikeAsync.fulfilled.type, addCommentAsync.fulfilled.type, addReplyAsync.fulfilled.type].includes(action.type),
+        (state, action) => {
+            const index = state.list.findIndex((j) => j._id === action.payload._id);
+            if (index !== -1) state.list[index] = action.payload;
+            
+            const globalIndex = state.globalList.findIndex((j) => j._id === action.payload._id);
+            if (globalIndex !== -1) state.globalList[globalIndex] = action.payload;
+        }
+      );
   },
 });
 

@@ -146,3 +146,64 @@ exports.removeJournalMedia = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// Toggle Like (1 user per react)
+exports.toggleLike = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        const journal = await Journal.findById(id);
+        if (!journal) return res.status(404).json({ message: "Journal not found" });
+
+        const isLiked = journal.likes.includes(userId);
+        const update = isLiked ? { $pull: { likes: userId } } : { $addToSet: { likes: userId } };
+
+        const updatedJournal = await Journal.findByIdAndUpdate(id, update, { new: true })
+            .populate('userId', 'username firstName lastName');
+        res.status(200).json(updatedJournal);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Add Comment
+exports.addComment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { text } = req.body;
+        const user = await User.findById(req.user.id);
+
+        const journal = await Journal.findByIdAndUpdate(
+            id,
+            { $push: { comments: { userId: user._id, username: user.username, text } } },
+            { new: true }
+        ).populate('userId', 'username firstName lastName');
+
+        res.status(201).json(journal);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Add Reply to Comment
+exports.addReply = async (req, res) => {
+    try {
+        const { id, commentId } = req.params;
+        const { text } = req.body;
+        const user = await User.findById(req.user.id);
+
+        const journal = await Journal.findOneAndUpdate(
+            { _id: id, "comments._id": commentId },
+            { 
+                $push: { 
+                    "comments.$.replies": { userId: user._id, username: user.username, text } 
+                } 
+            },
+            { new: true }
+        ).populate('userId', 'username firstName lastName');
+
+        res.status(201).json(journal);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};

@@ -1,20 +1,26 @@
 import { useNavigation } from '@react-navigation/native';
 import { Eye, Heart, MapPin, MessageCircle, MoreHorizontal, Play, Share2 } from 'lucide-react-native';
-import { memo, useState } from 'react';
+import { memo } from 'react';
 import { Image, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
+import { toggleLikeAsync } from '../../../../../redux/journalSlice';
 import { styles } from '../feed.styles';
 import { checkIsVideo, getRelativeTime } from '../utils/feedUtils';
 
 const PostItem = memo(({ item, colors, onOpenGallery, onOpenComments }) => {
+    const dispatch = useDispatch();
     const navigation = useNavigation();
-    const [isLiked, setIsLiked] = useState(false);
+    const currentUser = useSelector(state => state.auth.user);
+    const isLiked = item.likes?.includes(currentUser?._id || currentUser?.id);
+    
     const author = item.userId;
     const mediaCount = item.media?.length || 0;
     const isMainVid = checkIsVideo(item.media?.[0]);
 
     const handleShare = async () => {
         try {
-            await Share.share({ message: `Check out this Echo: ${item.title}` });
+            const shareMsg = `Check out this Echo: ${item.title}\n${item.description}\n\n${item.media?.[0] || ''}`;
+            await Share.share({ message: shareMsg });
         } catch (error) { console.log(error); }
     };
 
@@ -92,9 +98,9 @@ const PostItem = memo(({ item, colors, onOpenGallery, onOpenComments }) => {
 
             <View style={styles.interactionBar}>
                 <View style={styles.stats}>
-                    <TouchableOpacity style={styles.statItem} onPress={() => setIsLiked(!isLiked)}>
+                    <TouchableOpacity style={styles.statItem} onPress={() => dispatch(toggleLikeAsync(item._id))}>
                         <Heart size={20} color={isLiked ? '#FF4B4B' : colors.textSecondary} fill={isLiked ? '#FF4B4B' : 'transparent'} />
-                        <Text style={[styles.statText, { color: colors.textSecondary }]}>{(item.likes?.length || 0) + (isLiked ? 1 : 0)}</Text>
+                        <Text style={[styles.statText, { color: colors.textSecondary }]}>{item.likes?.length || 0}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.statItem} onPress={() => onOpenComments(item)}>
                         <MessageCircle size={20} color={colors.textSecondary} />

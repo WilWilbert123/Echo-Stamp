@@ -47,6 +47,9 @@ export const fetchJournals = (userId) => API.get(`/journals/${userId}`);
 export const removeMediaFromJournal = (id, mediaUri) => API.patch(`/journals/${id}/media`, { mediaUri });
 export const postJournal = (journalData) => API.post('/journals', journalData);
 export const deleteJournal = (id) => API.delete(`/journals/${id}`);
+export const likeJournal = (id) => API.post(`/journals/${id}/like`);
+export const commentJournal = (id, text) => API.post(`/journals/${id}/comment`, { text });
+export const replyToComment = (id, commentId, text) => API.post(`/journals/${id}/comment/${commentId}/reply`, { text });
 
 export const requestOtp = (userData) => API.post('/users/request-otp', userData);
 export const verifyOtp = (data) => API.post('/users/verify-otp', data);

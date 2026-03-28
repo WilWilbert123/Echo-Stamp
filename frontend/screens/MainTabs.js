@@ -1,7 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
 import { useTheme } from '../context/ThemeContext';
+import { getConversationsList } from '../redux/messageSlice';
 
 // Import your screens
 import Atlas from '../screens/Atlas/Atlas';
@@ -14,6 +17,16 @@ const Tab = createBottomTabNavigator();
 
 const MainTabs = () => {
   const { colors, isDark } = useTheme();
+  const dispatch = useDispatch();
+  
+  // Get conversations from Redux
+  const { conversations } = useSelector((state) => state.messages);
+  const badgeCount = conversations?.length || 0;
+
+  useEffect(() => {
+    // Fetch conversations on mount to update the badge
+    dispatch(getConversationsList());
+  }, [dispatch]);
 
   return (
     <Tab.Navigator
@@ -68,7 +81,7 @@ const MainTabs = () => {
         options={{ 
           tabBarLabel: 'Chat',
           tabBarIcon: ({ color }) => <Ionicons name="chatbubbles" size={22} color={color} />,
-          tabBarBadge: 3, 
+          tabBarBadge: badgeCount > 0 ? badgeCount : null, 
           tabBarBadgeStyle: { 
             backgroundColor: colors.accent, 
             color: '#000', 
