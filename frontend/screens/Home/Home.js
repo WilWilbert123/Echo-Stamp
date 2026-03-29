@@ -15,7 +15,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
@@ -233,21 +232,17 @@ const Home = () => {
           />
         )}
 
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => navigation.navigate('Create')}
-        >
-          <GlassButton
-            style={[styles.fab, { borderRadius: 24 }]}
-            onPress={() => navigation.navigate('Create')}
-          >
-            <Ionicons
-              name="add"   
-              size={20}
-              color={colors.primary === '#FFFFFF' ? '#000' : '#FFF'}
-            />
-          </GlassButton>
-        </TouchableOpacity>
+    <GlassButton
+      style={[styles.fab, { borderRadius: 20 }]}
+      contentStyle={{ paddingHorizontal: 0 }}
+      onPress={() => navigation.navigate('Create')}
+    >
+      <Ionicons
+        name="add"   
+        size={28}
+        color={isDark ? (colors.primary === '#FFFFFF' ? '#000' : '#FFF') : colors.primary}
+      />
+    </GlassButton>
       </View>
     </View>
   );
@@ -285,7 +280,7 @@ const styles = StyleSheet.create({
   echoDescription: { fontSize: 15, lineHeight: 22, marginBottom: 20, opacity: 0.7, fontWeight: '400' },
   cardFooter: { flexDirection: 'row', alignItems: 'center', paddingTop: 16, borderTopWidth: 1 },
   locationText: { flex: 1, fontSize: 12, marginLeft: 8, fontWeight: '600', opacity: 0.6 },
-  fab: { position: 'absolute', bottom: 60, right: 20, width: 70, height: 65,alignItems: 'center', justifyContent: 'center'  },
+  fab: { position: 'absolute', bottom: 90, right: 20, width: 70, height: 65,alignItems: 'center', justifyContent: 'center'  },
    
   deleteAction: { width: 90, height: '88%', marginBottom: 16 },
   deleteGradient: { flex: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 32, marginLeft: 10 },
