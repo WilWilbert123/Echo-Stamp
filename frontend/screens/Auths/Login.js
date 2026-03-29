@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import {
     Alert,
@@ -101,6 +102,17 @@ const Login = ({ navigation }) => {
                 email: loginEmail,
                 password: loginPassword
             });
+
+            // Save credentials if the preference is enabled (default to true)
+            const prefKey = `save_creds_pref_${loginEmail.toLowerCase().trim()}`;
+            const savePref = await AsyncStorage.getItem(prefKey);
+            const shouldSave = savePref !== null ? savePref === 'true' : true;
+
+            if (shouldSave) {
+                const key = getBioKey(loginEmail);
+                await SecureStore.setItemAsync(key, JSON.stringify({ email: loginEmail, password: loginPassword }));
+                await AsyncStorage.setItem('last_email', loginEmail);
+            }
 
             if (response.data.twoFactorRequired) {
                 navigation.navigate('OtpVerification', {

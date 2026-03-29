@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
-import React, { useMemo } from 'react';
+import * as SecureStore from 'expo-secure-store';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     Alert,
     Dimensions,
@@ -38,17 +40,42 @@ const Profile = ({ navigation }) => {
     const { isDark, colors, toggleTheme } = useTheme();
     const insets = useSafeAreaInsets();
     const dispatch = useDispatch();
-    
-    const { user, token: authToken } = useSelector((state) => state.auth); 
+
+    const { user, token: authToken } = useSelector((state) => state.auth);
     const { list = [] } = useSelector((state) => state.echoes || {});
+
+    const [localNotif, setLocalNotif] = useState(null);
+    const [saveCredsEnabled, setSaveCredsEnabled] = useState(null);
 
     const statsData = useMemo(() => {
         const cities = list.map(echo => echo.location?.address?.split(',')[0]).filter(Boolean);
         const unique = [...new Set(cities)].length;
-        const progress = (list.length % 50) / 50; 
+        const progress = (list.length % 50) / 50;
         const level = Math.floor(list.length / 50) + 1;
         return { unique, progress, level };
     }, [list]);
+
+    useEffect(() => {
+        const loadNotifPref = async () => {
+            try {
+                const saved = await AsyncStorage.getItem(`notif_pref_${user?.email}`);
+                if (saved !== null) {
+                    setLocalNotif(saved === 'true');
+                }
+
+                const savedCredsPref = await AsyncStorage.getItem(`save_creds_pref_${user?.email}`);
+                if (savedCredsPref !== null) {
+                    setSaveCredsEnabled(savedCredsPref === 'true');
+                }
+            } catch (e) {
+                console.log("Error loading local notification pref:", e);
+            }
+        };
+        if (user?.email) loadNotifPref();
+    }, [user?.email]);
+
+    const isNotifEnabled = localNotif !== null ? localNotif : (user?.notificationsEnabled !== false);
+    const isSaveCredsEnabled = saveCredsEnabled !== null ? saveCredsEnabled : true;
 
     const registerForPushNotificationsAsync = async () => {
         if (Platform.OS === 'android') {
@@ -84,7 +111,7 @@ const Profile = ({ navigation }) => {
     };
 
     const handleNotificationToggle = async () => {
-        const isEnabling = user?.notificationsEnabled === false;
+        const isEnabling = !isNotifEnabled;
         let token = user?.pushToken;
 
         if (isEnabling && !token) {
@@ -92,15 +119,34 @@ const Profile = ({ navigation }) => {
         }
 
         try {
-            const response = await updatePrivacy({ 
+            const response = await updatePrivacy({
                 notificationsEnabled: isEnabling,
-                pushToken: token 
+                pushToken: token
             });
-            
+
+            // Save to AsyncStorage for persistence across app restarts
+            await AsyncStorage.setItem(`notif_pref_${user?.email}`, isEnabling.toString());
+            setLocalNotif(isEnabling);
+
             // Update Redux state so the toggle UI updates immediately
             dispatch(setCredentials({ user: response.data.user, token: authToken }));
             Alert.alert("Success", `Notifications turned ${isEnabling ? 'On' : 'Off'}`);
         } catch (e) { Alert.alert("Error", "Could not update notification settings"); }
+    };
+
+    const handleSaveCredentials = async () => {
+        const newValue = !isSaveCredsEnabled;
+        setSaveCredsEnabled(newValue);
+        
+        try {
+            await AsyncStorage.setItem(`save_creds_pref_${user?.email}`, newValue.toString());
+            
+            if (!newValue) {
+                // Clear saved credentials if disabled
+                const sanitized = user.email.toLowerCase().trim().replace(/[^a-zA-Z0-9._-]/g, '_');
+                await SecureStore.deleteItemAsync(`user_credentials_${sanitized}`);
+            }
+        } catch (error) { console.error("Error toggling save credentials:", error); }
     };
 
     const handleLogout = () => {
@@ -111,17 +157,17 @@ const Profile = ({ navigation }) => {
     };
 
     // --- REUSABLE SETTING ITEM ---
-    const SettingItem = ({ icon, title, value, onPress, isLast, color, isToggle }) => (
-        <TouchableOpacity 
-            onPress={onPress} 
+    const SettingItem = ({ icon, title, value, onPress, isLast, color, isToggle, toggleValue }) => (
+        <TouchableOpacity
+            onPress={onPress}
             activeOpacity={0.7}
             style={[
-                styles.settingRow, 
+                styles.settingRow,
                 { borderBottomColor: isLast ? 'transparent' : colors.glassBorder }
             ]}
         >
             <View style={styles.settingLeft}>
-                <View style={[styles.iconBox, { 
+                <View style={[styles.iconBox, {
                     backgroundColor: color ? `${color}20` : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'),
                     borderColor: colors.glassBorder,
                 }]}>
@@ -129,13 +175,13 @@ const Profile = ({ navigation }) => {
                 </View>
                 <Text style={[styles.settingTitle, { color: colors.textMain }]}>{title}</Text>
             </View>
-            
+
             <View style={styles.settingRight}>
                 {value && <Text style={[styles.settingValue, { color: colors.textSecondary }]}>{value}</Text>}
                 {isToggle ? (
-                    <View style={[styles.toggleTrack, { 
-                        backgroundColor: isDark ? colors.primary : '#D1D5DB',
-                        alignItems: isDark ? 'flex-end' : 'flex-start'
+                    <View style={[styles.toggleTrack, {
+                        backgroundColor: toggleValue ? colors.primary : (isDark ? 'rgba(255,255,255,0.1)' : '#D1D5DB'),
+                        alignItems: toggleValue ? 'flex-end' : 'flex-start'
                     }]}>
                         <View style={styles.toggleThumb} />
                     </View>
@@ -153,7 +199,7 @@ const Profile = ({ navigation }) => {
             {/* --- REUSABLE BRANDED HEADER --- */}
             <BrandedHeader colors={colors} isDark={isDark} />
 
-            <ScrollView 
+            <ScrollView
                 contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20, paddingBottom: 120 }]}
                 showsVerticalScrollIndicator={false}
                 style={{ backgroundColor: 'transparent' }}
@@ -161,8 +207,8 @@ const Profile = ({ navigation }) => {
                 {/* Profile Identity */}
                 <View style={styles.header}>
                     <View style={styles.avatarWrapper}>
-                        <LinearGradient 
-                            colors={isDark ? [colors.primary, '#0ea5e9'] : [colors.primary, '#475569']} 
+                        <LinearGradient
+                            colors={isDark ? [colors.primary, '#0ea5e9'] : [colors.primary, '#475569']}
                             style={styles.avatar}
                         >
                             <Text style={styles.avatarText}>
@@ -170,7 +216,7 @@ const Profile = ({ navigation }) => {
                             </Text>
                         </LinearGradient>
                     </View>
-                    
+
                     <Text style={[styles.userName, { color: colors.textMain }]}>
                         {user?.username || 'Explorer'}
                     </Text>
@@ -187,9 +233,9 @@ const Profile = ({ navigation }) => {
                         <Text style={[styles.progressPercent, { color: colors.textSecondary }]}>{Math.round(statsData.progress * 100)}%</Text>
                     </View>
                     <View style={[styles.progressBarBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
-                        <View style={[styles.progressBarFill, { 
+                        <View style={[styles.progressBarFill, {
                             width: `${statsData.progress * 100}%`,
-                            backgroundColor: colors.primary 
+                            backgroundColor: colors.primary
                         }]} />
                     </View>
                 </View>
@@ -208,30 +254,41 @@ const Profile = ({ navigation }) => {
 
                 <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>PREFERENCES</Text>
                 <View style={[styles.menuContainer, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
-                    <SettingItem 
-                        icon={isDark ? "moon" : "sunny"} 
-                        title="Appearance" 
-                        value={isDark ? 'Dark' : 'Light'} 
+                    <SettingItem
+                        icon={isDark ? "moon" : "sunny"}
+                        title="Appearance"
+                        value={isDark ? 'Dark' : 'Light'}
                         onPress={toggleTheme}
-                        isToggle
+                        isToggle={true}
+                        toggleValue={isDark}
                     />
-                    <SettingItem 
-                        icon="notifications-outline" 
-                        title="Notifications" 
-                        value={user?.notificationsEnabled ? "On" : "Off"} 
+                    <SettingItem
+                        icon="notifications-outline"
+                        title="Notifications"
+                        value={isNotifEnabled ? "On" : "Off"}
                         onPress={handleNotificationToggle}
-                        isToggle={user?.notificationsEnabled}
+                        isToggle={true}
+                        toggleValue={isNotifEnabled}
                     />
-                    <SettingItem icon="shield-outline" title="Privacy & Security" isLast onPress={() => navigation.navigate('PrivacySecurity')} />        
+                    <SettingItem
+                        icon="key-outline"
+                        title="Save Credentials"
+                        value={isSaveCredsEnabled ? "On" : "Off"}
+                        onPress={handleSaveCredentials}
+                        isToggle={true}
+                        toggleValue={isSaveCredsEnabled}
+                    />
+
+                    <SettingItem icon="shield-outline" title="Privacy & Security" isLast onPress={() => navigation.navigate('PrivacySecurity')} />
                 </View>
 
                 <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>SUPPORT</Text>
                 <View style={[styles.menuContainer, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
-                    <SettingItem icon="help-buoy-outline" title="Help Center" onPress={() => navigation.navigate('Help')}/>
+                    <SettingItem icon="help-buoy-outline" title="Help Center" onPress={() => navigation.navigate('Help')} />
                     <SettingItem icon="document-text-outline" title="Terms of Service" onPress={() => navigation.navigate('Terms')} />
-                    <SettingItem icon="information-circle-outline" title="About App" isLast onPress={() => navigation.navigate('About')}/>
-                </View>       
-        
+                    <SettingItem icon="information-circle-outline" title="About App" isLast onPress={() => navigation.navigate('About')} />
+                </View>
+
                 <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
                     <Ionicons name="log-out-outline" size={22} color="#FF5252" />
                     <Text style={styles.logoutText}>Log Out</Text>
