@@ -129,6 +129,10 @@
 /* Responsive Hide Links */
 @media (max-width: 768px) {
   .nav-links { display: none; }
-  .header-glass-pill { padding-right: 6px; }
+  .header-glass-pill { 
+    width: 92%;
+    padding-right: 8px; 
+  }
   .brand-name { font-size: 1rem; }
+  .main-header { top: 15px; }
 }
