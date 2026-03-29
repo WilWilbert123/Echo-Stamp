@@ -23,6 +23,15 @@ export const getStyles = (colors, isDark) => StyleSheet.create({
   eventTitle: { fontSize: 20, fontWeight: '800', marginBottom: 6, color: colors.textMain },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   
+  // Attendee List
+  attendeeDropdown: { backgroundColor: 'rgba(0,0,0,0.03)', padding: 10, borderRadius: 12, marginVertical: 10 },
+  attendeeName: { fontSize: 13, color: colors.textSecondary, marginBottom: 4 },
+  
+  // Card Buttons
+  cardActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: colors.glassBorder },
+  miniActionBtn: { paddingHorizontal: 20, paddingVertical: 8, borderRadius: 10, backgroundColor: colors.primary + '15' },
+  miniActionText: { fontWeight: 'bold', fontSize: 14 },
+  
   // Footer / Create Action
   createCard: { padding: 20, borderRadius: 24, borderWidth: 2, alignItems: 'center', flexDirection: 'row', gap: 15, marginTop: 10, borderColor: colors.primary, borderStyle: 'dashed' },
   createText: { fontWeight: '800', fontSize: 17, color: colors.textMain },

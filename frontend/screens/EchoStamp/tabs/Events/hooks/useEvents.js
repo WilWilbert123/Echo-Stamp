@@ -3,7 +3,7 @@ import * as Location from 'expo-location';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-import { createCommunityMeetup, fetchAllEvents } from '../../../../../redux/eventSlice';
+import { createCommunityMeetup, deleteEventAsync, fetchAllEvents, joinEventAsync } from '../../../../../redux/eventSlice';
 import { GOOGLE_API_KEY } from '../utils/Events.utils';
 
 export const useEvents = () => {
@@ -116,9 +116,28 @@ export const useEvents = () => {
     }
   };
 
+  const handleJoinToggle = async (id) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    await dispatch(joinEventAsync(id));
+  };
+
+  const handleDeleteEvent = async (id) => {
+    Alert.alert("Delete Event", "Are you sure you want to cancel this meetup?", [
+      { text: "No", style: "cancel" },
+      { 
+        text: "Yes, Delete", 
+        style: "destructive", 
+        onPress: async () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          await dispatch(deleteEventAsync(id));
+        }
+      }
+    ]);
+  };
+
   return {
     allEvents, isPosting, refreshing, isHosting, setIsHosting,
     userLocation, form, setForm, onRefresh, handleManualSearch,
-    handleHostMeetup, mapRef
+    handleHostMeetup, handleJoinToggle, handleDeleteEvent, mapRef
   };
 };
