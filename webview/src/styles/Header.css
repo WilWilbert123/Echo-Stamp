@@ -17,13 +17,22 @@
   background: rgba(244, 251, 245, 0); 
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--glass-border);
   border-radius: 100px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 8px 0 10px; /* Tight padding to match the Tarsi image */
+  padding: 0 12px 0 16px; 
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Scrolled State - Shrinks the width and adds more "glass" intensity */
+.header-glass-pill.scrolled {
+  max-width: 850px;
+  height: 58px;
+  background: rgba(var(--bg-rgb), 0.2);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
 }
 
 /* Logo & Brand Styling */
@@ -51,7 +60,7 @@
 
 .brand-name {
   font-size: 1.15rem;
-  color: #ffffff;
+  color: var(--text-primary);
   letter-spacing: -0.5px;
 }
 
@@ -62,15 +71,35 @@
 }
 
 .nav-links span {
-  color: #ffffff;
+  color: var(--text-primary);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   transition: 0.2s;
 }
 
+.theme-toggle-btn {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  transition: transform 0.3s ease;
+  margin-left: 10px;
+}
+
+.theme-toggle-btn:hover {
+  transform: rotate(15deg) scale(1.1);
+  color: var(--accent-cyan);
+}
+
 .nav-links span:hover {
-  color: #000;
+  color: var(--accent-cyan);
+  text-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
 }
 
 /* Play Store Button */
