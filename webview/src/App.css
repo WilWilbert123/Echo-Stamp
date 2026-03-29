@@ -4,8 +4,18 @@
   --accent-cyan: #00f2fe;
   --accent-purple: #7000ff;
   --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.6);
   --glass-border: rgba(255, 255, 255, 0.08);
   --header-height: 80px;
+}
+
+.light-theme {
+  --bg-dark: #f8fafc;
+  --bg-card: rgba(255, 255, 255, 0.8);
+  --text-primary: #0f172a;
+  --text-secondary: rgba(15, 23, 42, 0.6);
+  --glass-border: rgba(0, 0, 0, 0.1);
+  --accent-cyan: #0ea5e9;
 }
 
 * {

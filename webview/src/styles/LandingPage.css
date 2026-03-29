@@ -2,12 +2,12 @@
   position: relative;
   width: 100%;
   min-height: 100vh;
-  background-color: #030304;  
+  background-color: transparent;  
   color: #fff;
   display: flex;
   flex-direction: column; 
   align-items: center;
-  overflow-x: hidden;
+  overflow: visible; /* Allow shadow to bleed out */
   z-index: 1;
 }
 
@@ -81,15 +81,21 @@
 }
 
 .hero-title {
-  font-size: clamp(2.5rem, 5vw, 4rem); 
+  font-size: clamp(3.2rem, 8vw, 5.5rem); 
   font-weight: 900;
   line-height: 1.1;
   letter-spacing: -2px;
   margin-bottom: 24px;
+  color: var(--text-primary);
+  transition: color 0.3s ease;
+}
+
+.light-theme .hero-title {
+  -webkit-text-stroke: 1px rgba(0, 0, 0, 0.1);
 }
 
 .text-gradient {
-  background: linear-gradient(90deg, #fff 0%, #00f2fe 100%);
+  background: linear-gradient(90deg, var(--text-primary) 0%, #00f2fe 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -97,25 +103,34 @@
 
 .hero-subtitle {
   font-size: 1.15rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-secondary);
   max-width: 520px;
   margin-bottom: 45px;
   line-height: 1.6;
 }
 
+.hero-visual-content {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  position: relative;
+}
+
 .phone-mockup-wrapper {
   width: 100%;
-  max-width: 520px;
+  max-width: 480px;
   position: relative;
   animation: float 6s ease-in-out infinite;
+  z-index: 5;
 }
 
 .phone-image {
-  width: 130%;
+  width: 115%; /* Reduced from 130% to prevent hard-edge clipping */
   height: auto;
   display: block;
   /* Large shadow to make the phone float against the dark bg */
   filter: drop-shadow(0 50px 100px rgba(0, 0, 0, 0.9));
+  will-change: filter, transform;
 }
 
 @keyframes float {
