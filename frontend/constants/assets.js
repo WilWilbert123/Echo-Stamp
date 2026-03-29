@@ -22,8 +22,8 @@ export const EMOTION_ASSETS = {
   Crying: require('../assets/Cryingemoji.json'),
   Drunk: require('../assets/drunkbeer.json'),
   Thinking: require('../assets/Thinking.json'),
-   
-
+   Skating: require('../assets/Orangeskating.json'),
+  Walking: require('../assets/WalkingOrange.json'),
 };
 
  
@@ -49,5 +49,6 @@ export const EMOTION_CONFIG = [
   { label: 'Crying', value: 'Crying', assetKey: 'Crying' },
   { label: 'Drunk', value: 'Drunk', assetKey: 'Drunk' },
   { label: 'Thinking', value: 'Thinking', assetKey: 'Thinking' },
-
+  { label: 'Skating', value: 'Skating', assetKey: 'Skating' },
+  { label: 'Walking', value: 'Walking', assetKey: 'Walking' },
 ];

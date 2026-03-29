@@ -17,7 +17,8 @@ const Events = () => {
   const { 
     allEvents, refreshing, onRefresh, isHosting, setIsHosting,
     form, setForm, handleManualSearch, handleHostMeetup, 
-    userLocation, mapRef, isPosting 
+    handleJoinToggle, handleDeleteEvent,
+    userLocation, mapRef, isPosting
   } = useEvents();
 
   return (
@@ -25,7 +26,13 @@ const Events = () => {
       <FlatList
         data={allEvents}
         keyExtractor={(item, index) => item._id?.$oid || item._id || `event-${index}`}
-        renderItem={({ item }) => <EventCard item={item} />}
+        renderItem={({ item }) => (
+          <EventCard 
+            item={item} 
+            onJoin={handleJoinToggle} 
+            onDelete={handleDeleteEvent} 
+          />
+        )}
         ListHeaderComponent={<ListHeader colors={colors} styles={styles} />}
         ListFooterComponent={<ListFooter colors={colors} styles={styles} onOpen={() => setIsHosting(true)} />}
         contentContainerStyle={styles.scrollContent}

@@ -80,8 +80,8 @@ export const clearChatHistory = () => API.delete('/chat/history');
 
 /* --- Events (Community Gatherings) --- */
 export const hostMeetup = (eventData) => API.post('/events/host', eventData);
-export const fetchNearbyEvents = (lat, lng) => API.get(`/events/nearby?lat=${lat}&lng=${lng}`);
-export const joinEvent = (eventId) => API.post(`/events/join/${eventId}`);
+export const toggleJoinEvent = (eventId) => API.post(`/events/join/${eventId}`);
+export const deleteEventAPI = (eventId) => API.delete(`/events/${eventId}`);
 export const getAllEvents = () => API.get('/events');
 
 // --- Privacy & Visibility ---

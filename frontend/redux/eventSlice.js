@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { getAllEvents, hostMeetup } from '../services/api';
+import { deleteEventAPI, getAllEvents, hostMeetup, toggleJoinEvent } from '../services/api';
 
 // FETCH ALL EVENTS  
 export const fetchAllEvents = createAsyncThunk(
@@ -25,6 +25,26 @@ export const createCommunityMeetup = createAsyncThunk(
         } catch (err) {
             return rejectWithValue(err.response?.data || "Failed to host meetup");
         }
+    }
+);
+
+export const joinEventAsync = createAsyncThunk(
+    'events/join',
+    async (eventId, { rejectWithValue }) => {
+        try {
+            const response = await toggleJoinEvent(eventId);
+            return response.data;
+        } catch (err) { return rejectWithValue(err.response?.data); }
+    }
+);
+
+export const deleteEventAsync = createAsyncThunk(
+    'events/delete',
+    async (eventId, { rejectWithValue }) => {
+        try {
+            await deleteEventAPI(eventId);
+            return eventId;
+        } catch (err) { return rejectWithValue(err.response?.data); }
     }
 );
 
@@ -69,6 +89,15 @@ const eventSlice = createSlice({
             .addCase(createCommunityMeetup.rejected, (state, action) => {
                 state.isPosting = false;
                 state.error = action.payload;
+            })
+            .addCase(joinEventAsync.fulfilled, (state, action) => {
+                const index = state.allEvents.findIndex(e => e._id === action.payload._id);
+                if (index !== -1) {
+                    state.allEvents[index] = action.payload;
+                }
+            })
+            .addCase(deleteEventAsync.fulfilled, (state, action) => {
+                state.allEvents = state.allEvents.filter(e => e._id !== action.payload);
             });
     }
 });

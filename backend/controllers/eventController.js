@@ -33,7 +33,8 @@ exports.getAllEvents = async (req, res) => {
     
         const events = await Event.find()
             .sort({ createdAt: -1 })  
-            .populate('hostId', 'name profilePicture');  
+            .populate('hostId', 'username profilePicture')
+            .populate('attendees', 'username profilePicture');  
 
         res.status(200).json(events);
     } catch (error) {
@@ -41,5 +42,47 @@ exports.getAllEvents = async (req, res) => {
             message: "Failed to fetch community feed", 
             error: error.message 
         });
+    }
+};
+
+exports.joinEvent = async (req, res) => {
+    try {
+        const event = await Event.findById(req.params.id);
+        if (!event) return res.status(404).json({ message: "Event not found" });
+
+        const isAttending = event.attendees.includes(req.user._id);
+        
+        if (isAttending) {
+            // Leave event
+            event.attendees.pull(req.user._id);
+        } else {
+            // Join event
+            event.attendees.addToSet(req.user._id);
+        }
+
+        await event.save();
+        const updatedEvent = await Event.findById(req.params.id)
+            .populate('hostId', 'username profilePicture')
+            .populate('attendees', 'username profilePicture');
+
+        res.status(200).json(updatedEvent);
+    } catch (error) {
+        res.status(500).json({ message: "Error joining event", error: error.message });
+    }
+};
+
+exports.deleteEvent = async (req, res) => {
+    try {
+        const event = await Event.findById(req.params.id);
+        if (!event) return res.status(404).json({ message: "Event not found" });
+
+        if (event.hostId.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: "Unauthorized to delete this event" });
+        }
+
+        await Event.findByIdAndDelete(req.params.id);
+        res.status(200).json({ message: "Event deleted", id: req.params.id });
+    } catch (error) {
+        res.status(500).json({ message: "Error deleting event", error: error.message });
     }
 };
