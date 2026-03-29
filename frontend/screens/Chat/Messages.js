@@ -29,7 +29,6 @@ import {
     editMessageAction,
     getChatHistory,
     getConversationsList,
-    initiateCallAction,
     markAsReadAction,
     sendMessageAction
 } from '../../redux/messageSlice';
@@ -118,29 +117,6 @@ const Messages = () => {
         }
 
         setMessage('');
-    };
-
-    const handleCall = (user, callType) => {
-        if (!user || !user._id) return;
-        
-        // Use id or _id to ensure compatibility with backend response
-        const currentId = currentUser?.id || currentUser?._id;
-        const roomId = `room_${Date.now()}_${currentId}`;
-        
-        // 1. Tell backend to send Push Notification to recipient
-        dispatch(initiateCallAction({
-            receiverId: user._id,
-            roomId: roomId,
-            type: callType
-        }));
-
-        // 2. Open the call screen locally
-        navigation.navigate('VideoCall', { 
-            recipient: user,
-            roomId: roomId,
-            isCaller: true,
-            callType: callType
-        });
     };
 
     const handleDeleteConversation = (otherUserId, name) => {
@@ -264,19 +240,6 @@ const Messages = () => {
                         <Text style={[styles.userName, { color: colors.textMain }]}>{selectedUser.firstName} {selectedUser.lastName}</Text>
                         <Text style={{ fontSize: 12, color: '#10B981', fontWeight: '600' }}>Online</Text>
                     </View>
-                    <TouchableOpacity 
-                        style={{ marginRight: 20 }}
-                        onPress={() => handleCall(selectedUser, 'audio')}
-                    >
-                        <Ionicons name="call-outline" size={24} color={colors.textMain} />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity 
-                        style={{ marginRight: 15 }}
-                        onPress={() => handleCall(selectedUser, 'video')}
-                    >
-                        <Ionicons name="videocam-outline" size={24} color={colors.textMain} />
-                    </TouchableOpacity>
                 </View>
 
                 {/* Messages List Area */}
@@ -293,11 +256,10 @@ const Messages = () => {
                             contentContainerStyle={{ paddingHorizontal: 15, paddingVertical: 20 }}
                             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
                             renderItem={({ item }) => {
-                                // Robust check: convert to string and check multiple possible ID fields
-                                const senderId = (item.sender?._id || item.sender?.id || item.sender)?.toString();
-                                const currentUserId = (currentUser?._id || currentUser?.id)?.toString();
-                                
-                                const isMe = senderId && currentUserId && senderId === currentUserId;
+                                // Simplified ID check. 
+                                // It's better to normalize data in Redux, but for now:
+                                const senderId = item.sender?._id || item.sender;
+                                const isMe = senderId === (currentUser?._id || currentUser?.id);
 
                                 return (
                                     <TouchableOpacity 

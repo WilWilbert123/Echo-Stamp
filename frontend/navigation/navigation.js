@@ -7,7 +7,6 @@ import Login from "../screens/Auths/Login";
 import OtpVerification from "../screens/Auths/OtpVerification";
 import ResetPassword from "../screens/Auths/ResetPassword";
 import Signup from "../screens/Auths/Signup";
-import VideoCallScreen from "../screens/Chat/VideoCallScreen";
 import CreateEcho from "../screens/Home/CreateEcho";
 import Intro from "../screens/Intro";
 import MainTabs from "../screens/MainTabs";
@@ -42,11 +41,6 @@ const HomeStackNavigator = () => {
                     <Stack.Screen name="Help" component={Help} />
                     <Stack.Screen name="Terms" component={Terms} />
                     <Stack.Screen name="About" component={About} /> 
-                    <Stack.Screen 
-                        name="VideoCall" 
-                        component={VideoCallScreen} 
-                        options={{ gestureEnabled: false, headerShown: false }} 
-                    />
                 </ >
             ) : (
                 < >

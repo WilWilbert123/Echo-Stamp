@@ -87,18 +87,6 @@ export const markAsReadAction = createAsyncThunk(
     }
 );
 
-export const initiateCallAction = createAsyncThunk(
-    'messages/initiateCall',
-    async (callData, thunkAPI) => {
-        try {
-            const response = await messageService.startCall(callData);
-            return response.data;
-        } catch (error) {
-            return thunkAPI.rejectWithValue(error.response?.data);
-        }
-    }
-);
-
 const messageSlice = createSlice({
     name: 'messages',
     initialState: {

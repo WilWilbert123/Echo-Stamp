@@ -62,9 +62,6 @@ const PORT = process.env.PORT || 5000;
 if (!process.env.CLOUDINARY_CLOUD_NAME) {
     console.warn("⚠️  Warning: Cloudinary environment variables are missing!");
 }
-if (!process.env.EXPO_PUBLIC_ZEGO_APP_ID) {
-    console.warn("⚠️  Warning: EXPO_PUBLIC_ZEGO_APP_ID is missing. Video call signaling may be impacted.");
-}
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`///////////////////////////////////////////////////////////`);
