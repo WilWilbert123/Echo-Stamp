@@ -1,9 +1,15 @@
 .scroll-snap-container {
   height: 100vh;
   overflow-y: scroll;
-  scroll-snap-type: y mandatory; /* Mandatory feels more like a controlled "App" experience */
+  scroll-snap-type: y proximity; 
   scroll-behavior: smooth;
   scrollbar-width: none; /* Firefox */
+}
+
+@media (min-height: 800px) {
+  .scroll-snap-container {
+    scroll-snap-type: y mandatory;
+  }
 }
 
 .scroll-snap-container::-webkit-scrollbar {
