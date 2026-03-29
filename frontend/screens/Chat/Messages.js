@@ -78,7 +78,7 @@ const Messages = () => {
         dispatch(clearChat());
         setSelectedUser(user);
         dispatch(getChatHistory(user._id));
-        dispatch(markAsReadAction(user._id)); // Mark as read when opening
+        dispatch(markAsReadAction(user._id));  
     };
 
     // --- 3. Real-time Polling ---
@@ -256,8 +256,7 @@ const Messages = () => {
                             contentContainerStyle={{ paddingHorizontal: 15, paddingVertical: 20 }}
                             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
                             renderItem={({ item }) => {
-                                // Simplified ID check. 
-                                // It's better to normalize data in Redux, but for now:
+                          
                                 const senderId = item.sender?._id || item.sender;
                                 const isMe = senderId === (currentUser?._id || currentUser?.id);
 
