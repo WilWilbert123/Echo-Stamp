@@ -1,12 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { Audio } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     FlatList,
+    Image,
     KeyboardAvoidingView,
+    Modal,
     Platform,
     Pressable,
     RefreshControl,
@@ -22,6 +25,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { useDispatch, useSelector } from 'react-redux';
 import BrandedHeader from '../../components/BrandedHeader';
 import { useTheme } from '../../context/ThemeContext';
+import { clearGroupChat, setActiveGroupId, createGroupAction, deleteGroupAction, getGroupHistory, getGroupsList, markGroupReadAction, sendGroupMessageAction } from '../../redux/groupSlice';
 import {
     clearChat,
     deleteConversationAction,
@@ -33,6 +37,7 @@ import {
     sendMessageAction
 } from '../../redux/messageSlice';
 import { fetchAllUsers } from '../../services/api';
+import { uploadImageToCloudinary } from '../../services/cloudinary';
 
 const Messages = () => {
     const dispatch = useDispatch();
@@ -42,6 +47,7 @@ const Messages = () => {
     
     // Redux State
     const { activeConversation, conversations, loading: messagesLoading } = useSelector((state) => state.messages);
+    const { groups, activeGroupMessages, loading: groupsLoading } = useSelector((state) => state.groups);
     const { user: currentUser } = useSelector((state) => state.auth); 
     
     // Local State
@@ -50,8 +56,21 @@ const Messages = () => {
     const [message, setMessage] = useState('');
     const [editingMessage, setEditingMessage] = useState(null);
     const [allUsers, setAllUsers] = useState([]);
+    const [recording, setRecording] = useState(null);
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingDuration, setRecordingDuration] = useState(0);
+    const [attachedAudio, setAttachedAudio] = useState(null);
+    const [playingMessageId, setPlayingMessageId] = useState(null);
+    const [playbackTime, setPlaybackTime] = useState(0);
     const [loadingUsers, setLoadingUsers] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+
+    // Group Creation State
+    const [isGroupModalVisible, setIsGroupModalVisible] = useState(false);
+    const [selectedMembers, setSelectedMembers] = useState([]);
+    const [groupName, setGroupName] = useState('');
+    const [groupSearch, setGroupSearch] = useState('');
+    const [isMembersModalVisible, setIsMembersModalVisible] = useState(false);
 
     // --- 1. Fetch Conversations and Directory ---
     const loadUsers = useCallback(async (isRefreshing = false) => {
@@ -59,6 +78,7 @@ const Messages = () => {
         else setLoadingUsers(true);
         try {
             await dispatch(getConversationsList()).unwrap();
+            await dispatch(getGroupsList()).unwrap();
             const usersRes = await fetchAllUsers();
             setAllUsers(usersRes.data);
         } catch (error) {
@@ -74,11 +94,27 @@ const Messages = () => {
     }, [loadUsers]);
 
     // --- 2. Handle User Selection (Start Chat) ---
-    const handleSelectUser = (user) => {
+    const handleSelectUser = (itemOrUser) => {
         dispatch(clearChat());
-        setSelectedUser(user);
-        dispatch(getChatHistory(user._id));
-        dispatch(markAsReadAction(user._id));  
+        dispatch(clearGroupChat());
+        
+        // If it's a conversation item from the FlatList
+        if (itemOrUser.isGroup || itemOrUser.user) {
+            setSelectedUser(itemOrUser);
+            if (itemOrUser.isGroup) {
+                dispatch(setActiveGroupId(itemOrUser._id));
+                dispatch(getGroupHistory(itemOrUser._id));
+                dispatch(markGroupReadAction(itemOrUser._id));
+            } else {
+                dispatch(getChatHistory(itemOrUser.user._id));
+                dispatch(markAsReadAction(itemOrUser.user._id));
+            }
+        } else {
+            // It's a raw user object (from search or active users)
+            setSelectedUser({ user: itemOrUser });
+            dispatch(getChatHistory(itemOrUser._id));
+            dispatch(markAsReadAction(itemOrUser._id));
+        }
     };
 
     // --- 3. Real-time Polling ---
@@ -86,11 +122,95 @@ const Messages = () => {
         let interval;
         if (selectedUser) {
             interval = setInterval(() => {
-                dispatch(getChatHistory(selectedUser._id));
+                if (selectedUser.isGroup) {
+                    dispatch(getGroupHistory(selectedUser._id));
+                    dispatch(markGroupReadAction(selectedUser._id));
+                } else if (selectedUser.user?._id) {
+                    dispatch(getChatHistory(selectedUser.user._id));
+                    dispatch(markAsReadAction(selectedUser.user._id));
+                }
             }, 5000); 
         }
         return () => clearInterval(interval);
     }, [selectedUser, dispatch]);
+
+    // --- Voice Recording Logic ---
+    const onRecordingStatusUpdate = (status) => {
+        if (status.isRecording) {
+            setRecordingDuration(status.durationMillis);
+        }
+    };
+
+    const startRecording = async () => {
+        try {
+            const permission = await Audio.requestPermissionsAsync();
+            if (permission.status === 'granted') {
+                await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+                const { recording } = await Audio.Recording.createAsync(
+                    Audio.RecordingOptionsPresets.HIGH_QUALITY,
+                    onRecordingStatusUpdate,
+                    1000
+                );
+                setRecording(recording);
+                setIsRecording(true);
+                setRecordingDuration(0);
+            }
+        } catch (err) {
+            Alert.alert("Error", "Failed to start recording");
+        }
+    };
+
+    const stopRecording = async () => {
+        setIsRecording(false);
+        try {
+            const status = await recording.stopAndUnloadAsync();
+            const uri = recording.getURI();
+            setRecording(null);
+            setRecordingDuration(0);
+            setAttachedAudio({ uri, duration: status.durationMillis });
+        } catch (err) {
+            Alert.alert("Error", "Failed to save recording");
+        }
+    };
+
+    const cancelAttachment = () => {
+        setAttachedAudio(null);
+    };
+
+    const formatDuration = (millis) => {
+        if (!millis) return "0:00";
+        const totalSeconds = millis / 1000;
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = Math.floor(totalSeconds % 60);
+        return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+    };
+
+    const playVoice = async (uri, messageId) => {
+        try {
+            await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true });
+            const { sound } = await Audio.Sound.createAsync(
+                { uri },
+                { shouldPlay: true }
+            );
+
+            setPlayingMessageId(messageId);
+
+            sound.setOnPlaybackStatusUpdate((status) => {
+                if (status.isLoaded) {
+                    if (status.isPlaying) {
+                        setPlaybackTime(status.durationMillis - status.positionMillis);
+                    }
+                    if (status.didJustFinish) {
+                        setPlayingMessageId(null);
+                        setPlaybackTime(0);
+                        sound.unloadAsync();
+                    }
+                }
+            });
+        } catch (err) {
+            Alert.alert("Error", "Could not play audio");
+        }
+    };
 
     // --- 4. Auto-scroll Logic ---
     useEffect(() => {
@@ -102,32 +222,71 @@ const Messages = () => {
     }, [activeConversation]);
 
     // --- 5. Send Message Logic ---
-    const handleSendMessage = () => {
-        if (!selectedUser || message.trim().length === 0) return;
+    const handleSendMessage = async () => {
+        if (!selectedUser || (message.trim().length === 0 && !attachedAudio)) return;
         const messageText = message.trim();
 
         if (editingMessage) {
             dispatch(editMessageAction({ messageId: editingMessage._id, content: messageText }));
             setEditingMessage(null);
         } else {
-            dispatch(sendMessageAction({
-                receiverId: selectedUser._id,
-                content: messageText
-            }));
+            let voiceUrl = null;
+            let duration = null;
+
+            if (attachedAudio) {
+                try {
+                    voiceUrl = await uploadImageToCloudinary(attachedAudio.uri);
+                    duration = attachedAudio.duration;
+                } catch (error) {
+                    return Alert.alert("Error", "Failed to upload voice message");
+                }
+            }
+
+            const messagePayload = {
+                content: voiceUrl ? "Voice Message" : messageText,
+                voiceUrl,
+                duration
+            };
+
+            const targetId = selectedUser.user?._id || selectedUser._id;
+            if (selectedUser.isGroup) {
+                dispatch(sendGroupMessageAction({ groupId: targetId, ...messagePayload }));
+            } else {
+                dispatch(sendMessageAction({
+                    receiverId: targetId,
+                    ...messagePayload
+                }));
+            }
         }
 
+        setAttachedAudio(null);
         setMessage('');
     };
 
-    const handleDeleteConversation = (otherUserId, name) => {
+    const handleDeleteConversation = (item) => {
+        const isGroup = item.isGroup;
+        const name = isGroup ? item.groupName : (item.user?.firstName || 'User');
+        const id = item._id;
+
+        // Check if user is admin for groups
+        if (isGroup && item.groupAdmin?.toString() !== (currentUser?._id || currentUser?.id)?.toString()) {
+            return Alert.alert("Access Denied", "Only the group creator can delete this group.");
+        }
+
         Alert.alert(
-            "Delete Conversation",
-            `Are you sure you want to delete your entire chat history with ${name}? This cannot be undone.`,
+            isGroup ? "Delete Group" : "Delete Conversation",
+            `Are you sure you want to delete ${isGroup ? 'the group' : 'your chat with'} "${name}"? This cannot be undone.`,
             [
                 { text: "Cancel", style: "cancel" },
                 { 
                     text: "Delete", 
-                    onPress: () => dispatch(deleteConversationAction(otherUserId)),
+                    onPress: () => {
+                        if (isGroup) {
+                            dispatch(deleteGroupAction(id));
+                        } else {
+                            dispatch(deleteConversationAction(id));
+                        }
+                    },
                     style: "destructive" 
                 }
             ]
@@ -155,11 +314,32 @@ const Messages = () => {
         );
     };
 
+    const handleCreateGroup = async () => {
+        if (!groupName.trim()) return Alert.alert("Error", "Please enter a group name");
+        if (selectedMembers.length < 2) return Alert.alert("Error", "Select at least 2 members");
+
+        try {
+            await dispatch(createGroupAction({
+                participants: selectedMembers,
+                groupName: groupName.trim()
+            })).unwrap();
+            
+            setIsGroupModalVisible(false);
+            setGroupName('');
+            setGroupSearch('');
+            setSelectedMembers([]);
+            dispatch(getConversationsList());
+            Alert.alert("Success", "Group created!");
+        } catch (error) {
+            Alert.alert("Error", error.message || "Failed to create group");
+        }
+    };
+
     // --- RENDER HELPERS ---
-    const renderRightActions = (id, name) => (
+    const renderRightActions = (item) => (
         <Pressable
             style={styles.deleteAction}
-            onPress={() => handleDeleteConversation(id, name)}
+            onPress={() => handleDeleteConversation(item)}
         >
             <LinearGradient colors={['#EF4444', '#991B1B']} style={styles.deleteGradient}>
                 <Ionicons name="trash-outline" size={24} color="white" />
@@ -167,41 +347,72 @@ const Messages = () => {
         </Pressable>
     );
 
-    const renderActiveUser = (item) => (
-        <TouchableOpacity key={item._id} style={styles.activeUserItem} onPress={() => handleSelectUser(item)}>
-            <View style={[styles.activeAvatarWrapper, { borderColor: colors.primary }]}>
-                <View style={[styles.activeAvatar, { backgroundColor: colors.glass, justifyContent: 'center', alignItems: 'center' }]}>
-                    <Text style={{ color: colors.textMain, fontWeight: 'bold' }}>{item.firstName?.[0] || '?'}</Text>
+    const renderActiveUser = (item) => {
+        const isSelected = selectedMembers.includes(item._id);
+        return (
+            <TouchableOpacity 
+                key={item._id} 
+                style={styles.activeUserItem} 
+                onPress={() => isGroupModalVisible ? toggleMember(item._id) : handleSelectUser(item)}
+            >
+                <View style={[styles.activeAvatarWrapper, { borderColor: isSelected ? colors.primary : 'transparent' }]}>
+                    <View style={[styles.activeAvatar, { backgroundColor: colors.glass, justifyContent: 'center', alignItems: 'center' }]}>
+                        {item.profilePicture ? (
+                            <Image source={{ uri: item.profilePicture }} style={styles.activeAvatar} />
+                        ) : (
+                            <Text style={{ color: colors.textMain, fontWeight: 'bold' }}>{item.firstName?.[0] || '?'}</Text>
+                        )}
+                    </View>
+                    {isSelected && (
+                        <View style={{ position: 'absolute', top: -2, right: -2, backgroundColor: colors.primary, borderRadius: 10 }}>
+                            <Ionicons name="checkmark-circle" size={18} color="white" />
+                        </View>
+                    )}
                 </View>
-            </View>
-            <Text numberOfLines={1} style={[styles.activeUserName, { color: colors.textSecondary }]}>{item.firstName}</Text>
-        </TouchableOpacity>
-    );
+                <Text numberOfLines={1} style={[styles.activeUserName, { color: colors.textSecondary }]}>{item.firstName}</Text>
+            </TouchableOpacity>
+        );
+    };
+
+    const toggleMember = (userId) => {
+        setSelectedMembers(prev => 
+            prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+        );
+    };
 
     const renderChatItem = ({ item }) => (
         <Swipeable 
-            renderRightActions={() => renderRightActions(item._id, item.user?.firstName || 'User')}
+            renderRightActions={() => renderRightActions(item)}
             overshootRight={false}
         >
             <TouchableOpacity 
                 style={[styles.chatCard, { borderBottomColor: colors.glassBorder, backgroundColor: colors.background[0] }]} 
-                onPress={() => item.user && handleSelectUser(item.user)}
+                onPress={() => handleSelectUser(item)}
             >
                 <View style={styles.avatarContainer}>
                     <View style={[styles.avatar, { backgroundColor: colors.glass, justifyContent: 'center', alignItems: 'center' }]}>
-                        <Text style={{ color: colors.textMain, fontSize: 18, fontWeight: '700' }}>
-                            {item.user?.firstName?.[0] || '?'}{item.user?.lastName?.[0] || ''}
-                        </Text>
+                        {(!item.isGroup && item.user?.profilePicture) ? (
+                            <Image source={{ uri: item.user.profilePicture }} style={styles.avatar} />
+                        ) : (
+                            <Text style={{ color: colors.textMain, fontSize: 18, fontWeight: '700' }}>
+                                {item.isGroup ? (item.groupName?.[0] || 'G') : (item.user?.firstName?.[0] || '?')}
+                                {!item.isGroup && item.user?.lastName?.[0] ? item.user.lastName[0] : ''}
+                            </Text>
+                        )}
                     </View>
                     <View style={[styles.onlineBadge, { borderColor: colors.background[0] }]} />
                 </View>
                 <View style={styles.chatInfo}>
                     <View style={styles.chatHeader}>
                         <Text style={[styles.userName, { color: colors.textMain, fontWeight: item?.unreadCount > 0 ? '900' : '700' }]}>
-                            {item?.user?.firstName || 'User'} {item?.user?.lastName || ''}
+                            {item.isGroup ? (
+                                <><Ionicons name="people" size={16} /> {item.groupName}</>
+                            ) : (
+                                `${item?.user?.firstName || 'User'} ${item?.user?.lastName || ''}`
+                            )}
                         </Text>
                         <Text style={[styles.timeText, { color: item?.unreadCount > 0 ? colors.primary : colors.textSecondary }]}>
-                            {item.lastMessageTime ? new Date(item.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                            {item.lastMessageTime ? new Date(item.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : ''}
                         </Text>
                     </View>
                     <View style={styles.messageRow}>
@@ -221,37 +432,58 @@ const Messages = () => {
 
     // --- CHAT WINDOW (DETAIL VIEW) ---
     if (selectedUser) {
+        const chatData = selectedUser.isGroup ? activeGroupMessages : activeConversation;
         return (
             <SafeAreaView style={{ flex: 1, backgroundColor: colors.background[0] }}>
                 <KeyboardAvoidingView 
                     style={{ flex: 1 }}
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
                 >
                 {/* Header */}
                 <View style={[styles.chatViewHeader, { borderBottomColor: colors.glassBorder }]}>
                     <TouchableOpacity onPress={() => setSelectedUser(null)}>
                         <Ionicons name="chevron-back" size={28} color={colors.textMain} />
                     </TouchableOpacity>
-                    <View style={[styles.headerAvatar, { backgroundColor: colors.glass, justifyContent: 'center', alignItems: 'center', marginLeft: 10 }]}>
-                         <Text style={{ color: colors.textMain, fontWeight: '700' }}>{selectedUser.firstName?.[0]}</Text>
-                    </View>
-                    <View style={{ flex: 1, marginLeft: 10 }}>
-                        <Text style={[styles.userName, { color: colors.textMain }]}>{selectedUser.firstName} {selectedUser.lastName}</Text>
-                        <Text style={{ fontSize: 12, color: '#10B981', fontWeight: '600' }}>Online</Text>
-                    </View>
+                    <TouchableOpacity 
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+                        onPress={() => selectedUser.isGroup && setIsMembersModalVisible(true)}
+                        disabled={!selectedUser.isGroup}
+                    >
+                        {selectedUser.isGroup ? (
+                            <View style={[styles.headerAvatar, { backgroundColor: colors.glass, justifyContent: 'center', alignItems: 'center', marginLeft: 10 }]}>
+                                <Ionicons name="people" size={20} color={colors.primary} />
+                            </View>
+                        ) : (
+                            <View style={[styles.headerAvatar, { backgroundColor: colors.glass, justifyContent: 'center', alignItems: 'center', marginLeft: 10, overflow: 'hidden' }]}>
+                                 {selectedUser.user?.profilePicture ? (
+                                    <Image source={{ uri: selectedUser.user.profilePicture }} style={styles.headerAvatar} />
+                                 ) : (
+                                    <Text style={{ color: colors.textMain, fontWeight: '700' }}>{selectedUser.user?.firstName?.[0]}</Text>
+                                 )}
+                            </View>
+                        )}
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                        <Text style={[styles.userName, { color: colors.textMain }]}>
+                            {selectedUser.isGroup ? selectedUser.groupName : `${selectedUser.user?.firstName} ${selectedUser.user?.lastName}`}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: '#10B981', fontWeight: '600' }}>
+                            {selectedUser.isGroup ? 'Group Chat' : 'Online'}
+                        </Text>
+                        </View>
+                    </TouchableOpacity>
                 </View>
 
                 {/* Messages List Area */}
                 <View style={{ flex: 1 }}>
-                    {messagesLoading && activeConversation.length === 0 ? (
+                    {(messagesLoading || groupsLoading) && chatData.length === 0 ? (
                         <View style={{ flex: 1, justifyContent: 'center' }}>
                             <ActivityIndicator color={colors.primary} />
                         </View>
                     ) : (
                         <FlatList
                             ref={flatListRef}
-                            data={activeConversation}
+                            data={chatData}
                             keyExtractor={(item) => item._id}
                             contentContainerStyle={{ paddingHorizontal: 15, paddingVertical: 20 }}
                             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
@@ -276,15 +508,37 @@ const Messages = () => {
                                                 borderBottomLeftRadius: isMe ? 20 : 4,
                                             }
                                         ]}>
-                                            <Text style={{ color: isMe ? '#FFF' : colors.textMain, fontSize: 15, lineHeight: 20 }}>
-                                                {item.content}
-                                            </Text>
+                                            {item.voiceUrl ? (
+                                                <TouchableOpacity 
+                                                    onPress={() => playVoice(item.voiceUrl, item._id)}
+                                                    style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 5 }}
+                                                >
+                                                    <Ionicons name={playingMessageId === item._id ? "pause-circle" : "play-circle"} size={32} color={isMe ? "#FFF" : colors.primary} />
+                                                    <View>
+                                                        <Text style={{ color: isMe ? '#FFF' : colors.textMain, fontWeight: '600' }}>
+                                                            {playingMessageId === item._id ? "Playing..." : "Voice Message"}
+                                                        </Text>
+                                                        <Text style={{ color: isMe ? 'rgba(255,255,255,0.7)' : colors.textSecondary, fontSize: 11 }}>
+                                                            {playingMessageId === item._id ? formatDuration(playbackTime) : formatDuration(item.duration)}
+                                                        </Text>
+                                                    </View>
+                                                </TouchableOpacity>
+                                            ) : (
+                                                <Text style={{ color: isMe ? '#FFF' : colors.textMain, fontSize: 15, lineHeight: 20 }}>
+                                                    {item.content}
+                                                </Text>
+                                            )}
                                             <View style={{ flexDirection: 'row', alignSelf: 'flex-end', alignItems: 'center' }}>
+                                                {selectedUser.isGroup && !isMe && (
+                                                    <Text style={{ fontSize: 9, color: colors.textSecondary, marginRight: 8, fontStyle: 'italic', fontWeight: '600' }}>
+                                                        ~ {item.senderName || item.sender?.firstName || 'User'}
+                                                    </Text>
+                                                )}
                                                 {item.isEdited && (
                                                     <Text style={{ fontSize: 9, color: isMe ? 'rgba(255,255,255,0.5)' : colors.textSecondary, marginRight: 4 }}>Edited</Text>
                                                 )}
                                                 <Text style={[styles.bubbleTime, { color: isMe ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>
-                                                    {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
                                                 </Text>
                                             </View>
                                         </View>
@@ -305,30 +559,106 @@ const Messages = () => {
                     </View>
                 )}
                 <View style={[styles.inputWrapper, { backgroundColor: colors.background[0], borderTopColor: colors.glassBorder }]}>
-                    <TouchableOpacity style={styles.iconBtn}>
-                        <Ionicons name="happy-outline" size={24} color={colors.textSecondary} />
-                    </TouchableOpacity>
-                    <TextInput 
-                        placeholder="Message..." 
-                        placeholderTextColor={colors.textSecondary}
-                        style={[styles.chatInput, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', color: colors.textMain }]}
-                        value={message}
-                        onChangeText={setMessage}
-                        multiline={true}
-                        blurOnSubmit={false}
-                    />
+                    {!attachedAudio && (
+                        <TouchableOpacity 
+                            style={styles.iconBtn}
+                            onPress={isRecording ? stopRecording : startRecording}
+                        >
+                            <Ionicons 
+                                name={isRecording ? "stop" : "mic-outline"} 
+                                size={24} 
+                                color={isRecording ? "#EF4444" : colors.textSecondary} 
+                            />
+                        </TouchableOpacity>
+                    )}
+                    {attachedAudio ? (
+                        <View style={[styles.chatInput, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <Ionicons name="mic" size={18} color={colors.primary} />
+                                <Text style={{ color: colors.textMain, marginLeft: 8, fontWeight: '600' }}>
+                                    Voice ({formatDuration(attachedAudio.duration)})
+                                </Text>
+                            </View>
+                            <TouchableOpacity onPress={cancelAttachment}>
+                                <Ionicons name="close-circle" size={24} color="#EF4444" />
+                            </TouchableOpacity>
+                        </View>
+                    ) : isRecording ? (
+                        <View style={[styles.chatInput, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', justifyContent: 'center', alignItems: 'flex-start' }]}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <Ionicons name="radio-button-on" size={14} color="#EF4444" style={{ marginRight: 6 }} />
+                                <Text style={{ color: '#EF4444', fontWeight: 'bold' }}>
+                                    Recording... {formatDuration(recordingDuration)}
+                                </Text>
+                            </View>
+                        </View>
+                    ) : (
+                        <TextInput 
+                            placeholder="Message..." 
+                            placeholderTextColor={colors.textSecondary}
+                            style={[styles.chatInput, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', color: colors.textMain }]}
+                            value={message}
+                            onChangeText={setMessage}
+                            multiline={true}
+                            blurOnSubmit={false}
+                        />
+                    )}
                     <TouchableOpacity 
-                        style={[styles.sendBtn, { backgroundColor: message.trim() ? colors.primary : 'transparent' }]} 
+                        style={[styles.sendBtn, { backgroundColor: (message.trim() || attachedAudio) ? colors.primary : 'transparent' }]} 
                         onPress={handleSendMessage}
-                        disabled={!message.trim()}
+                        disabled={!message.trim() && !attachedAudio}
                     >
                         <Ionicons 
-                            name={message.trim() ? "send" : "arrow-up"} 
+                            name="send" 
                             size={20} 
-                            color={message.trim() ? '#FFF' : colors.textSecondary} 
+                            color={(message.trim() || attachedAudio) ? '#FFF' : colors.textSecondary}
                         />
                     </TouchableOpacity>
                 </View>
+
+                {/* Group Members Modal */}
+                <Modal visible={isMembersModalVisible} animationType="slide" transparent={true}>
+                    <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+                        <View style={{ backgroundColor: colors.background[0], borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, height: '60%' }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                                <View>
+                                    <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.textMain }}>{selectedUser.groupName}</Text>
+                                    <Text style={{ fontSize: 14, color: colors.textSecondary }}>{selectedUser.participants?.length || 0} Members</Text>
+                                </View>
+                                <TouchableOpacity onPress={() => setIsMembersModalVisible(false)}>
+                                    <Ionicons name="close" size={28} color={colors.textSecondary} />
+                                </TouchableOpacity>
+                            </View>
+                            
+                            <FlatList
+                                data={selectedUser.participants}
+                                keyExtractor={item => item._id}
+                                showsVerticalScrollIndicator={false}
+                                renderItem={({ item }) => (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: colors.glassBorder }}>
+                                        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.glass, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
+                                            {item.profilePicture ? (
+                                                <Image source={{ uri: item.profilePicture }} style={{ width: '100%', height: '100%' }} />
+                                            ) : (
+                                                <Text style={{ color: colors.textMain, fontWeight: '700' }}>{item.firstName?.[0]}</Text>
+                                            )}
+                                        </View>
+                                        <View style={{ flex: 1, marginLeft: 15 }}>
+                                            <Text style={{ color: colors.textMain, fontWeight: '600', fontSize: 16 }}>{item.firstName} {item.lastName}</Text>
+                                            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>@{item.username}</Text>
+                                        </View>
+                                        {selectedUser.groupAdmin === item._id && (
+                                            <View style={{ backgroundColor: colors.primary + '20', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                                                <Text style={{ color: colors.primary, fontSize: 10, fontWeight: 'bold' }}>ADMIN</Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                )}
+                            />
+                        </View>
+                    </View>
+                </Modal>
+
                 </KeyboardAvoidingView>
             </SafeAreaView>
         );
@@ -343,7 +673,15 @@ const Messages = () => {
             ) : (
                 <>
                     <View style={styles.headerPadding}>
-                        <Text style={[styles.screenTitle, { color: colors.textMain }]}>Messages</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+                            <Text style={[styles.screenTitle, { color: colors.textMain, marginBottom: 0 }]}>Messages</Text>
+                            <TouchableOpacity 
+                                onPress={() => setIsGroupModalVisible(true)} 
+                                style={{ backgroundColor: colors.glass, padding: 8, borderRadius: 12, borderWidth: 1, borderColor: colors.glassBorder }}
+                            >
+                                <Ionicons name="people-outline" size={24} color={colors.primary} />
+                            </TouchableOpacity>
+                        </View>
                         <View style={[styles.searchContainer, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
                             <Ionicons name="search" size={18} color={colors.textSecondary} />
                             <TextInput
@@ -370,10 +708,10 @@ const Messages = () => {
                     <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>RECENT MESSAGES</Text>
 
                     <FlatList
-                        data={conversations
+                        data={[...conversations, ...groups]
                             .filter(c => {
-                                const fullName = c?.user ? `${c.user.firstName} ${c.user.lastName}` : '';
-                                return fullName.toLowerCase().includes(search.toLowerCase());
+                                const name = c.isGroup ? c.groupName : `${c.user?.firstName} ${c.user?.lastName}`;
+                                return name.toLowerCase().includes(search.toLowerCase());
                             })
                             .sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime))
                         }
@@ -384,6 +722,72 @@ const Messages = () => {
                     />
                 </>
             )}
+
+            {/* Group Creation Modal */}
+            <Modal visible={isGroupModalVisible} animationType="slide" transparent={true}>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+                    <View style={{ backgroundColor: colors.background[0], borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, height: '80%' }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.textMain }}>Create New Group</Text>
+                            <TouchableOpacity onPress={() => { setIsGroupModalVisible(false); setGroupSearch(''); }}>
+                                <Ionicons name="close" size={28} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <TextInput
+                            placeholder="Group Name"
+                            placeholderTextColor={colors.textSecondary}
+                            style={{ backgroundColor: colors.glass, color: colors.textMain, padding: 15, borderRadius: 15, marginBottom: 20 }}
+                            value={groupName}
+                            onChangeText={setGroupName}
+                        />
+
+                        <View style={[styles.searchContainer, { backgroundColor: colors.glass, borderColor: colors.glassBorder, marginBottom: 15, height: 40 }]}>
+                            <Ionicons name="search" size={16} color={colors.textSecondary} />
+                            <TextInput
+                                placeholder="Search users to add..."
+                                placeholderTextColor={colors.textSecondary + '80'}
+                                style={[styles.searchInput, { color: colors.textMain, fontSize: 14 }]}
+                                value={groupSearch}
+                                onChangeText={setGroupSearch}
+                            />
+                        </View>
+
+                        <Text style={{ color: colors.textSecondary, marginBottom: 10, fontWeight: '600' }}>SELECT MEMBERS ({selectedMembers.length})</Text>
+                        
+                        <FlatList
+                            data={allUsers.filter(u => 
+                                `${u.firstName} ${u.lastName}`.toLowerCase().includes(groupSearch.toLowerCase()) ||
+                                u.username?.toLowerCase().includes(groupSearch.toLowerCase())
+                            )}
+                            keyExtractor={item => item._id}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity 
+                                    onPress={() => toggleMember(item._id)}
+                                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: colors.glassBorder }}
+                                >
+                                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.glass, justifyContent: 'center', alignItems: 'center' }}>
+                                        <Text style={{ color: colors.textMain }}>{item.firstName[0]}</Text>
+                                    </View>
+                                    <Text style={{ flex: 1, marginLeft: 15, color: colors.textMain }}>{item.firstName} {item.lastName}</Text>
+                                    <Ionicons 
+                                        name={selectedMembers.includes(item._id) ? "checkbox" : "square-outline"} 
+                                        size={24} 
+                                        color={selectedMembers.includes(item._id) ? colors.primary : colors.textSecondary} 
+                                    />
+                                </TouchableOpacity>
+                            )}
+                        />
+
+                        <TouchableOpacity 
+                            onPress={handleCreateGroup}
+                            style={{ backgroundColor: colors.primary, padding: 18, borderRadius: 15, alignItems: 'center', marginTop: 10 }}
+                        >
+                            <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Create Group</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -424,7 +828,7 @@ const styles = StyleSheet.create({
     bubble: { padding: 14, borderRadius: 20, maxWidth: '80%', elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 1 },
     bubbleTime: { fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
     
-    inputWrapper: { flexDirection: 'row', alignItems: 'center', padding: 12, borderTopWidth: 1, paddingBottom: Platform.OS === 'ios' ? 20 : 80 },
+    inputWrapper: { flexDirection: 'row', alignItems: 'center', padding: 12, borderTopWidth: 1, paddingBottom: Platform.OS === 'ios' ? 10 : 80 },
     chatInput: { flex: 1, maxHeight: 100, borderRadius: 22, paddingHorizontal: 18, marginHorizontal: 10, fontSize: 16, paddingTop: 10, paddingBottom: 10 },
     iconBtn: { padding: 5 },
     sendBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },

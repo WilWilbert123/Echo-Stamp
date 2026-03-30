@@ -1,11 +1,10 @@
 import axios from 'axios';
 
 const API = axios.create({
-   //baseURL: 'http://192.168.0.223:5000/api', 
+   //baseURL: 'http://192.168.0.223:10000/api', 
    baseURL: 'https://echo-stamp.onrender.com/api',
     timeout: 60000,
 });
-
  
 API.interceptors.request.use(
     async (config) => {
@@ -86,6 +85,7 @@ export const getAllEvents = () => API.get('/events');
 
 // --- Privacy & Visibility ---
 export const updatePrivacy = (data) => API.patch('/users/update-privacy', data);
+export const updateProfile = (data) => API.patch('/users/update-profile', data);
 
 
 // --- Updated fetchGlobalFeed ---
@@ -99,11 +99,23 @@ export const removeConversation = (otherUserId) => API.delete(`/messages/convers
 export const updateMessage = (id, content) => API.patch(`/messages/${id}`, { content });
 export const removeMessage = (id) => API.delete(`/messages/${id}`);
 
+// groups
+export const postGroup = (groupData) => API.post('/groups', groupData);
+export const fetchGroups = () => API.get('/groups');
+export const fetchGroupMessages = (groupId) => API.get(`/groups/${groupId}`);
+export const postGroupMessage = (data) => API.post('/groups/message', data);
+export const removeGroup = (groupId) => API.delete(`/groups/${groupId}`);
+export const markGroupRead = (groupId) => API.put(`/groups/read/${groupId}`);
+
 // Optional: Mark messages as read
 export const markAsRead = (otherUserId) => API.put(`/messages/read/${otherUserId}`);
 
  //fetch all user
  export const fetchAllUsers = () => API.get('/users/all');
+
+// notifications
+export const fetchNotifications = () => API.get('/notifications');
+export const markNotificationsRead = () => API.patch('/notifications/read');
 
 export const Config = { MAPS_SDK_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_SDK_KEY, PLACES_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY,};
 

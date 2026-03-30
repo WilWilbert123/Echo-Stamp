@@ -6,7 +6,9 @@ import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTheme } from '../context/ThemeContext';
+import { getGroupsList } from '../redux/groupSlice';
 import { getConversationsList } from '../redux/messageSlice';
+import { getNotificationsAsync } from '../redux/notificationSlice';
 
 // Import your screens
 import Atlas from '../screens/Atlas/Atlas';
@@ -24,13 +26,24 @@ const MainTabs = () => {
   
   
   const { conversations } = useSelector((state) => state.messages);
+  const { groups } = useSelector((state) => state.groups);
+  const { unreadCount: notifCount } = useSelector((state) => state.notifications || { unreadCount: 0 });
   
-  
-  const badgeCount = conversations?.reduce((acc, conv) => acc + (conv.unreadCount || 0), 0) || 0;
+  const chatBadge = (conversations?.reduce((acc, conv) => acc + (conv.unreadCount || 0), 0) || 0) + (groups?.reduce((acc, g) => acc + (g.unreadCount || 0), 0) || 0);
 
   useEffect(() => {
-    
     dispatch(getConversationsList());
+    dispatch(getGroupsList());
+    dispatch(getNotificationsAsync());
+
+    // Start global polling for badges
+    const pollInterval = setInterval(() => {
+      dispatch(getConversationsList());
+      dispatch(getGroupsList());
+      dispatch(getNotificationsAsync());
+    }, 10000); // Sync every 10 seconds
+
+    return () => clearInterval(pollInterval);
   }, [dispatch]);
 
   // --- CALL LISTENER ---
@@ -118,7 +131,7 @@ const MainTabs = () => {
         options={{ 
           tabBarLabel: 'Chat',
           tabBarIcon: ({ color }) => <Ionicons name="chatbubbles" size={22} color={color} />,
-          tabBarBadge: badgeCount > 0 ? badgeCount : null, 
+          tabBarBadge: chatBadge > 0 ? chatBadge : null, 
           tabBarBadgeStyle: { 
             backgroundColor: colors.accent, 
             color: '#000', 
@@ -131,7 +144,16 @@ const MainTabs = () => {
       <Tab.Screen 
         name="Profile" 
         component={Profile} 
-        options={{ tabBarIcon: ({ color }) => <Ionicons name="person-outline" size={24} color={color} /> }} 
+        options={{ 
+          tabBarIcon: ({ color }) => <Ionicons name="person-outline" size={24} color={color} />,
+          tabBarBadge: notifCount > 0 ? notifCount : null,
+          tabBarBadgeStyle: {
+            backgroundColor: colors.accent,
+            color: '#000',
+            fontSize: 10,
+            lineHeight: 14
+          }
+        }} 
       />
     </Tab.Navigator>
   );

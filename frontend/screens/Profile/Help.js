@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Location from 'expo-location'; // Added location import
 import * as MailComposer from 'expo-mail-composer';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -42,13 +41,12 @@ const Help = ({ navigation }) => {
     const [expandedFaq, setExpandedFaq] = useState(null);
     const [isChatVisible, setIsChatVisible] = useState(false);
     const [chatMessage, setChatMessage] = useState('');
-    const [location, setLocation] = useState(null); // Local location state
 
     const scrollViewRef = useRef();
 
-    // Sync Chat History & Fetch Location
+    // Sync Chat History
     useEffect(() => {
-        const loadHistoryAndLocation = async () => {
+        const loadHistory = async () => {
             // 1. Fetch History
             try {
                 const response = await fetchChatHistory();
@@ -59,23 +57,10 @@ const Help = ({ navigation }) => {
             } catch (error) {
                 console.log("Chat history sync skipped: Backend offline or empty.");
             }
-
-            // 2. Request Location Permissions and Get Current Position
-            try {
-                let { status } = await Location.requestForegroundPermissionsAsync();
-                if (status === 'granted') {
-                    const currentLoc = await Location.getCurrentPositionAsync({
-                        accuracy: Location.Accuracy.Balanced,
-                    });
-                    setLocation(currentLoc.coords);
-                }
-            } catch (error) {
-                console.log("Location permission denied or failed.");
-            }
         };
 
         if (isChatVisible) {
-            loadHistoryAndLocation();
+            loadHistory();
         }
     }, [isChatVisible, dispatch]);
 
@@ -99,8 +84,8 @@ const Help = ({ navigation }) => {
         dispatch(setChatLoading(true));
 
         try {
-            // Passing 'location' as a second argument to your API service
-            const response = await askAiAssistant(messageText, location);
+            // Removed 'location' argument
+            const response = await askAiAssistant(messageText);
             const responseText = response.data?.text || response.text;
 
             if (responseText) {
@@ -307,7 +292,10 @@ const Help = ({ navigation }) => {
                         )}
                     </ScrollView>
 
-                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+                    <KeyboardAvoidingView 
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+                    >
                         <View style={[styles.inputContainer, { paddingBottom: insets.bottom + 10, backgroundColor: isDark ? '#1E293B' : '#FFF' }]}>
                             <TextInput 
                                 style={[styles.chatInput, { color: colors.textMain, backgroundColor: isDark ? '#0F172A' : '#F1F5F9' }]}

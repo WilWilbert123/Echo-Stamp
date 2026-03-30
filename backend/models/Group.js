@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 
-const conversationSchema = new mongoose.Schema({
+const groupSchema = new mongoose.Schema({
+    name: { type: String, required: true, trim: true },
+    admin: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     participants: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
@@ -11,16 +13,17 @@ const conversationSchema = new mongoose.Schema({
             ref: 'User',
             required: true
         },
+        senderName: String,
         content: {
             type: String,
             trim: true
         },
+        seenBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
         voiceUrl: { type: String },
         duration: { type: Number },
-        isRead: { type: Boolean, default: false },
         isEdited: { type: Boolean, default: false },
         createdAt: { type: Date, default: Date.now }
     }]
 }, { timestamps: true });
 
-module.exports = mongoose.model('Message', conversationSchema);
+module.exports = mongoose.model('Group', groupSchema);

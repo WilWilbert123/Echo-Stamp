@@ -14,10 +14,12 @@ const journalSchema = new mongoose.Schema({
   comments: [{
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     username: String,
+    profilePicture: String,
     text: { type: String, required: true },
     replies: [{
       userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
       username: String,
+      profilePicture: String,
       text: { type: String, required: true },
       createdAt: { type: Date, default: Date.now }
     }],
