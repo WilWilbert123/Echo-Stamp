@@ -2,7 +2,7 @@
   "expo": {
     "name": "Echo Stamp",
     "slug": "Echo-Stamp",
-    "version": "1.0.4",
+    "version": "1.0.7",
     "orientation": "portrait",
     "icon": "./assets/images/ES2.png",
     "scheme": "echostamp",

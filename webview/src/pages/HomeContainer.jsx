@@ -68,7 +68,12 @@ const HomeContainer = forwardRef(({ onExplore }, ref) => {
       <section className="snap-section" data-index="0"><LandingPage onExplore={onExplore} /></section>
       <section className="snap-section" data-index="1"><FeatureSection /></section>
       <section className="snap-section" data-index="2"><RatingsSection /></section>
-      <section className="snap-section" data-index="3"><CTASection onExplore={onExplore} /></section>
+      <section className="snap-section" data-index="3">
+        <CTASection scrollTo={(index) => {
+          const sections = containerRef.current.querySelectorAll('.snap-section');
+          sections[index]?.scrollIntoView({ behavior: 'smooth' });
+        }} />
+      </section>
 
       {/* Side Dots Indicators */}
       <div className="scroll-dots">
