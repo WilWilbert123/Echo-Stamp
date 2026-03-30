@@ -8,21 +8,28 @@ const Header = ({ scrollTo, isDark, toggleTheme }) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
-    // Since HomeContainer uses its own scroll container, we target that specifically
-    const scrollContainer = document.querySelector('.scroll-snap-container');
-    
-    const handleScroll = () => {
+    let scrollContainer = null;
+    let handleScroll = null;
+
+  
+    const setupListener = () => {
+      scrollContainer = document.querySelector('.scroll-snap-container');
+      
       if (scrollContainer) {
-        setIsScrolled(scrollContainer.scrollTop > 50);
+        handleScroll = () => {
+          // Use a small buffer to ensure snap points don't cause jitter
+          setIsScrolled(scrollContainer.scrollTop > 20);
+        };
+        scrollContainer.addEventListener('scroll', handleScroll);
+        handleScroll();  
       }
     };
 
-    if (scrollContainer) {
-      scrollContainer.addEventListener('scroll', handleScroll);
-    }
+    const timer = setTimeout(setupListener, 100);
 
     return () => {
-      if (scrollContainer) {
+      clearTimeout(timer);
+      if (scrollContainer && handleScroll) {
         scrollContainer.removeEventListener('scroll', handleScroll);
       }
     };

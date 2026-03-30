@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import Button from '../components/Button';
 import '../styles/CTASection.css';
 
-const CTASection = ({ onExplore }) => {
+const CTASection = ({ scrollTo }) => {
   const contentRef = useRef(null);
 
   useEffect(() => {
@@ -26,7 +26,7 @@ const CTASection = ({ onExplore }) => {
       <div className="cta-content-container" ref={contentRef}>
        
         
-        <h2 className="cta-title">
+        <h2 className="cta-title" >
           Ready to <br />
           <span className="text-gradient text-shimmer">Start Echoing?</span>
         </h2>
@@ -36,8 +36,16 @@ const CTASection = ({ onExplore }) => {
           footprint with the power of Echo Stamps.
         </p>
         
-        <div className="cta-actions">
-          <Button variant="primary" onClick={onExplore} className="hero-cta">
+        <div className="cta-actions" >
+          <Button 
+            variant="primary" 
+            onClick={() => {
+              if (scrollTo) {
+                scrollTo(0);
+              }
+            }} 
+            className="hero-cta"
+          >
             Get Started Now
           </Button>
         </div>
