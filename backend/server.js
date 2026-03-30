@@ -4,7 +4,7 @@ const cors = require('cors');
 const { errorHandler } = require('./middleware/errorMiddleware');
 const connectDB = require('./config/db');
 const cloudinary = require('cloudinary').v2;
- 
+const groupRoutes = require('./routes/groupRoutes');
 // Load environment variables
 require('dotenv').config();  
 
@@ -46,8 +46,10 @@ app.use('/api/chat', require('./routes/chatRoutes'));
 app.use('/api/events', require('./routes/eventRoutes'));
 
 app.use('/api/messages', require('./routes/messageRoutes'));  
-//cron-job
-app.get('/ping', (req, res) => res.status(200).send('ping'));
+app.use('/api/groups', require('./routes/groupRoutes'));
+app.use('/api/groups', groupRoutes);
+
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 //cron-job ping
 app.get('/ping', (req, res) => res.status(200).send('ping'));

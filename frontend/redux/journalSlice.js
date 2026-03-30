@@ -1,16 +1,16 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import {
-    commentJournal,
-    deleteJournal,
-    fetchGlobalFeed,
-    fetchJournals,
-    likeJournal,
-    postJournal,
-    removeComment,
-    removeMediaFromJournal,
-    replyToComment,
-    updateComment,
-    updateReply
+  commentJournal,
+  deleteJournal,
+  fetchGlobalFeed,
+  fetchJournals,
+  likeJournal,
+  postJournal,
+  removeComment,
+  removeMediaFromJournal,
+  replyToComment,
+  updateComment,
+  updateReply
 } from '../services/api';
 
 // --- Async Thunks ---
@@ -170,6 +170,34 @@ const journalSlice = createSlice({
         state.list = [];
         state.globalList = [];
         state.error = null;
+    },
+    updateJournalUser: (state, action) => {
+      const { userId, firstName, lastName, profilePicture } = action.payload;
+      const updateFn = (j) => {
+        if (j.userId?._id === userId || j.userId === userId) {
+          if (j.userId && typeof j.userId === 'object') {
+            j.userId.firstName = firstName;
+            j.userId.lastName = lastName;
+            j.userId.profilePicture = profilePicture;
+          }
+        }
+        j.comments?.forEach(c => {
+          const cid = c.userId?._id || c.userId;
+          if (cid === userId) {
+            c.username = `${firstName} ${lastName}`;
+            c.profilePicture = profilePicture;
+          }
+          c.replies?.forEach(r => {
+            const rid = r.userId?._id || r.userId;
+            if (rid === userId) {
+              r.username = `${firstName} ${lastName}`;
+              r.profilePicture = profilePicture;
+            }
+          });
+        });
+      };
+      state.list.forEach(updateFn);
+      state.globalList.forEach(updateFn);
     }
   },
   extraReducers: (builder) => {
@@ -233,5 +261,5 @@ const journalSlice = createSlice({
   },
 });
 
-export const { clearJournals } = journalSlice.actions;
+export const { clearJournals, updateJournalUser } = journalSlice.actions;
 export default journalSlice.reducer;

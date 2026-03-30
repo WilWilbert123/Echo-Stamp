@@ -1,3 +1,4 @@
+import LottieView from 'lottie-react-native';
 import React, { useCallback } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, Text, View } from 'react-native';
 import { useTheme } from '../../../../context/ThemeContext';
@@ -44,6 +45,15 @@ const Feed = ({ filter }) => {
                     contentContainerStyle={styles.listPadding}
                     refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+                    }
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <LottieView
+                                source={require('../../../../assets/empty_ghost.json')}
+                                autoPlay loop style={styles.emptyLottie}
+                            />
+                            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No Journals found yet.</Text>
+                        </View>
                     }
                 />
             )}

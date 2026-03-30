@@ -68,7 +68,7 @@ const About = ({ navigation }) => {
                         />
                     </View>
                     <Text style={[styles.appName, { color: colors.textMain }]}>Echo Stamp</Text>
-                    <Text style={[styles.versionText, { color: colors.textSecondary }]}>Version 1.2.0 (Build 2603)</Text>
+                    <Text style={[styles.versionText, { color: colors.textSecondary }]}>Version 1.0.8 (Build 2603)</Text>
                 </View>
 
                 {/* Mission Section */}

@@ -2,18 +2,24 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Dimensions,
+    FlatList,
+    Image,
+    Modal,
     Platform,
     ScrollView,
     StatusBar,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
@@ -21,7 +27,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTheme } from '../../context/ThemeContext';
 import { logout, setCredentials } from '../../redux/authSlice';
-import { updatePrivacy } from '../../services/api';
+import { updateJournalUser } from '../../redux/journalSlice';
+import { getNotificationsAsync, markAllReadAsync } from '../../redux/notificationSlice';
+import { updatePrivacy, updateProfile } from '../../services/api';
+import { uploadImageToCloudinary } from '../../services/cloudinary';
 
 // --- IMPORT YOUR REUSABLE COMPONENT ---
 import BrandedHeader from '../../components/BrandedHeader';
@@ -47,6 +56,18 @@ const Profile = ({ navigation }) => {
     const [localNotif, setLocalNotif] = useState(null);
     const [saveCredsEnabled, setSaveCredsEnabled] = useState(null);
 
+    // Edit Profile State
+    const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+    const [tempFirstName, setTempFirstName] = useState('');
+    const [tempLastName, setTempLastName] = useState('');
+    const [tempUsername, setTempUsername] = useState('');
+    const [tempImage, setTempImage] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Notifications State
+    const [isNotifModalVisible, setIsNotifModalVisible] = useState(false);
+    const { list: notifications, unreadCount } = useSelector(state => state.notifications || { list: [], unreadCount: 0 });
+
     const statsData = useMemo(() => {
         const cities = list.map(echo => echo.location?.address?.split(',')[0]).filter(Boolean);
         const unique = [...new Set(cities)].length;
@@ -54,6 +75,10 @@ const Profile = ({ navigation }) => {
         const level = Math.floor(list.length / 50) + 1;
         return { unique, progress, level };
     }, [list]);
+
+    useEffect(() => {
+        dispatch(getNotificationsAsync());
+    }, [dispatch]);
 
     useEffect(() => {
         const loadNotifPref = async () => {
@@ -156,6 +181,71 @@ const Profile = ({ navigation }) => {
         ]);
     };
 
+    const handlePickImage = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.7,
+        });
+
+        if (!result.canceled) {
+            setTempImage(result.assets[0].uri);
+        }
+    };
+
+    const handleSaveProfile = async () => {
+        if (!tempFirstName.trim() || !tempLastName.trim()) 
+            return Alert.alert("Error", "Name fields cannot be empty");
+        setIsSaving(true);
+        try {
+            let imageUrl = user.profilePicture;
+
+            // Upload new image if changed
+            if (tempImage && tempImage !== user.profilePicture) {
+                imageUrl = await uploadImageToCloudinary(tempImage);
+            } else if (tempImage === null && user.profilePicture) {
+                imageUrl = null; // Handle deletion
+            }
+
+            const response = await updateProfile({
+                firstName: tempFirstName.trim(),
+                lastName: tempLastName.trim(),
+                profilePicture: imageUrl
+            });
+
+            const updatedUser = response.data.user;
+            dispatch(setCredentials({ user: updatedUser, token: authToken }));
+            
+            // Sync changes to the Journal Feed locally
+            dispatch(updateJournalUser({
+                userId: updatedUser.id,
+                firstName: updatedUser.firstName,
+                lastName: updatedUser.lastName,
+                profilePicture: updatedUser.profilePicture
+            }));
+
+            setIsEditModalVisible(false);
+            Alert.alert("Success", "Profile updated successfully");
+        } catch (error) {
+            Alert.alert("Error", error.response?.data?.message || "Failed to update profile");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const openEditModal = () => {
+        setTempFirstName(user.firstName || '');
+        setTempLastName(user.lastName || '');
+        setTempImage(user.profilePicture);
+        setIsEditModalVisible(true);
+    };
+
+    const openNotifModal = () => {
+        setIsNotifModalVisible(true);
+        if (unreadCount > 0) dispatch(markAllReadAsync());
+    };
+
     // --- REUSABLE SETTING ITEM ---
     const SettingItem = ({ icon, title, value, onPress, isLast, color, isToggle, toggleValue }) => (
         <TouchableOpacity
@@ -199,6 +289,19 @@ const Profile = ({ navigation }) => {
             {/* --- REUSABLE BRANDED HEADER --- */}
             <BrandedHeader colors={colors} isDark={isDark} />
 
+            {/* Notification Bell Icon */}
+            <TouchableOpacity 
+                onPress={openNotifModal}
+                style={[styles.notifHeaderBtn, { top: insets.top + 15 }]}
+            >
+                <Ionicons name="notifications" size={24} color={colors.textMain} />
+                {unreadCount > 0 && (
+                    <View style={[styles.notifBadge, { backgroundColor: colors.accent }]}>
+                        <Text style={styles.notifBadgeText}>{unreadCount}</Text>
+                    </View>
+                )}
+            </TouchableOpacity>
+
             <ScrollView
                 contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20, paddingBottom: 120 }]}
                 showsVerticalScrollIndicator={false}
@@ -206,19 +309,34 @@ const Profile = ({ navigation }) => {
             >
                 {/* Profile Identity */}
                 <View style={styles.header}>
-                    <View style={styles.avatarWrapper}>
-                        <LinearGradient
-                            colors={isDark ? [colors.primary, '#0ea5e9'] : [colors.primary, '#475569']}
-                            style={styles.avatar}
-                        >
-                            <Text style={styles.avatarText}>
-                                {user?.username ? user.username.substring(0, 2).toUpperCase() : 'EX'}
-                            </Text>
-                        </LinearGradient>
-                    </View>
-
+                   
+                     <TouchableOpacity onPress={openEditModal} activeOpacity={0.8}>
+                        <View style={styles.avatarWrapper}>
+                            <LinearGradient
+                                colors={isDark ? [colors.primary, '#0ea5e9'] : [colors.primary, '#475569']}
+                                style={styles.avatar}
+                            >
+                                {user?.profilePicture ? (
+                                    <Image source={{ uri: user.profilePicture }} style={styles.avatarImage} />
+                                ) : (
+                                    <Text style={styles.avatarText}>
+                                        {user?.username ? user.username.substring(0, 2).toUpperCase() : 'EX'}
+                                    </Text>
+                                )}
+                            </LinearGradient>
+                            <View style={[
+                                styles.editIconBadge, 
+                                { 
+                                    backgroundColor: colors.primary, 
+                                    borderColor: isDark ? colors.background[0] : '#FFF' 
+                                }
+                            ]}>
+                                <Ionicons name="pencil" size={14} color="#FFF" />
+                            </View>
+                        </View>
+                    </TouchableOpacity>
                     <Text style={[styles.userName, { color: colors.textMain }]}>
-                        {user?.username || 'Explorer'}
+                        {user ? `${user.firstName} ${user.lastName}` : 'Explorer'}
                     </Text>
                     <View style={[styles.rankBadge, { backgroundColor: isDark ? 'rgba(56,189,248,0.1)' : 'rgba(0,0,0,0.05)' }]}>
                         <Ionicons name="sparkles" size={12} color={colors.primary} />
@@ -294,8 +412,149 @@ const Profile = ({ navigation }) => {
                     <Text style={styles.logoutText}>Log Out</Text>
                 </TouchableOpacity>
 
-                <Text style={[styles.footerText, { color: colors.textSecondary }]}>v1.2.0 Build 2603</Text>
+                <Text style={[styles.footerText, { color: colors.textSecondary }]}>v1.0.8 Build 2603</Text>
             </ScrollView>
+
+            {/* Edit Profile Modal */}
+            <Modal visible={isEditModalVisible} animationType="slide" transparent>
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: colors.background[0] }]}>
+                        <Text style={[styles.modalTitle, { color: colors.textMain }]}>Edit Profile</Text>
+                        
+                        <TouchableOpacity onPress={handlePickImage} style={styles.modalAvatarWrapper}>
+                            {tempImage ? (
+                                <Image source={{ uri: tempImage }} style={styles.modalAvatar} />
+                            ) : (
+                                <View style={[styles.modalAvatar, { backgroundColor: colors.glass, justifyContent: 'center', alignItems: 'center' }]}>
+                                    <Ionicons name="camera" size={30} color={colors.primary} />
+                                </View>
+                            )}
+                            <View style={styles.changePhotoBadge}>
+                                <Text style={styles.changePhotoText}>Change Photo</Text>
+                            </View>
+                            {tempImage && (
+                                <TouchableOpacity 
+                                    style={styles.deletePhotoBtn} 
+                                    onPress={() => setTempImage(null)}
+                                >
+                                    <Ionicons name="trash" size={16} color="#FFF" />
+                                </TouchableOpacity>
+                            )}
+                        </TouchableOpacity>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>FIRST NAME</Text>
+                            <TextInput
+                                style={[styles.modalInput, { 
+                                    color: colors.textMain, 
+                                    backgroundColor: colors.glass,
+                                    borderColor: colors.glassBorder
+                                }]}
+                                value={tempFirstName}
+                                onChangeText={setTempFirstName}
+                                placeholder="First Name"
+                                placeholderTextColor={colors.textSecondary}
+                            />
+
+                            <Text style={[styles.inputLabel, { color: colors.textSecondary, marginTop: 15 }]}>LAST NAME</Text>
+                            <TextInput
+                                style={[styles.modalInput, { 
+                                    color: colors.textMain, 
+                                    backgroundColor: colors.glass,
+                                    borderColor: colors.glassBorder
+                                }]}
+                                value={tempLastName}
+                                onChangeText={setTempLastName}
+                                placeholder="Last Name"
+                                placeholderTextColor={colors.textSecondary}
+                            />
+
+                            <Text style={[styles.inputLabel, { color: colors.textSecondary, marginTop: 15 }]}>USERNAME</Text>
+                            <TextInput
+                                style={[styles.modalInput, { 
+                                    color: colors.textMain, 
+                                    backgroundColor: colors.glass,
+                                    borderColor: colors.glassBorder
+                                }]}
+                                value={tempUsername}
+                                onChangeText={setTempUsername}
+                                placeholder="Username"
+                                placeholderTextColor={colors.textSecondary}
+                                autoCapitalize="none"
+                            />
+                        </View>
+
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity 
+                                style={[styles.modalBtn, { backgroundColor: colors.glass }]} 
+                                onPress={() => setIsEditModalVisible(false)}
+                            >
+                                <Text style={{ color: colors.textMain, fontWeight: '700' }}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={[styles.modalBtn, { backgroundColor: colors.primary }]} 
+                                onPress={handleSaveProfile}
+                                disabled={isSaving}
+                            >
+                                {isSaving ? <ActivityIndicator color="#FFF" /> : <Text style={{ color: '#FFF', fontWeight: '700' }}>Save Changes</Text>}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Notifications Modal */}
+            <Modal visible={isNotifModalVisible} animationType="slide" transparent>
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: colors.background[0], height: '70%' }]}>
+                        <View style={styles.modalHeaderRow}>
+                            <Text style={[styles.modalTitle, { color: colors.textMain, marginBottom: 0 }]}>Activity</Text>
+                            <TouchableOpacity onPress={() => setIsNotifModalVisible(false)}>
+                                <Ionicons name="close-circle" size={28} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+                        
+                        <FlatList
+                            data={notifications}
+                            keyExtractor={item => item._id}
+                            style={{ width: '100%' }}
+                            contentContainerStyle={{ paddingVertical: 10 }}
+                            ListEmptyComponent={
+                                <View style={{ alignItems: 'center', marginTop: 40 }}>
+                                    <Ionicons name="notifications-off-outline" size={48} color={colors.textSecondary} opacity={0.3} />
+                                    <Text style={{ color: colors.textSecondary, marginTop: 10 }}>No notifications yet</Text>
+                                </View>
+                            }
+                            renderItem={({ item }) => (
+                                <View style={[styles.notifRow, { borderBottomColor: colors.glassBorder }]}>
+                                    <View style={styles.notifAvatar}>
+                                        {item.sender?.profilePicture ? (
+                                            <Image source={{ uri: item.sender.profilePicture }} style={styles.avatarImage} />
+                                        ) : (
+                                            <LinearGradient colors={[colors.primary, colors.accent]} style={styles.avatar}>
+                                                <Text style={{ color: '#FFF', fontWeight: 'bold' }}>{item.sender?.firstName?.[0]}</Text>
+                                            </LinearGradient>
+                                        )}
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={{ color: colors.textMain, fontSize: 14 }}>
+                                            <Text style={{ fontWeight: 'bold' }}>{item.sender?.firstName} {item.sender?.lastName}</Text>
+                                            {` ${item.content} `}
+                                            {item.journalId?.title && <Text style={{ fontWeight: '600', color: colors.primary }}>"{item.journalId.title}"</Text>}
+                                        </Text>
+                                        <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 4 }}>
+                                            {new Date(item.createdAt).toLocaleDateString()} at {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </Text>
+                                    </View>
+                                    {!item.isRead && (
+                                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />
+                                    )}
+                                </View>
+                            )}
+                        />
+                    </View>
+                </View>
+            </Modal>
         </LinearGradient>
     );
 };
@@ -307,6 +566,8 @@ const styles = StyleSheet.create({
     avatarWrapper: { width: 100, height: 100, borderRadius: 50, padding: 4, backgroundColor: 'rgba(255,255,255,0.2)', marginBottom: 16 },
     avatar: { flex: 1, borderRadius: 46, justifyContent: 'center', alignItems: 'center' },
     avatarText: { fontSize: 32, fontWeight: '900', color: '#FFF' },
+    avatarImage: { width: '100%', height: '100%', borderRadius: 46 },
+    editIconBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#6366F1', width: 26, height: 26, borderRadius: 13, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFF' },
     userName: { fontSize: 28, fontWeight: '900', letterSpacing: -1 },
     rankBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginTop: 10 },
     rankText: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },
@@ -332,7 +593,26 @@ const styles = StyleSheet.create({
     toggleThumb: { width: 18, height: 18, borderRadius: 9, backgroundColor: '#FFF' },
     logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 18, borderRadius: 24, marginTop: 10 },
     logoutText: { color: '#FF5252', fontWeight: '800', fontSize: 16, marginLeft: 10 },
-    footerText: { textAlign: 'center', fontSize: 10, fontWeight: '700', marginTop: 25, opacity: 0.5 }
+    footerText: { textAlign: 'center', fontSize: 10, fontWeight: '700', marginTop: 25, opacity: 0.5 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
+    modalContent: { width: '85%', borderRadius: 30, padding: 25, alignItems: 'center' },
+    modalTitle: { fontSize: 20, fontWeight: '900', marginBottom: 20 },
+    modalAvatarWrapper: { width: 120, height: 120, borderRadius: 60, marginBottom: 20, position: 'relative' },
+    modalAvatar: { width: 120, height: 120, borderRadius: 60, borderWidth: 2, borderColor: '#6366F1' },
+    changePhotoBadge: { position: 'absolute', bottom: -10, alignSelf: 'center', backgroundColor: '#6366F1', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
+    changePhotoText: { color: '#FFF', fontSize: 10, fontWeight: '800' },
+    deletePhotoBtn: { position: 'absolute', top: 0, right: 0, backgroundColor: '#EF4444', width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFF' },
+    inputGroup: { width: '100%', marginBottom: 20 },
+    inputLabel: { fontSize: 10, fontWeight: '800', marginLeft: 10, marginBottom: 5 },
+    modalInput: { width: '100%', height: 55, borderRadius: 18, paddingHorizontal: 20, fontSize: 16, fontWeight: '600', borderWidth: 1 },
+    modalActions: { flexDirection: 'row', gap: 10, width: '100%' },
+    modalBtn: { flex: 1, height: 55, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+    notifHeaderBtn: { position: 'absolute', right: 25, zIndex: 100, width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+    notifBadge: { position: 'absolute', top: 5, right: 5, minWidth: 16, height: 16, borderRadius: 8, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
+    notifBadgeText: { color: '#000', fontSize: 10, fontWeight: '900' },
+    modalHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 20 },
+    notifRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 1, gap: 15 },
+    notifAvatar: { width: 45, height: 45, borderRadius: 22.5, overflow: 'hidden' },
 });
 
 export default Profile;

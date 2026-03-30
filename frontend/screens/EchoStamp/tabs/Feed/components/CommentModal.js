@@ -1,6 +1,6 @@
 import { Send } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Alert, FlatList, KeyboardAvoidingView, Modal, Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { addCommentAsync, addReplyAsync, deleteCommentAsync, editCommentAsync, editReplyAsync } from '../../../../../redux/journalSlice';
 import { styles } from '../feed.styles';
@@ -11,6 +11,11 @@ const CommentModal = ({ visible, post, colors, isDark, onClose }) => {
     const [text, setText] = useState('');
     const [activeEdit, setActiveEdit] = useState(null); // { type: 'comment'|'reply', commentId, replyId }
     const [replyTo, setReplyTo] = useState(null); 
+
+    // Get the most up-to-date version of this post from the Redux store
+    const livePost = useSelector(state => 
+        state.journals.globalList.find(p => p._id === post?._id) || post
+    );
 
     const handleSubmit = () => {
         if (!text.trim()) return;
@@ -70,17 +75,28 @@ const CommentModal = ({ visible, post, colors, isDark, onClose }) => {
                         <Text style={[styles.modalTitle, { color: colors.textMain }]}>Comments</Text>
                     </View>
                     <FlatList
-                        data={post?.comments || []}
+                        data={livePost?.comments || []}
                         keyExtractor={(item) => item._id}
                         renderItem={({ item }) => (
                             <View style={{ marginBottom: 15 }}>
                                 <TouchableOpacity 
                                     onLongPress={() => handleLongPress(item, 'comment')}
                                     style={styles.commentRow}>
-                                    <View style={[styles.commentAvatar, { backgroundColor: colors.primary + '20' }]} />
+                                    <View style={[styles.commentAvatar, { backgroundColor: colors.primary + '20', overflow: 'hidden', borderWidth: 1, borderColor: colors.glassBorder }]}>
+                                        {(item.userId?.profilePicture || item.profilePicture) ? (
+                                            <Image 
+                                                source={{ uri: item.userId?.profilePicture || item.profilePicture }} 
+                                                style={styles.commentAvatarImage} 
+                                            />
+                                        ) : (
+                                            <Text style={{ color: colors.primary, fontWeight: 'bold', textAlign: 'center', lineHeight: 36 }}>
+                                                {(item.userId?.firstName || item.username)?.[0]?.toUpperCase() || 'E'}
+                                            </Text>
+                                        )}
+                                    </View>
                                     <View style={{ flex: 1 }}>
                                         <Text style={{ color: colors.textMain, fontWeight: '700', fontSize: 13 }}>
-                                            {item.username || 'Explorer'}
+                                            {item.userId?.firstName ? `${item.userId.firstName} ${item.userId.lastName}` : (item.username || 'Explorer')}
                                         </Text>
                                         <Text style={{ color: colors.textSecondary, fontSize: 14, marginTop: 2 }}>{item.text}</Text>
                                         <TouchableOpacity onPress={() => setReplyTo(item._id)}>
@@ -95,10 +111,21 @@ const CommentModal = ({ visible, post, colors, isDark, onClose }) => {
                                         key={reply._id} 
                                         onLongPress={() => handleLongPress(reply, 'reply', item._id)}
                                         style={[styles.commentRow, { marginLeft: 40, marginTop: 10 }]}>
-                                        <View style={[styles.commentAvatar, { width: 24, height: 24, backgroundColor: colors.accent + '20' }]} />
+                                        <View style={[styles.commentAvatar, { width: 26, height: 26, borderRadius: 8, backgroundColor: colors.accent + '20', overflow: 'hidden', borderWidth: 1, borderColor: colors.glassBorder }]}>
+                                            {(reply.userId?.profilePicture || reply.profilePicture) ? (
+                                                <Image 
+                                                    source={{ uri: reply.userId?.profilePicture || reply.profilePicture }} 
+                                                    style={{ width: '100%', height: '100%' }} 
+                                                />
+                                            ) : (
+                                                <Text style={{ color: colors.accent, fontWeight: 'bold', textAlign: 'center', lineHeight: 24, fontSize: 10 }}>
+                                                    {(reply.userId?.firstName || reply.username)?.[0]?.toUpperCase()}
+                                                </Text>
+                                            )}
+                                        </View>
                                         <View style={{ flex: 1 }}>
                                             <Text style={{ color: colors.textMain, fontWeight: '700', fontSize: 12 }}>
-                                                {reply.username}
+                                                {reply.userId?.firstName ? `${reply.userId.firstName} ${reply.userId.lastName}` : reply.username}
                                             </Text>
                                             <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{reply.text}</Text>
                                         </View>

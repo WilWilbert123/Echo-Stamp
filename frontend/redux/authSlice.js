@@ -21,6 +21,11 @@ const authSlice = createSlice({
             state.user.isPublic = action.payload;  
         }
     },
+        updateUser: (state, action) => {
+            if (state.user) {
+                state.user = { ...state.user, ...action.payload };
+            }
+        },
         logout: (state) => {
             state.user = null;
             state.token = null;
@@ -33,5 +38,5 @@ const authSlice = createSlice({
     },
 });
 
-export const { setCredentials, logout, updatePrivacy, setLoading } = authSlice.actions;
+export const { setCredentials, logout, updatePrivacy, updateUser, setLoading } = authSlice.actions;
 export default authSlice.reducer;

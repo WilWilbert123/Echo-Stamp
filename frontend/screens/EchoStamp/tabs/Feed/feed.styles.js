@@ -19,6 +19,7 @@ export const styles = StyleSheet.create({
     userInfo: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 15 },
     locationRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 2, paddingRight: 10 },
     avatar: { width: 42, height: 42, borderRadius: 12, marginRight: 12, justifyContent: 'center', alignItems: 'center' },
+    avatarImage: { width: '100%', height: '100%', borderRadius: 12 },
     avatarLetter: { fontWeight: '800', fontSize: 16 },
     userName: { fontWeight: '800', fontSize: 15, letterSpacing: -0.3 },
     timeText: { fontSize: 11, marginLeft: 4, fontWeight: '500', flex: 1, lineHeight: 14 },
@@ -49,5 +50,9 @@ export const styles = StyleSheet.create({
     modalTitle: { fontSize: 22, fontWeight: '900' },
     commentRow: { flexDirection: 'row', gap: 15, paddingVertical: 18 },
     commentAvatar: { width: 36, height: 36, borderRadius: 12 },
-    modalClose: { marginVertical: 20, paddingVertical: 18, borderRadius: 20, alignItems: 'center' }
+    commentAvatarImage: { width: '100%', height: '100%', borderRadius: 12 },
+    modalClose: { marginVertical: 20, paddingVertical: 18, borderRadius: 20, alignItems: 'center' },
+    emptyContainer: { alignItems: 'center', marginTop: 80 },
+    emptyLottie: { width: 200, height: 200 },
+    emptyText: { marginTop: -20, fontSize: 16, fontWeight: '700', opacity: 0.5 },
 });

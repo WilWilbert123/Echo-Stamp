@@ -5,13 +5,19 @@ export const uploadImageToCloudinary = async (fileUri) => {
   const data = new FormData();
 
  
-  const extension = fileUri.split('.').pop().toLowerCase();
+  const extension = fileUri.split('.').pop().toLowerCase().split('?')[0];
   const isVideo = ['mp4', 'mov', 'm4v', 'avi'].includes(extension);
+    const isAudio = ['m4a', 'mp3', 'wav', '3gp', 'caf'].includes(extension);
+
+  // Fallback for URIs without clear extensions (common on Android)
+  let mimeType = isVideo ? 'video/mp4' : 'image/jpeg';
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) mimeType = `image/${extension === 'jpg' ? 'jpeg' : extension}`;
+  if (isAudio) mimeType = `audio/${extension === 'm4a' ? 'mp4' : extension}`;
 
  
   data.append("file", {
     uri: fileUri,
-    type: isVideo ? `video/${extension}` : `image/${extension || 'jpeg'}`, 
+    type: mimeType, 
     name: `upload.${extension}`,
   });
 
@@ -23,15 +29,12 @@ export const uploadImageToCloudinary = async (fileUri) => {
       {
         method: "POST",
         body: data,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
       }
     );
 
     const result = await response.json();
     
-    if (result.error) {
+    if (!response.ok || result.error) {
         throw new Error(result.error.message);
     }
 

@@ -2,6 +2,7 @@ const Journal = require('../models/Journal');
 const User = require('../models/User');  
 const cloudinary = require('cloudinary').v2;
 const mongoose = require('mongoose');
+const Notification = require('../models/Notification');
 
 // --- HELPERS ---
 
@@ -64,7 +65,9 @@ exports.getGlobalJournals = async (req, res) => {
 
         // 5. Execute and Populate
         const journals = await Journal.find(query)
-            .populate('userId', 'username firstName lastName') 
+            .populate('userId', 'username firstName lastName profilePicture')
+            .populate('comments.userId', 'username profilePicture')
+            .populate('comments.replies.userId', 'username profilePicture')
             .sort({ createdAt: -1 });
 
         console.log(`[Feed] Found ${journals.length} journals for User: ${currentUserId || 'Guest'}`);
@@ -87,7 +90,9 @@ exports.getJournals = async (req, res) => {
         }
 
         const journals = await Journal.find({ userId })
-            .populate('userId', 'username firstName lastName')
+            .populate('userId', 'username firstName lastName profilePicture')
+            .populate('comments.userId', 'username profilePicture')
+            .populate('comments.replies.userId', 'username profilePicture')
             .sort({ createdAt: -1 });
             
         res.status(200).json(journals);
@@ -99,11 +104,20 @@ exports.getJournals = async (req, res) => {
 // Create a new journal entry
 exports.createJournal = async (req, res) => {
     try {
-        const newJournal = await Journal.create(req.body);
+        // Ensure userId comes from the authenticated user
+        const journalData = { ...req.body, userId: req.user.id };
+        const newJournal = await Journal.create(journalData);
         
-        const populatedJournal = await newJournal.populate('userId', 'username firstName lastName');
-        res.status(201).json(populatedJournal);
+        // On a document instance, use an array to populate multiple paths at once
+        await newJournal.populate([
+            { path: 'userId', select: 'username firstName lastName profilePicture' },
+            { path: 'comments.userId', select: 'username profilePicture' },
+            { path: 'comments.replies.userId', select: 'username profilePicture' }
+        ]);
+
+        res.status(201).json(newJournal);
     } catch (error) {
+        console.error("Journal Creation Error:", error.message);
         res.status(400).json({ message: error.message });
     }
 };
@@ -138,7 +152,9 @@ exports.removeJournalMedia = async (req, res) => {
             id,
             { $pull: { media: mediaUri } },
             { new: true }
-        ).populate('userId', 'username firstName lastName');
+        ).populate('userId', 'username firstName lastName profilePicture')
+         .populate('comments.userId', 'username profilePicture')
+         .populate('comments.replies.userId', 'username profilePicture');
 
         if (!journal) return res.status(404).json({ message: "Journal not found" });
         res.status(200).json(journal);
@@ -158,8 +174,25 @@ exports.toggleLike = async (req, res) => {
         const isLiked = journal.likes.includes(userId);
         const update = isLiked ? { $pull: { likes: userId } } : { $addToSet: { likes: userId } };
 
+        try {
+            // If adding a like and it's not the author liking their own post
+            if (!isLiked && journal.userId && journal.userId.toString() !== userId.toString()) {
+                await Notification.create({
+                    recipient: journal.userId,
+                    sender: userId,
+                    type: 'like',
+                    journalId: journal._id,
+                    content: 'liked your journal entry'
+                });
+            }
+        } catch (notifErr) {
+            console.error("Notification trigger failed:", notifErr.message);
+        }
+
         const updatedJournal = await Journal.findByIdAndUpdate(id, update, { new: true })
-            .populate('userId', 'username firstName lastName');
+            .populate('userId', 'username firstName lastName profilePicture')
+            .populate('comments.userId', 'username profilePicture')
+            .populate('comments.replies.userId', 'username profilePicture');
         res.status(200).json(updatedJournal);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -173,11 +206,33 @@ exports.addComment = async (req, res) => {
         const { text } = req.body;
         const user = await User.findById(req.user.id);
 
+        const originalJournal = await Journal.findById(id);
+        if (originalJournal && originalJournal.userId.toString() !== user._id.toString()) {
+            await Notification.create({
+                recipient: originalJournal.userId,
+                sender: user._id,
+                type: 'comment',
+                journalId: originalJournal._id,
+                content: 'commented on your echo'
+            });
+        }
+
         const journal = await Journal.findByIdAndUpdate(
             id,
-            { $push: { comments: { userId: user._id, username: user.username, text } } },
+            { 
+                $push: { 
+                    comments: { 
+                        userId: user._id, 
+                        username: user.username, 
+                        profilePicture: user.profilePicture, 
+                        text 
+                    } 
+                } 
+            },
             { new: true }
-        ).populate('userId', 'username firstName lastName');
+        ).populate('userId', 'username firstName lastName profilePicture')
+         .populate('comments.userId', 'username profilePicture')
+         .populate('comments.replies.userId', 'username profilePicture');
 
         res.status(201).json(journal);
     } catch (error) {
@@ -192,15 +247,35 @@ exports.addReply = async (req, res) => {
         const { text } = req.body;
         const user = await User.findById(req.user.id);
 
+        const originalJournal = await Journal.findById(id);
+        const targetComment = originalJournal.comments.id(commentId);
+        
+        if (targetComment && targetComment.userId.toString() !== user._id.toString()) {
+            await Notification.create({
+                recipient: targetComment.userId,
+                sender: user._id,
+                type: 'comment',
+                journalId: originalJournal._id,
+                content: 'replied to your comment'
+            });
+        }
+
         const journal = await Journal.findOneAndUpdate(
             { _id: id, "comments._id": commentId },
             { 
                 $push: { 
-                    "comments.$.replies": { userId: user._id, username: user.username, text } 
+                    "comments.$.replies": { 
+                        userId: user._id, 
+                        username: user.username, 
+                        profilePicture: user.profilePicture, 
+                        text 
+                    } 
                 } 
             },
             { new: true }
-        ).populate('userId', 'username firstName lastName');
+        ).populate('userId', 'username firstName lastName profilePicture')
+         .populate('comments.userId', 'username profilePicture')
+         .populate('comments.replies.userId', 'username profilePicture');
 
         res.status(201).json(journal);
     } catch (error) {
@@ -219,7 +294,9 @@ exports.editComment = async (req, res) => {
             { _id: id, "comments._id": commentId, "comments.userId": userId },
             { $set: { "comments.$.text": text } },
             { new: true }
-        ).populate('userId', 'username firstName lastName');
+        ).populate('userId', 'username firstName lastName profilePicture')
+         .populate('comments.userId', 'username profilePicture')
+         .populate('comments.replies.userId', 'username profilePicture');
 
         if (!journal) return res.status(404).json({ message: "Comment not found or unauthorized" });
         res.status(200).json(journal);
@@ -238,7 +315,9 @@ exports.deleteComment = async (req, res) => {
             { _id: id },
             { $pull: { comments: { _id: commentId, userId: userId } } },
             { new: true }
-        ).populate('userId', 'username firstName lastName');
+        ).populate('userId', 'username firstName lastName profilePicture')
+         .populate('comments.userId', 'username profilePicture')
+         .populate('comments.replies.userId', 'username profilePicture');
 
         if (!journal) return res.status(404).json({ message: "Unauthorized or not found" });
         res.status(200).json(journal);
@@ -266,7 +345,9 @@ exports.editReply = async (req, res) => {
                 arrayFilters: [{ "comment._id": commentId }, { "reply._id": replyId }],
                 new: true 
             }
-        ).populate('userId', 'username firstName lastName');
+        ).populate('userId', 'username firstName lastName profilePicture')
+         .populate('comments.userId', 'username profilePicture')
+         .populate('comments.replies.userId', 'username profilePicture');
 
         if (!journal) return res.status(404).json({ message: "Reply not found or unauthorized" });
         res.status(200).json(journal);

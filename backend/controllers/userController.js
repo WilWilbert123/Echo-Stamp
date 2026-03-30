@@ -119,6 +119,7 @@ exports.verifyOtpAndRegister = async (req, res) => {
                 lastName: user.lastName,
                 username: user.username,
                 email: user.email,
+                profilePicture: user.profilePicture,
                 isPublic: user.isPublic ?? false
             }
         });
@@ -166,6 +167,7 @@ exports.loginUser = async (req, res) => {
                     lastName: user.lastName,    
                     username: user.username, 
                     email: user.email,
+                    profilePicture: user.profilePicture,
                     isPublic: user.isPublic ?? false
                 }
             });
@@ -289,6 +291,7 @@ exports.verify2faLogin = async (req, res) => {
                 lastName: user.lastName,
                 username: user.username,
                 email: user.email,
+                profilePicture: user.profilePicture,
                 isPublic: user.isPublic ?? false
             }
         });
@@ -377,11 +380,52 @@ exports.getAllUsers = async (req, res) => {
     try {
      
         const users = await User.find({ _id: { $ne: req.user.id } })
-            .select('firstName lastName username isPublic');
+            .select('firstName lastName username isPublic profilePicture');
 
         return res.status(200).json(users);
     } catch (error) {
         console.error("FETCH USERS ERROR:", error);
         return res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+exports.updateProfile = async (req, res) => {
+    try {
+        const { firstName, lastName, username, profilePicture } = req.body;
+        const user = await User.findById(req.user.id);
+
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        if (username && username !== user.username) {
+            const existing = await User.findOne({ username });
+            if (existing) return res.status(400).json({ message: "Username already taken" });
+            user.username = username;
+        }
+
+        if (firstName) user.firstName = firstName;
+        if (lastName) user.lastName = lastName;
+
+        if (profilePicture !== undefined) {
+            if (user.profilePicture && user.profilePicture !== profilePicture) {
+                await deleteFromCloudinary(user.profilePicture);
+            }
+            user.profilePicture = profilePicture;
+        }
+
+        await user.save();
+        res.status(200).json({
+            message: "Profile updated",
+            user: {
+                id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                username: user.username,
+                email: user.email,
+                profilePicture: user.profilePicture,
+                isPublic: user.isPublic
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Server error", error: error.message });
     }
 };

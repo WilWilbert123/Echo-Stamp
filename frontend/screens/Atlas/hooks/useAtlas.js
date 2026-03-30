@@ -6,10 +6,10 @@ import { Alert, Dimensions } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import thisisit from '../../../config/config';
 import {
-    addJournalAsync,
-    deleteJournalAsync,
-    getJournalsAsync,
-    removeJournalMediaAsync
+  addJournalAsync,
+  deleteJournalAsync,
+  getJournalsAsync,
+  removeJournalMediaAsync
 } from '../../../redux/journalSlice';
 import { uploadImageToCloudinary } from '../../../services/cloudinary';
 const { width } = Dimensions.get('window');
@@ -198,8 +198,16 @@ export const useAtlas = () => {
       const uploadedUrls = await Promise.all((mediaList || []).map(async (item) =>
         item.uri.startsWith('http') ? item.uri : await uploadImageToCloudinary(item.uri)
       ));
-      const [geo] = await Location.reverseGeocodeAsync(tempCoords);
-      const addr = geo ? `${geo.street || ''}, ${geo.city || ''}` : "Pinned Location";
+      
+      let addr = "Pinned Location";
+      try {
+        const geo = await Location.reverseGeocodeAsync(tempCoords);
+        if (geo && geo[0]) {
+          addr = `${geo[0].street || ''}, ${geo[0].city || ''}`.replace(/^, /, '');
+        }
+      } catch (e) {
+        console.log("Reverse geocode failed, using default address");
+      }
       
       await dispatch(addJournalAsync({
         userId, title, description, media: uploadedUrls,

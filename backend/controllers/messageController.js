@@ -8,6 +8,7 @@ const sendPushNotification = async (expoPushToken, title, body, data) => {
         sound: 'default',
         title: title,
         body: body,
+        android: { channelId: 'default' },
         data: data,
     };
 
@@ -23,13 +24,17 @@ const sendPushNotification = async (expoPushToken, title, body, data) => {
         // Expo returns an array of receipts in the 'data' field
         const tickets = response.data.data;
         
-        // If we sent one message, we check the first ticket
-        const ticket = Array.isArray(tickets) ? tickets[0] : response.data;
-        
-        if (ticket.status === 'error') {
-            console.error("[Push Notification] Expo Error:", ticket.message);
-        } else {
-            console.log("[Push Notification] Sent to Expo successfully. ID:", ticket.id || 'N/A');
+        if (tickets) {
+            tickets.forEach(ticket => {
+                if (ticket.status === 'error') {
+                    console.error("[Push Notification] Expo Error:", ticket.message);
+                    if (ticket.details && ticket.details.error === 'DeviceNotRegistered') {
+                        // Logic to remove invalid push tokens from your DB could go here
+                    }
+                } else {
+                    console.log("[Push Notification] Sent successfully. ID:", ticket.id);
+                }
+            });
         }
 
     } catch (error) {
@@ -39,27 +44,27 @@ const sendPushNotification = async (expoPushToken, title, body, data) => {
 
 exports.sendMessage = async (req, res) => {
     try {
-        const { receiverId, content } = req.body;
+        const { receiverId, content, voiceUrl, duration } = req.body;
         const senderId = req.user._id;
         const senderName = req.user.firstName || "Someone";
 
-        if (!receiverId || !content) {
-            return res.status(400).json({ message: 'Receiver ID and content are required' });
+        if (!receiverId || (!content && !voiceUrl)) {
+            return res.status(400).json({ message: 'Receiver ID and either content or voice message are required' });
         }
 
-        // Attempt to update the existing conversation first
-        let conversation = await Message.findOneAndUpdate(
-            { participants: { $all: [senderId, receiverId] } },
-            { $push: { messages: { sender: senderId, content } } },
-            { new: true }
-        );
+        // 1. Find the private conversation
+        let conversation = await Message.findOne({ 
+            participants: { $all: [senderId, receiverId] } 
+        });
 
-        // If no conversation exists, create a new one
         if (!conversation) {
             conversation = await Message.create({
                 participants: [senderId, receiverId],
-                messages: [{ sender: senderId, content }]
+                messages: [{ sender: senderId, content, voiceUrl, duration }]
             });
+        } else {
+            conversation.messages.push({ sender: senderId, content, voiceUrl, duration });
+            await conversation.save();
         }
 
         if (!conversation || !conversation.messages) {
@@ -68,17 +73,15 @@ exports.sendMessage = async (req, res) => {
 
         const newMessage = conversation.messages[conversation.messages.length - 1];
 
-        // Push Notification Logic
+        // 2. Notify receiver
         const receiver = await User.findById(receiverId);
         if (receiver && receiver.pushToken && receiver.notificationsEnabled) {
             sendPushNotification(
                 receiver.pushToken,
                 `New message from ${senderName}`,
                 content,
-                { senderId: senderId }
+                { senderId: senderId, conversationId: conversation._id }
             );
-        } else if (receiver) {
-            console.log(`[Push Notification] Skipped for user ${receiverId}: Token exists: ${!!receiver.pushToken}, Enabled: ${receiver.notificationsEnabled}`);
         }
 
         res.status(201).json(newMessage);
@@ -94,8 +97,8 @@ exports.getMessages = async (req, res) => {
         const otherUserId = req.params.userId;
         const myId = req.user._id;
 
-        const conversation = await Message.findOne({
-            participants: { $all: [myId, otherUserId] }
+        const conversation = await Message.findOne({ 
+            participants: { $all: [myId, otherUserId] } 
         });
 
         res.status(200).json(conversation ? conversation.messages : []);
@@ -111,17 +114,15 @@ exports.getConversations = async (req, res) => {
         
         // Find conversations and sort by updatedAt (latest activity)
         const conversations = await Message.find({ participants: myId })
-            .populate('participants', 'firstName lastName username')
+            .populate('participants', 'firstName lastName username profilePicture')
             .sort({ updatedAt: -1 });
 
         const conversationList = conversations.map(conv => {
+            const lastMsg = conv.messages[conv.messages.length - 1];
+            const unreadCount = conv.messages.filter(m => m.sender.toString() !== myId.toString() && !m.isRead).length;
+
             const otherUser = conv.participants.find(p => p._id.toString() !== myId.toString());
             if (!otherUser) return null;
-
-            const lastMsg = conv.messages[conv.messages.length - 1];
-            const unreadCount = conv.messages.filter(m => 
-                m.sender.toString() !== myId.toString() && !m.isRead
-            ).length;
 
             return {
                 _id: otherUser._id, // Used for navigation/ID
@@ -145,7 +146,9 @@ exports.markAsRead = async (req, res) => {
         const { otherUserId } = req.params;
 
         await Message.updateOne(
-            { participants: { $all: [myId, otherUserId] } },
+            { 
+                participants: { $all: [myId, otherUserId] }
+            },
             { $set: { "messages.$[msg].isRead": true } },
             { 
                 arrayFilters: [{ "msg.sender": otherUserId, "msg.isRead": false }], 
@@ -217,6 +220,7 @@ exports.deleteConversation = async (req, res) => {
         });
 
         if (!conversation) return res.status(404).json({ message: "Conversation not found" });
+
         res.status(200).json({ message: "Conversation deleted", otherUserId });
     } catch (error) {
         res.status(500).json({ message: 'Error deleting conversation' });

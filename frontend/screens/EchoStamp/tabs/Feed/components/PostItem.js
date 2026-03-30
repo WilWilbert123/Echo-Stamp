@@ -43,12 +43,18 @@ const PostItem = memo(({ item, colors, onOpenGallery, onOpenComments }) => {
         <View style={[styles.card, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
             <View style={styles.userInfo}>
                 <View style={[styles.avatar, { backgroundColor: colors.primary + '30', borderWidth: 1, borderColor: colors.primary }]}>
-                    <Text style={[styles.avatarLetter, { color: colors.primary }]}>
-                        {author?.username ? author.username.charAt(0).toUpperCase() : 'U'}
-                    </Text>
+                    {author?.profilePicture ? (
+                        <Image source={{ uri: author.profilePicture }} style={styles.avatarImage} />
+                    ) : (
+                        <Text style={[styles.avatarLetter, { color: colors.primary }]}>
+                            {author?.firstName ? author.firstName.charAt(0).toUpperCase() : 'U'}
+                        </Text>
+                    )}
                 </View>
                 <View style={{ flex: 1 }}>
-                    <Text style={[styles.userName, { color: colors.textMain }]}>{author?.username || 'Explorer'}</Text>
+                    <Text style={[styles.userName, { color: colors.textMain }]}>
+                        {author?.firstName ? `${author.firstName} ${author.lastName}` : (author?.username || 'Explorer')}
+                    </Text>
                     <View style={styles.locationRow}>
                         <MapPin size={10} color={colors.primary} style={{ marginTop: 2 }} />
                         <Text style={[styles.timeText, { color: colors.textSecondary }]}>
