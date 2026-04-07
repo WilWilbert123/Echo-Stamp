@@ -46,9 +46,8 @@ app.use('/api/chat', require('./routes/chatRoutes'));
 app.use('/api/events', require('./routes/eventRoutes'));
 
 app.use('/api/messages', require('./routes/messageRoutes'));  
-app.use('/api/groups', require('./routes/groupRoutes'));
 app.use('/api/groups', groupRoutes);
-
+app.use('/api/share-location', require('./routes/shareLocationRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 //cron-job ping

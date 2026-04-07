@@ -284,13 +284,13 @@ const CreateEcho = ({ navigation }) => {
               style={styles.mainButton}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Text style={[styles.buttonText, { color: colors.primary === '#FFFFFF' ? '#000' : '#FFF' }]}>
+                <Text style={[styles.buttonText, { color: isDark ? '#FFF' : colors.textMain }]}>
                   Anchor Memory
                 </Text>
                 <Ionicons 
                   name="bookmark" 
                   size={20} 
-                  color={colors.primary === '#FFFFFF' ? '#000' : '#FFF'} 
+                  color={isDark ? '#FFF' : colors.textMain} 
                 />
               </View>
             </GlassButton>

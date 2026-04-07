@@ -56,7 +56,8 @@
       "expo-image-picker",
       "expo-location",
       "expo-notifications",
-      "expo-mail-composer"
+      "expo-mail-composer",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

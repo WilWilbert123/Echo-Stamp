@@ -14,7 +14,7 @@ import { useTheme } from '../../context/ThemeContext';
 import styles, { darkMapStyle } from '../Atlas/Atlas.styles';
 
 import AtlasMarker from './components/AtlasMarker';
-import { MediaViewerModal, PinMemoryModal } from './components/AtlasModals';
+import { MediaViewerModal, PinMemoryModal, ShareLocationModal } from './components/AtlasModals';
 import AtlasSearchBar from './components/AtlasSearchBar';
 import { useAtlas } from './hooks/useAtlas';
 import { useLocation } from './hooks/useLocation';
@@ -50,6 +50,18 @@ const Atlas = () => {
         setSearchQuery={atlas.setSearchQuery}
         handleSearch={atlas.handleSearch}
       />
+
+      {/* Share Location FAB */}
+      <TouchableOpacity 
+        style={[styles.shareFab, { top: insets.top + 90, backgroundColor: colors.background[1], borderColor: colors.glassBorder, borderWidth: 1 }]}
+        onPress={atlas.openShareModal}
+      >
+        <Ionicons 
+          name={atlas.isLiveSharingActive ? "location" : "share-social"} 
+          size={22} 
+          color={atlas.isLiveSharingActive ? "#10B981" : colors.primary} 
+        />
+      </TouchableOpacity>
 
       <MapView
         ref={atlas.mapRef}
@@ -106,6 +118,29 @@ const Atlas = () => {
             </View>
           </Marker>
         )}
+
+        {/* Render Friends' Live Locations */}
+        {atlas.activeShares.map((share) => {
+          const friend = share.sharer;
+          if (!friend.lastKnownLocation) return null;
+          return (
+            <Marker
+              key={`live-${friend._id}`}
+              coordinate={friend.lastKnownLocation}
+              title={`${friend.firstName}'s Live Location`}
+            >
+              <View style={styles.liveMarkerContainer}>
+                <View style={styles.liveMarker}>
+                  <Image 
+                    source={{ uri: friend.profilePicture || 'https://via.placeholder.com/100' }} 
+                    style={styles.liveAvatar} 
+                    resizeMode="cover"
+                  />
+                </View>
+              </View>
+            </Marker>
+          );
+        })}
 
         {atlas.markers.map((journal) => (
           <AtlasMarker 
@@ -207,6 +242,19 @@ const Atlas = () => {
         setDescription={atlas.setDescription}
         handleSave={atlas.handleSave}
         loading={atlas.loading}
+      />
+
+      <ShareLocationModal 
+        visible={atlas.shareModalVisible}
+        setVisible={atlas.setShareModalVisible}
+        users={atlas.allUsers}
+        selectedIds={atlas.selectedUserIds}
+        toggleSelect={atlas.toggleUserSelection}
+        searchQuery={atlas.userSearchQuery}
+        setSearchQuery={atlas.setUserSearchQuery}
+        onShare={atlas.handleShareLocation}
+        loading={atlas.isSharing}
+        colors={colors}
       />
     </View>
   );

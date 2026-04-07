@@ -64,6 +64,18 @@ const styles = StyleSheet.create({
   btnSaveText: { color: '#fff', fontWeight: 'bold' },
   cancelNavBtn: { position: 'absolute', right: 20, zIndex: 20 },
   cancelNavCard: { flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 15, backgroundColor: 'rgba(0,0,0,0.6)' },
+  shareFab: { position: 'absolute', left: 20, width: 52, height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center', zIndex: 11, elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 4 },
+  liveMarker: { width: 30, height: 30, borderRadius: 25, borderWidth: 3, borderColor: '#10B981', overflow: 'hidden', backgroundColor: '#fff' },  
+  liveAvatar: { width: '100%', height: '100%', borderRadius: 25 }, // Apply borderRadius directly to the Image
+  liveMarkerContainer: { alignItems: 'center', justifyContent: 'center' },
+  userListContainer: { height: 350, marginVertical: 15 },
+  userItem: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 15, marginBottom: 8, borderWidth: 1 },
+  userAvatar: { width: 40, height: 40, borderRadius: 20, marginRight: 12 },
+  userSelectBadge: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
+  modalSearchInput: { height: 50, borderRadius: 15, paddingHorizontal: 15, marginBottom: 10, borderWidth: 1 },
+  shareModalFooter: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
+  shareSubmitBtn: { flex: 1, height: 50, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginLeft: 10 },
+  shareCancelBtn: { flex: 0.4, height: 50, justifyContent: 'center', alignItems: 'center' },
 });
 
 export default styles;

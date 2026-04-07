@@ -98,6 +98,14 @@ export const fetchConversations = () => API.get('/messages/conversations');
 export const removeConversation = (otherUserId) => API.delete(`/messages/conversations/${otherUserId}`);
 export const updateMessage = (id, content) => API.patch(`/messages/${id}`, { content });
 export const removeMessage = (id) => API.delete(`/messages/${id}`);
+export const shareLocationBulk = (data) => API.post('/messages/share-location', data); // Legacy static message
+
+// Live Location Sharing
+export const startLiveShare = (data) => API.post('/share-location/start', data);
+export const stopLiveShare = () => API.post('/share-location/stop');
+export const updateLiveLocation = (data) => API.post('/share-location/update', data);
+export const fetchActiveShares = () => API.get('/share-location/active');
+export const fetchMyOutgoingShare = () => API.get('/share-location/my-status');
 
 // groups
 export const postGroup = (groupData) => API.post('/groups', groupData);
@@ -116,6 +124,9 @@ export const markAsRead = (otherUserId) => API.put(`/messages/read/${otherUserId
 // notifications
 export const fetchNotifications = () => API.get('/notifications');
 export const markNotificationsRead = () => API.patch('/notifications/read');
+export const markNotificationsUnread = () => API.patch('/notifications/unread');
+export const clearNotifications = () => API.delete('/notifications');
+export const removeNotification = (id) => API.delete(`/notifications/${id}`);
 
 export const Config = { MAPS_SDK_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_SDK_KEY, PLACES_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY,};
 

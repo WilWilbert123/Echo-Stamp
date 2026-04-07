@@ -2,14 +2,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import React from 'react';
 import {
-    ActivityIndicator, FlatList,
-    Image,
-    Modal,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator, FlatList,
+  Image,
+  Modal,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import GlassCard from '../../../components/GlassCard';
 import styles from '../Atlas.styles';
@@ -155,6 +156,69 @@ export const MediaViewerModal = ({
             </GlassCard>
           </View>
         )}
+      </View>
+    </Modal>
+  );
+};
+
+export const ShareLocationModal = ({ 
+  visible, setVisible, users, selectedIds, toggleSelect, 
+  searchQuery, setSearchQuery, onShare, loading, colors 
+}) => {
+  const filteredUsers = users.filter(u => 
+    `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    u.username.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <Modal visible={visible} transparent animationType="slide">
+      <View style={styles.modalOverlay}>
+        <GlassCard style={[styles.modalContent, { backgroundColor: colors.background[1], borderColor: colors.glassBorder, height: '70%' }]}>
+          <Text style={[styles.modalHeader, { color: colors.textMain }]}>Share Location</Text>
+          <TextInput
+            style={[styles.modalSearchInput, { color: colors.textMain, borderColor: colors.glassBorder, backgroundColor: colors.glass }]}
+            placeholder="Search friends..."
+            placeholderTextColor={colors.textSecondary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCorrect={false}
+          />
+          <FlatList
+            data={filteredUsers}
+            keyExtractor={item => item._id}
+            style={styles.userListContainer}
+            renderItem={({ item }) => {
+              const isSelected = selectedIds.includes(item._id);
+              return (
+                <TouchableOpacity 
+                  style={[styles.userItem, { backgroundColor: isSelected ? colors.primary + '20' : 'transparent', borderColor: isSelected ? colors.primary : colors.glassBorder }]}
+                  onPress={() => toggleSelect(item._id)}
+                >
+                  <Image source={{ uri: item.profilePicture || 'https://via.placeholder.com/100' }} style={styles.userAvatar} />
+                  <Text style={{ flex: 1, color: colors.textMain, fontWeight: '600' }}>{item.firstName} {item.lastName}</Text>
+                  <Switch
+                    value={isSelected}
+                    onValueChange={() => toggleSelect(item._id)}
+                    trackColor={{ false: colors.glassBorder, true: colors.primary + '80' }}
+                    thumbColor={isSelected ? colors.primary : '#f4f3f4'}
+                  />
+                </TouchableOpacity>
+              );
+            }}
+          />
+          <View style={styles.shareModalFooter}>
+            <TouchableOpacity style={styles.shareCancelBtn} onPress={() => setVisible(false)}>
+              <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.shareSubmitBtn, { backgroundColor: colors.primary }]} 
+              onPress={onShare}
+              disabled={loading}
+            >
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: 'bold' }}>Update Sharing</Text>}
+            </TouchableOpacity>
+          </View>
+        </GlassCard>
       </View>
     </Modal>
   );

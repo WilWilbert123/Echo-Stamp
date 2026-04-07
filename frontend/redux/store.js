@@ -8,6 +8,7 @@ import groupReducer from './groupSlice';
 import journalReducer from './journalSlice';
 import messageReducer from './messageSlice';
 import notificationReducer from './notificationSlice';
+import shareLocationReducer from './shareLocationSlice';
 
 export const store = configureStore({
   reducer: {
@@ -19,6 +20,7 @@ export const store = configureStore({
     messages: messageReducer,
     groups: groupReducer,
     notifications: notificationReducer,
+    shareLocation: shareLocationReducer,
   },
   middleware: (getDefaultMiddleware) => 
     getDefaultMiddleware({

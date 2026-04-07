@@ -33,6 +33,7 @@ export const uploadImageToCloudinary = async (fileUri) => {
     );
 
     const result = await response.json();
+    console.log("Cloudinary API response result:", result); // <-- ADD THIS LOG
     
     if (!response.ok || result.error) {
         throw new Error(result.error.message);

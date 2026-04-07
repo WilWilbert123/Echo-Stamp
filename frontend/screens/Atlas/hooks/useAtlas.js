@@ -11,6 +11,8 @@ import {
   getJournalsAsync,
   removeJournalMediaAsync
 } from '../../../redux/journalSlice';
+import { getActiveShares, startSharing, stopSharing } from '../../../redux/shareLocationSlice';
+import { fetchAllUsers, fetchMyOutgoingShare, updateLiveLocation } from '../../../services/api';
 import { uploadImageToCloudinary } from '../../../services/cloudinary';
 const { width } = Dimensions.get('window');
 const GOOGLE_MAPS_APIKEY = thisisit;
@@ -32,6 +34,12 @@ export const useAtlas = () => {
   const [showDirections, setShowDirections] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [allUsers, setAllUsers] = useState([]);
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [isSharing, setIsSharing] = useState(false);
+  const { activeShares, isLiveSharing: isLiveSharingActive } = useSelector((state) => state.shareLocation);
 
   // Functional State
   const [selectedJournal, setSelectedJournal] = useState(null);
@@ -138,6 +146,77 @@ export const useAtlas = () => {
     const userId = user?._id || user?.id;
     if (userId) dispatch(getJournalsAsync(userId));
   }, [dispatch, user]);
+
+  // Poll for active shares from friends into Redux
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      dispatch(getActiveShares());
+    }, 10000); // Check every 10 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  // Sync my location if I'm sharing
+  useEffect(() => {
+    if (isLiveSharingActive && userLocation) {
+      updateLiveLocation(userLocation).catch(e => console.log("Sync failed"));
+    }
+  }, [userLocation, isLiveSharingActive]);
+
+  const openShareModal = async () => {
+    setShareModalVisible(true);
+    try {
+      // Load all users for the list
+      const usersRes = await fetchAllUsers();
+      setAllUsers(usersRes.data);
+
+      // Load who we are CURRENTLY sharing with to set toggles correctly
+      const statusRes = await fetchMyOutgoingShare();
+      setSelectedUserIds(statusRes.data || []);
+    } catch (e) {
+      console.log("Failed to initialize share modal", e);
+    }
+  };
+
+  const handleShareLocation = async () => {
+    // If no one is selected, we interpret this as "Stop Sharing All"
+    if (selectedUserIds.length === 0) {
+      return handleStopSharing();
+    }
+
+    if (!userLocation) return Alert.alert("Error", "Could not determine your location.");
+
+    setIsSharing(true);
+    try {
+      await dispatch(startSharing({
+        recipientIds: selectedUserIds,
+        durationMinutes: 60 // Share for 1 hour
+      })).unwrap();
+
+      Alert.alert("Live Sharing Active", `You are now sharing live coordinates with ${selectedUserIds.length} friend(s).`);
+      setShareModalVisible(false);
+      setSelectedUserIds([]);
+      setUserSearchQuery('');
+    } catch (e) {
+      Alert.alert("Error", e || "Failed to share location.");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleStopSharing = async () => {
+    try {
+      await dispatch(stopSharing()).unwrap();
+      Alert.alert("Stopped", "Live sharing has been disabled.");
+    } catch (e) {
+      Alert.alert("Error", e || "Failed to stop sharing.");
+    }
+  };
+
+  const toggleUserSelection = (userId) => {
+    setSelectedUserIds(prev => 
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  };
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -272,9 +351,12 @@ export const useAtlas = () => {
     setDestination, searchResult, setSearchResult, routeCoordinates, 
     setRouteCoordinates, arrowHeading, setArrowHeading, title, setTitle, 
     description, setDescription, mediaList, setMediaList, markers,
+    shareModalVisible, setShareModalVisible, allUsers, selectedUserIds,
+    userSearchQuery, setUserSearchQuery, isSharing, activeShares,
     // Methods
-    handleSearch, pickMedia, handleSave, handleDeleteJournal, 
-    handleRemoveSingleSavedMedia, cancelNavigation,
+    handleSearch, pickMedia, handleSave, handleDeleteJournal,
+    handleRemoveSingleSavedMedia, cancelNavigation, openShareModal,
+    handleShareLocation, handleStopSharing, toggleUserSelection,
     // Constants/Config
     GOOGLE_MAPS_APIKEY, width
   };
