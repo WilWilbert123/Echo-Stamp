@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as ImagePicker from 'expo-image-picker';
@@ -15,6 +16,7 @@ import {
     Image,
     Modal,
     Platform,
+    Pressable,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -23,13 +25,14 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTheme } from '../../context/ThemeContext';
 import { logout, setCredentials } from '../../redux/authSlice';
-import { updateJournalUser } from '../../redux/journalSlice';
+import { getJournalsAsync, updateJournalUser } from '../../redux/journalSlice';
 import { getNotificationsAsync, markAllReadAsync } from '../../redux/notificationSlice';
-import { updatePrivacy, updateProfile } from '../../services/api';
+import { clearNotifications, markNotificationsUnread, removeNotification, updatePrivacy, updateProfile } from '../../services/api';
 import { uploadImageToCloudinary } from '../../services/cloudinary';
 
 // --- IMPORT YOUR REUSABLE COMPONENT ---
@@ -51,7 +54,7 @@ const Profile = ({ navigation }) => {
     const dispatch = useDispatch();
 
     const { user, token: authToken } = useSelector((state) => state.auth);
-    const { list = [] } = useSelector((state) => state.echoes || {});
+    const { list: journals = [] } = useSelector((state) => state.journals || {});
 
     const [localNotif, setLocalNotif] = useState(null);
     const [saveCredsEnabled, setSaveCredsEnabled] = useState(null);
@@ -64,21 +67,92 @@ const Profile = ({ navigation }) => {
     const [tempImage, setTempImage] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
 
+    // Settings Modal State
+    const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
+
+    // Date Filter State
+    const [filterDate, setFilterDate] = useState(null); // Format: 'YYYY-MM-DD'
+    const [showDatePicker, setShowDatePicker] = useState(false); // Used for iOS
+
     // Notifications State
     const [isNotifModalVisible, setIsNotifModalVisible] = useState(false);
     const { list: notifications, unreadCount } = useSelector(state => state.notifications || { list: [], unreadCount: 0 });
 
+    // Media Preview State
+    const [selectedMedia, setSelectedMedia] = useState(null);
+    const [isPreviewVisible, setIsPreviewVisible] = useState(false);
+
     const statsData = useMemo(() => {
-        const cities = list.map(echo => echo.location?.address?.split(',')[0]).filter(Boolean);
+        const cities = journals.map(j => j.location?.address?.split(',')[0]).filter(Boolean);
         const unique = [...new Set(cities)].length;
-        const progress = (list.length % 50) / 50;
-        const level = Math.floor(list.length / 50) + 1;
+        const progress = (journals.length % 50) / 50;
+        const level = Math.floor(journals.length / 50) + 1;
         return { unique, progress, level };
-    }, [list]);
+    }, [journals]);
+
+    // Flatten all media arrays from all journals to show in the grid
+    const allMedia = useMemo(() => {
+        return journals.reduce((acc, journal) => {
+            if (journal.media && Array.isArray(journal.media)) {
+                journal.media.forEach(url => {
+                    acc.push({
+                        url,
+                        journalId: journal._id,
+                        createdAt: journal.createdAt,
+                        isVideo: url.toLowerCase().includes('/video/upload/') || 
+                                 url.match(/\.(mp4|mov|m4v|avi|webm)$/i)
+                    });
+                });
+            }
+            return acc;
+        }, []);
+    }, [journals]);
+
+    const isFilterActive = !!filterDate;
+
+    const filteredMedia = useMemo(() => {
+        if (!isFilterActive) return allMedia;
+
+        return allMedia.filter(item => {
+            if (!item.createdAt) return false;
+            const d = new Date(item.createdAt).toISOString().split('T')[0];
+            return d === filterDate;
+        });
+    }, [allMedia, filterDate, isFilterActive]);
+
+    const showPicker = () => {
+        if (Platform.OS === 'android') {
+            DateTimePickerAndroid.open({
+                value: filterDate ? new Date(filterDate + 'T12:00:00') : new Date(),
+                onChange: onDateChange,
+                mode: 'date',
+            });
+        } else {
+            setShowDatePicker(true);
+        }
+    };
+
+    const onDateChange = (event, selectedDate) => {
+        setShowDatePicker(false);
+        if (selectedDate && event.type !== 'dismissed') {
+            const year = selectedDate.getFullYear();
+            const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+            const day = String(selectedDate.getDate()).padStart(2, '0');
+            const formatted = `${year}-${month}-${day}`;
+            setFilterDate(formatted);
+        }
+    };
 
     useEffect(() => {
         dispatch(getNotificationsAsync());
     }, [dispatch]);
+
+    useEffect(() => {
+        const userId = user?._id || user?.id;
+        if (userId) {
+            dispatch(getJournalsAsync(userId));
+        }
+    }, [dispatch, user?._id, user?.id]);
 
     useEffect(() => {
         const loadNotifPref = async () => {
@@ -246,6 +320,37 @@ const Profile = ({ navigation }) => {
         if (unreadCount > 0) dispatch(markAllReadAsync());
     };
 
+    const handleClearAll = async () => {
+        Alert.alert("Clear All", "Delete all notifications?", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Clear", style: "destructive", onPress: async () => {
+                try {
+                    await clearNotifications();
+                    dispatch(getNotificationsAsync());
+                } catch (e) { Alert.alert("Error", "Failed to clear notifications"); }
+            }}
+        ]);
+    };
+
+    const handleMarkAllUnread = async () => {
+        try {
+            await markNotificationsUnread();
+            dispatch(getNotificationsAsync());
+        } catch (e) { Alert.alert("Error", "Failed to update notifications"); }
+    };
+
+    const handleDeleteNotification = async (id) => {
+        Alert.alert("Delete Notification", "Remove this activity from your list?", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Delete", style: "destructive", onPress: async () => {
+                try {
+                    await removeNotification(id);
+                    dispatch(getNotificationsAsync());
+                } catch (e) { Alert.alert("Error", "Failed to delete notification"); }
+            }}
+        ]);
+    };
+
     // --- REUSABLE SETTING ITEM ---
     const SettingItem = ({ icon, title, value, onPress, isLast, color, isToggle, toggleValue }) => (
         <TouchableOpacity
@@ -288,6 +393,14 @@ const Profile = ({ navigation }) => {
 
             {/* --- REUSABLE BRANDED HEADER --- */}
             <BrandedHeader colors={colors} isDark={isDark} />
+
+            {/* Settings Icon (Top Left) */}
+            <TouchableOpacity 
+                onPress={() => setIsSettingsModalVisible(true)}
+                style={[styles.settingsHeaderBtn, { top: insets.top + 15 }]}
+            >
+                <Ionicons name="settings-outline" size={24} color={colors.textMain} />
+            </TouchableOpacity>
 
             {/* Notification Bell Icon */}
             <TouchableOpacity 
@@ -361,7 +474,7 @@ const Profile = ({ navigation }) => {
                 {/* Stats Grid */}
                 <View style={styles.statsGrid}>
                     <View style={[styles.miniStat, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
-                        <Text style={[styles.miniStatNum, { color: colors.textMain }]}>{list.length}</Text>
+                        <Text style={[styles.miniStatNum, { color: colors.textMain }]}>{journals.length}</Text>
                         <Text style={[styles.miniStatLabel, { color: colors.textSecondary }]}>Echoes</Text>
                     </View>
                     <View style={[styles.miniStat, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
@@ -370,47 +483,57 @@ const Profile = ({ navigation }) => {
                     </View>
                 </View>
 
-                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>PREFERENCES</Text>
-                <View style={[styles.menuContainer, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
-                    <SettingItem
-                        icon={isDark ? "moon" : "sunny"}
-                        title="Appearance"
-                        value={isDark ? 'Dark' : 'Light'}
-                        onPress={toggleTheme}
-                        isToggle={true}
-                        toggleValue={isDark}
-                    />
-                    <SettingItem
-                        icon="notifications-outline"
-                        title="Notifications"
-                        value={isNotifEnabled ? "On" : "Off"}
-                        onPress={handleNotificationToggle}
-                        isToggle={true}
-                        toggleValue={isNotifEnabled}
-                    />
-                    <SettingItem
-                        icon="key-outline"
-                        title="Save Credentials"
-                        value={isSaveCredsEnabled ? "On" : "Off"}
-                        onPress={handleSaveCredentials}
-                        isToggle={true}
-                        toggleValue={isSaveCredsEnabled}
-                    />
-
-                    <SettingItem icon="shield-outline" title="Privacy & Security" isLast onPress={() => navigation.navigate('PrivacySecurity')} />
+                {/* Media Grid (Echoes) */}
+                <View style={styles.mediaGridHeader}>
+                    <Text style={[styles.sectionLabel, { color: colors.textSecondary, marginBottom: 0 }]}>MY ECHOES</Text>
+                    <TouchableOpacity 
+                        style={[styles.filterButton, { backgroundColor: isFilterActive ? colors.primary : colors.glass, borderColor: isFilterActive ? colors.primary : colors.glassBorder }]}
+                        onPress={showPicker}
+                    >
+                        <Text style={[styles.filterButtonText, { color: isFilterActive ? '#FFF' : colors.textMain }]}>
+                            FILTER
+                        </Text>
+                        {isFilterActive && <Ionicons name="filter" size={14} color="#FFF" style={{ marginLeft: 5 }} />}
+                    </TouchableOpacity>
                 </View>
-
-                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>SUPPORT</Text>
-                <View style={[styles.menuContainer, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
-                    <SettingItem icon="help-buoy-outline" title="Help Center" onPress={() => navigation.navigate('Help')} />
-                    <SettingItem icon="document-text-outline" title="Terms of Service" onPress={() => navigation.navigate('Terms')} />
-                    <SettingItem icon="information-circle-outline" title="About App" isLast onPress={() => navigation.navigate('About')} />
+                {isFilterActive && (
+                    <TouchableOpacity onPress={() => setFilterDate(null)} style={styles.filterBadge}>
+                        <Text style={[styles.filterBadgeText, { color: colors.primary }]}>
+                            Date: {filterDate}  ✕
+                        </Text>
+                    </TouchableOpacity>
+                )}
+                
+                <View style={styles.mediaGrid}>
+                    {filteredMedia.length > 0 ? (
+                        filteredMedia.map((item, index) => (
+                            <TouchableOpacity 
+                                key={`${item.journalId}-${index}`} 
+                                style={styles.mediaItem}
+                                activeOpacity={0.8}
+                                onPress={() => {
+                                    setSelectedMedia(item);
+                                    setIsPreviewVisible(true);
+                                }}
+                            >
+                                <Image 
+                                    source={{ uri: item.url }} 
+                                    style={styles.mediaImage} 
+                                />
+                                {item.isVideo && (
+                                    <View style={styles.videoBadge}>
+                                        <Ionicons name="play" size={12} color="#FFF" />
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        ))
+                    ) : (
+                        <View style={[styles.emptyMedia, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
+                            <Ionicons name="images-outline" size={40} color={colors.textSecondary} style={{ opacity: 0.3 }} />
+                            <Text style={[styles.emptyMediaText, { color: colors.textSecondary }]}>No media shared yet</Text>
+                        </View>
+                    )}
                 </View>
-
-                <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-                    <Ionicons name="log-out-outline" size={22} color="#FF5252" />
-                    <Text style={styles.logoutText}>Log Out</Text>
-                </TouchableOpacity>
 
                 <Text style={[styles.footerText, { color: colors.textSecondary }]}>v1.0.8 Build 2603</Text>
             </ScrollView>
@@ -505,53 +628,186 @@ const Profile = ({ navigation }) => {
 
             {/* Notifications Modal */}
             <Modal visible={isNotifModalVisible} animationType="slide" transparent>
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                    <View style={styles.modalOverlay}>
+                        <View style={[styles.modalContent, { backgroundColor: colors.background[0], height: '70%' }]}>
+                            <View style={styles.modalHeaderRow}>
+                                <Text style={[styles.modalTitle, { color: colors.textMain, marginBottom: 0 }]}>Activity</Text>
+                                <View style={{ flexDirection: 'row', gap: 15, alignItems: 'center' }}>
+                                    <TouchableOpacity onPress={handleMarkAllUnread}>
+                                        <Ionicons name="eye-off-outline" size={22} color={colors.primary} />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={handleClearAll}>
+                                        <Ionicons name="trash-outline" size={22} color="#EF4444" />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={() => setIsNotifModalVisible(false)}>
+                                        <Ionicons name="close-circle" size={28} color={colors.textSecondary} />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                            
+                            <FlatList
+                                data={notifications}
+                                keyExtractor={item => item._id}
+                                style={{ width: '100%' }}
+                                contentContainerStyle={{ paddingVertical: 10 }}
+                                ListEmptyComponent={
+                                    <View style={{ alignItems: 'center', marginTop: 40 }}>
+                                        <Ionicons name="notifications-off-outline" size={48} color={colors.textSecondary} opacity={0.3} />
+                                        <Text style={{ color: colors.textSecondary, marginTop: 10 }}>No notifications yet</Text>
+                                    </View>
+                                }
+                                renderItem={({ item }) => (
+                                    <Swipeable
+                                        renderRightActions={() => (
+                                            <Pressable
+                                                style={styles.deleteNotifAction}
+                                                onPress={() => handleDeleteNotification(item._id)}
+                                            >
+                                                <LinearGradient colors={['#EF4444', '#991B1B']} style={styles.deleteNotifGradient}>
+                                                    <Ionicons name="trash-outline" size={20} color="white" />
+                                                </LinearGradient>
+                                            </Pressable>
+                                        )}
+                                        overshootRight={false}
+                                    >
+                                        <View style={[styles.notifRow, { borderBottomColor: colors.glassBorder, backgroundColor: colors.background[0] }]}>
+                                            <View style={styles.notifAvatar}>
+                                                {item.sender?.profilePicture ? (
+                                                    <Image source={{ uri: item.sender.profilePicture }} style={styles.avatarImage} />
+                                                ) : (
+                                                    <LinearGradient colors={[colors.primary, colors.accent]} style={styles.avatar}>
+                                                        <Text style={{ color: '#FFF', fontWeight: 'bold' }}>{item.sender?.firstName?.[0]}</Text>
+                                                    </LinearGradient>
+                                                )}
+                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={{ color: colors.textMain, fontSize: 14 }}>
+                                                    <Text style={{ fontWeight: 'bold' }}>{item.sender?.firstName} {item.sender?.lastName}</Text>
+                                                    {` ${item.content} `}
+                                                    {item.journalId?.title && <Text style={{ fontWeight: '600', color: colors.primary }}>"{item.journalId.title}"</Text>}
+                                                </Text>
+                                                <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 4 }}>
+                                                    {new Date(item.createdAt).toLocaleDateString()} at {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </Text>
+                                            </View>
+                                            {!item.isRead && (
+                                                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />
+                                            )}
+                                        </View>
+                                    </Swipeable>
+                                )}
+                            />
+                        </View>
+                    </View>
+                </GestureHandlerRootView>
+            </Modal>
+
+            {/* Native Date Picker */}
+            {showDatePicker && Platform.OS === 'ios' && (
+                <DateTimePicker
+                    value={filterDate ? new Date(filterDate + 'T12:00:00') : new Date()}
+                    mode="date"
+                    display="inline"
+                    onChange={onDateChange}
+                />
+            )}
+
+            {/* Semi Full Screen Preview Modal */}
+            <Modal visible={isPreviewVisible} transparent animationType="fade" onRequestClose={() => setIsPreviewVisible(false)}>
+                <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.9)' }]}>
+                    <TouchableOpacity style={styles.previewCloseBtn} onPress={() => setIsPreviewVisible(false)}>
+                        <Ionicons name="close-circle" size={40} color="#FFF" />
+                    </TouchableOpacity>
+                    <View style={styles.previewContent}>
+                        <Image source={{ uri: selectedMedia?.url }} style={styles.previewImage} resizeMode="contain" />
+                        {selectedMedia?.isVideo && (
+                            <View style={styles.previewVideoIcon}>
+                                <Ionicons name="play-circle" size={80} color="rgba(255,255,255,0.6)" />
+                            </View>
+                        )}
+                    </View>
+                    
+                </View>
+            </Modal>
+
+            {/* Settings Modal (Preferences & Support) */}
+            <Modal visible={isSettingsModalVisible} animationType="slide" transparent>
                 <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { backgroundColor: colors.background[0], height: '70%' }]}>
+                    <View style={[styles.modalContent, { backgroundColor: colors.background[0], height: '85%', width: '100%', borderRadius: 30, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, position: 'absolute', bottom: 0 }]}>
                         <View style={styles.modalHeaderRow}>
-                            <Text style={[styles.modalTitle, { color: colors.textMain, marginBottom: 0 }]}>Activity</Text>
-                            <TouchableOpacity onPress={() => setIsNotifModalVisible(false)}>
+                            <Text style={[styles.modalTitle, { color: colors.textMain, marginBottom: 0 }]}>Settings</Text>
+                            <TouchableOpacity onPress={() => setIsSettingsModalVisible(false)}>
                                 <Ionicons name="close-circle" size={28} color={colors.textSecondary} />
                             </TouchableOpacity>
                         </View>
-                        
-                        <FlatList
-                            data={notifications}
-                            keyExtractor={item => item._id}
-                            style={{ width: '100%' }}
-                            contentContainerStyle={{ paddingVertical: 10 }}
-                            ListEmptyComponent={
-                                <View style={{ alignItems: 'center', marginTop: 40 }}>
-                                    <Ionicons name="notifications-off-outline" size={48} color={colors.textSecondary} opacity={0.3} />
-                                    <Text style={{ color: colors.textSecondary, marginTop: 10 }}>No notifications yet</Text>
-                                </View>
-                            }
-                            renderItem={({ item }) => (
-                                <View style={[styles.notifRow, { borderBottomColor: colors.glassBorder }]}>
-                                    <View style={styles.notifAvatar}>
-                                        {item.sender?.profilePicture ? (
-                                            <Image source={{ uri: item.sender.profilePicture }} style={styles.avatarImage} />
-                                        ) : (
-                                            <LinearGradient colors={[colors.primary, colors.accent]} style={styles.avatar}>
-                                                <Text style={{ color: '#FFF', fontWeight: 'bold' }}>{item.sender?.firstName?.[0]}</Text>
-                                            </LinearGradient>
-                                        )}
-                                    </View>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={{ color: colors.textMain, fontSize: 14 }}>
-                                            <Text style={{ fontWeight: 'bold' }}>{item.sender?.firstName} {item.sender?.lastName}</Text>
-                                            {` ${item.content} `}
-                                            {item.journalId?.title && <Text style={{ fontWeight: '600', color: colors.primary }}>"{item.journalId.title}"</Text>}
-                                        </Text>
-                                        <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 4 }}>
-                                            {new Date(item.createdAt).toLocaleDateString()} at {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </Text>
-                                    </View>
-                                    {!item.isRead && (
-                                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />
-                                    )}
-                                </View>
-                            )}
-                        />
+
+                        <ScrollView style={{ width: '100%' }} showsVerticalScrollIndicator={false}>
+                            <Text style={[styles.sectionLabel, { color: colors.textSecondary, marginTop: 10 }]}>PREFERENCES</Text>
+                            <View style={[styles.menuContainer, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
+                                <SettingItem
+                                    icon={isDark ? "moon" : "sunny"}
+                                    title="Appearance"
+                                    value={isDark ? 'Dark' : 'Light'}
+                                    onPress={toggleTheme}
+                                    isToggle={true}
+                                    toggleValue={isDark}
+                                />
+                                <SettingItem
+                                    icon="notifications-outline"
+                                    title="Notifications"
+                                    value={isNotifEnabled ? "On" : "Off"}
+                                    onPress={handleNotificationToggle}
+                                    isToggle={true}
+                                    toggleValue={isNotifEnabled}
+                                />
+                                <SettingItem
+                                    icon="key-outline"
+                                    title="Save Credentials"
+                                    value={isSaveCredsEnabled ? "On" : "Off"}
+                                    onPress={handleSaveCredentials}
+                                    isToggle={true}
+                                    toggleValue={isSaveCredsEnabled}
+                                />
+                                <SettingItem 
+                                    icon="shield-outline" 
+                                    title="Privacy & Security" 
+                                    isLast 
+                                    onPress={() => {
+                                        setIsSettingsModalVisible(false);
+                                        navigation.navigate('PrivacySecurity');
+                                    }} 
+                                />
+                            </View>
+
+                            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>SUPPORT</Text>
+                            <View style={[styles.menuContainer, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
+                                <SettingItem icon="help-buoy-outline" title="Help Center" onPress={() => {
+                                    setIsSettingsModalVisible(false);
+                                    navigation.navigate('Help');
+                                }} />
+                                <SettingItem icon="document-text-outline" title="Terms of Service" onPress={() => {
+                                    setIsSettingsModalVisible(false);
+                                    navigation.navigate('Terms');
+                                }} />
+                                <SettingItem icon="information-circle-outline" title="About App" isLast onPress={() => {
+                                    setIsSettingsModalVisible(false);
+                                    navigation.navigate('About');
+                                }} />
+                            </View>
+
+                            <TouchableOpacity 
+                                style={[styles.logoutBtn, { backgroundColor: isDark ? 'rgba(255, 82, 82, 0.1)' : 'rgba(255, 82, 82, 0.05)' }]} 
+                                onPress={() => {
+                                    setIsSettingsModalVisible(false);
+                                    handleLogout();
+                                }}
+                            >
+                                <Ionicons name="log-out-outline" size={22} color="#FF5252" />
+                                <Text style={styles.logoutText}>Log Out</Text>
+                            </TouchableOpacity>
+                            <View style={{ height: 40 }} />
+                        </ScrollView>
                     </View>
                 </View>
             </Modal>
@@ -613,6 +869,27 @@ const styles = StyleSheet.create({
     modalHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 20 },
     notifRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 1, gap: 15 },
     notifAvatar: { width: 45, height: 45, borderRadius: 22.5, overflow: 'hidden' },
+    settingsHeaderBtn: { position: 'absolute', left: 25, zIndex: 100, width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+    mediaGridHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingHorizontal: 5 },
+    mediaCount: { fontSize: 12, fontWeight: '700' },
+    mediaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    mediaItem: { width: (width - 60) / 3, height: (width - 60) / 3, borderRadius: 12, overflow: 'hidden' },
+    mediaImage: { width: '100%', height: '100%' },
+    videoBadge: { position: 'absolute', top: 5, right: 5, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 10, padding: 3 },
+    emptyMedia: { width: '100%', height: 200, borderRadius: 24, borderWidth: 1, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', marginTop: 10 },
+    emptyMediaText: { fontSize: 14, fontWeight: '600', marginTop: 10, opacity: 0.5 },
+    filterBadge: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, backgroundColor: 'rgba(99, 102, 241, 0.1)', marginBottom: 15, marginLeft: 5 },
+    filterBadgeText: { fontSize: 12, fontWeight: '700', opacity: 0.8 },
+    filterButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 18, borderWidth: 1 },
+    filterButtonText: { fontSize: 12, fontWeight: '700' },
+    previewCloseBtn: { position: 'absolute', top: 50, right: 25, zIndex: 100 },
+    previewContent: { width: width, height: height * 0.7, justifyContent: 'center', alignItems: 'center' },
+    previewImage: { width: '100%', height: '100%' },
+    previewVideoIcon: { position: 'absolute' },
+    
+    viewJournalText: { color: '#FFF', fontWeight: '800', fontSize: 14 },
+    deleteNotifAction: { width: 70, height: '100%' },
+    deleteNotifGradient: { flex: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 12, marginVertical: 8, marginRight: 10 },
 });
 
 export default Profile;

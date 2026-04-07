@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Audio } from 'expo-av';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -25,7 +27,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { useDispatch, useSelector } from 'react-redux';
 import BrandedHeader from '../../components/BrandedHeader';
 import { useTheme } from '../../context/ThemeContext';
-import { clearGroupChat, setActiveGroupId, createGroupAction, deleteGroupAction, getGroupHistory, getGroupsList, markGroupReadAction, sendGroupMessageAction } from '../../redux/groupSlice';
+import { clearGroupChat, createGroupAction, deleteGroupAction, getGroupHistory, getGroupsList, markGroupReadAction, sendGroupMessageAction, setActiveGroupId } from '../../redux/groupSlice';
 import {
     clearChat,
     deleteConversationAction,
@@ -38,6 +40,18 @@ import {
 } from '../../redux/messageSlice';
 import { fetchAllUsers } from '../../services/api';
 import { uploadImageToCloudinary } from '../../services/cloudinary';
+
+const MessageVideoPlayer = ({ uri }) => {
+    const player = useVideoPlayer(uri, (p) => { p.loop = false; });
+    return (
+        <VideoView
+            style={{ width: 220, height: 150, borderRadius: 12, marginBottom: 5 }}
+            player={player}
+            nativeControls={true}
+            contentFit="cover"
+        />
+    );
+};
 
 const Messages = () => {
     const dispatch = useDispatch();
@@ -62,8 +76,11 @@ const Messages = () => {
     const [attachedAudio, setAttachedAudio] = useState(null);
     const [playingMessageId, setPlayingMessageId] = useState(null);
     const [playbackTime, setPlaybackTime] = useState(0);
+    const [attachedMedia, setAttachedMedia] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
+    const [currentImageUri, setCurrentImageUri] = useState(null);
 
     // Group Creation State
     const [isGroupModalVisible, setIsGroupModalVisible] = useState(false);
@@ -173,8 +190,20 @@ const Messages = () => {
         }
     };
 
+    const pickMedia = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.All,
+            allowsMultipleSelection: true,
+            quality: 0.7,
+        });
+        if (!result.canceled) {
+            setAttachedMedia([...attachedMedia, ...result.assets]);
+        }
+    };
+
     const cancelAttachment = () => {
         setAttachedAudio(null);
+        setAttachedMedia(null);
     };
 
     const formatDuration = (millis) => {
@@ -223,7 +252,7 @@ const Messages = () => {
 
     // --- 5. Send Message Logic ---
     const handleSendMessage = async () => {
-        if (!selectedUser || (message.trim().length === 0 && !attachedAudio)) return;
+        if (!selectedUser || (message.trim().length === 0 && !attachedAudio && attachedMedia.length === 0)) return;
         const messageText = message.trim();
 
         if (editingMessage) {
@@ -232,6 +261,7 @@ const Messages = () => {
         } else {
             let voiceUrl = null;
             let duration = null;
+            let mediaArray = [];
 
             if (attachedAudio) {
                 try {
@@ -242,10 +272,27 @@ const Messages = () => {
                 }
             }
 
+            if (attachedMedia.length > 0) {
+                try {
+                    mediaArray = await Promise.all(attachedMedia.map(async (file) => {
+                        const url = await uploadImageToCloudinary(file.uri);
+                        return {
+                            url,
+                            mediaType: file.type === 'video' ? 'video' : 'image'
+                        };
+                    }));
+                } catch (error) {
+                    return Alert.alert("Error", "Failed to upload media");
+                }
+            }
+
             const messagePayload = {
-                content: voiceUrl ? "Voice Message" : messageText,
+                content: (voiceUrl || mediaArray.length > 0) 
+                    ? (voiceUrl ? "Voice Message" : `${mediaArray.length} Media shared`) 
+                    : messageText,
                 voiceUrl,
-                duration
+                duration,
+                media: mediaArray
             };
 
             const targetId = selectedUser.user?._id || selectedUser._id;
@@ -260,6 +307,7 @@ const Messages = () => {
         }
 
         setAttachedAudio(null);
+        setAttachedMedia([]);
         setMessage('');
     };
 
@@ -508,6 +556,28 @@ const Messages = () => {
                                                 borderBottomLeftRadius: isMe ? 20 : 4,
                                             }
                                         ]}>
+                                            {item.media && item.media.length > 0 && (
+                                                <View style={{ gap: 5, marginBottom: item.content ? 5 : 0 }}>
+                                                    {item.media.map((m, idx) => (
+                                                        m.mediaType === 'video' ? (
+                                                            <MessageVideoPlayer key={idx} uri={m.url} />
+                                                        ) : (
+                                                            <TouchableOpacity
+                                                                key={idx}
+                                                                onPress={() => { setCurrentImageUri(m.url); setIsImageViewerVisible(true); }}
+                                                                activeOpacity={0.8}
+                                                            >
+                                                                <Image 
+                                                                    source={{ uri: m.url }} 
+                                                                    style={{ width: 220, height: 150, borderRadius: 12 }} 
+                                                                    resizeMode="cover"
+                                                                />
+                                                            </TouchableOpacity>
+                                                        )
+                                                    ))}
+                                                    {item.content && <View style={{ height: 5 }} />}
+                                                </View>
+                                            )}
                                             {item.voiceUrl ? (
                                                 <TouchableOpacity 
                                                     onPress={() => playVoice(item.voiceUrl, item._id)}
@@ -559,7 +629,12 @@ const Messages = () => {
                     </View>
                 )}
                 <View style={[styles.inputWrapper, { backgroundColor: colors.background[0], borderTopColor: colors.glassBorder }]}>
-                    {!attachedAudio && (
+                    {!attachedAudio && attachedMedia.length === 0 && (
+                        <TouchableOpacity style={styles.iconBtn} onPress={pickMedia}>
+                            <Ionicons name="image-outline" size={24} color={colors.textSecondary} />
+                        </TouchableOpacity>
+                    )}
+                    {!attachedAudio && attachedMedia.length === 0 && (
                         <TouchableOpacity 
                             style={styles.iconBtn}
                             onPress={isRecording ? stopRecording : startRecording}
@@ -571,7 +646,19 @@ const Messages = () => {
                             />
                         </TouchableOpacity>
                     )}
-                    {attachedAudio ? (
+                    {attachedMedia.length > 0 ? (
+                        <View style={[styles.chatInput, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                                <Ionicons name="attach" size={18} color={colors.primary} />
+                                <Text numberOfLines={1} style={{ color: colors.textMain, marginLeft: 8, fontWeight: '600' }}>
+                                    {attachedMedia.length} item(s) attached
+                                </Text>
+                            </View>
+                            <TouchableOpacity onPress={cancelAttachment}>
+                                <Ionicons name="close-circle" size={24} color="#EF4444" />
+                            </TouchableOpacity>
+                        </View>
+                    ) : attachedAudio ? (
                         <View style={[styles.chatInput, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                 <Ionicons name="mic" size={18} color={colors.primary} />
@@ -604,14 +691,14 @@ const Messages = () => {
                         />
                     )}
                     <TouchableOpacity 
-                        style={[styles.sendBtn, { backgroundColor: (message.trim() || attachedAudio) ? colors.primary : 'transparent' }]} 
+                        style={[styles.sendBtn, { backgroundColor: (message.trim() || attachedAudio || attachedMedia.length > 0) ? colors.primary : 'transparent' }]} 
                         onPress={handleSendMessage}
-                        disabled={!message.trim() && !attachedAudio}
+                        disabled={!message.trim() && !attachedAudio && attachedMedia.length === 0}
                     >
                         <Ionicons 
                             name="send" 
                             size={20} 
-                            color={(message.trim() || attachedAudio) ? '#FFF' : colors.textSecondary}
+                            color={(message.trim() || attachedAudio || attachedMedia.length > 0) ? '#FFF' : colors.textSecondary}
                         />
                     </TouchableOpacity>
                 </View>
@@ -656,6 +743,22 @@ const Messages = () => {
                                 )}
                             />
                         </View>
+                    </View>
+                </Modal>
+
+                {/* Image Viewer Modal */}
+                <Modal visible={isImageViewerVisible} transparent animationType="fade" onRequestClose={() => setIsImageViewerVisible(false)}>
+                    <View style={[styles.imageViewerOverlay, { backgroundColor: 'rgba(0,0,0,0.9)' }]}>
+                        <TouchableOpacity style={styles.imageViewerCloseBtn} onPress={() => setIsImageViewerVisible(false)}>
+                            <Ionicons name="close-circle" size={40} color="#FFF" />
+                        </TouchableOpacity>
+                        {currentImageUri && (
+                            <Image
+                                source={{ uri: currentImageUri }}
+                                style={styles.imageViewerImage}
+                                resizeMode="contain"
+                            />
+                        )}
                     </View>
                 </Modal>
 
@@ -834,6 +937,10 @@ const styles = StyleSheet.create({
     sendBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
     deleteAction: { width: 90, height: '100%' },
     deleteGradient: { flex: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 20, marginVertical: 8, marginLeft: 10, marginRight: 20 },
+    imageViewerOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    imageViewerCloseBtn: { position: 'absolute', top: 50, right: 25, zIndex: 100 },
+    imageViewerImage: { width: '100%', height: '80%' },
+
 });
 
 export default Messages;

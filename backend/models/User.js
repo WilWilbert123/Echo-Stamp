@@ -12,6 +12,11 @@ const userSchema = new mongoose.Schema({
     profilePicture: { type: String, default: null },
     pushToken: { type: String, default: null },
     notificationsEnabled: { type: Boolean, default: true },
+    lastKnownLocation: {
+        latitude: Number,
+        longitude: Number,
+        updatedAt: Date
+    }
 }, { timestamps: true });
 
 userSchema.pre('save', async function () {

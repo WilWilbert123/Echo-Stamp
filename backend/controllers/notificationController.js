@@ -25,3 +25,33 @@ exports.markAsRead = async (req, res) => {
         res.status(500).json({ message: 'Error updating notifications' });
     }
 };
+
+exports.markAllUnread = async (req, res) => {
+    try {
+        await Notification.updateMany(
+            { recipient: req.user._id, isRead: true },
+            { $set: { isRead: false } }
+        );
+        res.status(200).json({ message: 'All notifications marked as unread' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating notifications' });
+    }
+};
+
+exports.clearAllNotifications = async (req, res) => {
+    try {
+        await Notification.deleteMany({ recipient: req.user._id });
+        res.status(200).json({ message: 'Notifications cleared' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error clearing notifications' });
+    }
+};
+
+exports.deleteNotification = async (req, res) => {
+    try {
+        await Notification.findOneAndDelete({ _id: req.params.id, recipient: req.user._id });
+        res.status(200).json({ message: 'Notification deleted' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting notification' });
+    }
+};

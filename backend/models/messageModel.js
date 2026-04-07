@@ -16,6 +16,10 @@ const conversationSchema = new mongoose.Schema({
             trim: true
         },
         voiceUrl: { type: String },
+        media: [{
+            url: { type: String },
+            mediaType: { type: String, enum: ['image', 'video'] }
+        }],
         duration: { type: Number },
         isRead: { type: Boolean, default: false },
         isEdited: { type: Boolean, default: false },

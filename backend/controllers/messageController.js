@@ -44,11 +44,11 @@ const sendPushNotification = async (expoPushToken, title, body, data) => {
 
 exports.sendMessage = async (req, res) => {
     try {
-        const { receiverId, content, voiceUrl, duration } = req.body;
+        const { receiverId, content, voiceUrl, duration, media } = req.body;
         const senderId = req.user._id;
         const senderName = req.user.firstName || "Someone";
 
-        if (!receiverId || (!content && !voiceUrl)) {
+        if (!receiverId || (!content && !voiceUrl && !imageUrl && !videoUrl)) {
             return res.status(400).json({ message: 'Receiver ID and either content or voice message are required' });
         }
 
@@ -60,10 +60,10 @@ exports.sendMessage = async (req, res) => {
         if (!conversation) {
             conversation = await Message.create({
                 participants: [senderId, receiverId],
-                messages: [{ sender: senderId, content, voiceUrl, duration }]
+                messages: [{ sender: senderId, content, voiceUrl, duration, media }]
             });
         } else {
-            conversation.messages.push({ sender: senderId, content, voiceUrl, duration });
+            conversation.messages.push({ sender: senderId, content, voiceUrl, duration, media });
             await conversation.save();
         }
 
