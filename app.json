@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "Echo Stamp",
+    "name": "",
     "slug": "Echo-Stamp",
     "version": "1.0.8",
     "orientation": "portrait",
-    "icon": "./assets/images/ES2.png",
+    "icon": "./assets/images/ECHOLOGOll.png",
     "scheme": "echostamp",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -42,7 +42,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/ES2.png",
+          "image": "./assets/images/ECHOLOGOll.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
@@ -57,7 +57,14 @@
       "expo-location",
       "expo-notifications",
       "expo-mail-composer",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow Echo Stamp to save photos.",
+          "savePhotosPermission": "Allow Echo Stamp to save photos."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { FaGooglePlay, FaMoon, FaSun } from 'react-icons/fa';
 import '../styles/Header.css';
  
-import echoLogo from '../assets/echologo.ico';
+import echoLogo from '../assets/ECHOLOGOll.png';
 
 const Header = ({ scrollTo, isDark, toggleTheme }) => {
   const [isScrolled, setIsScrolled] = useState(false);

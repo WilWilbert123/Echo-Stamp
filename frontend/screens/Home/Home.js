@@ -8,6 +8,7 @@ import {
   Alert,
   Dimensions,
   FlatList,
+  Image,
   Platform,
   Pressable,
   RefreshControl,
@@ -28,7 +29,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import GlassButton from '../../components/GlassButton';
 import { EMOTION_ASSETS, EMOTION_CONFIG } from '../../constants/assets';
 import { useTheme } from '../../context/ThemeContext';
-import { deleteEchoAsync, getEchoesAsync } from '../../redux/echoSlice';
+import { deleteEchoAsync, getGlobalEchoesAsync } from '../../redux/echoSlice';
+import { getRelativeTime } from '../EchoStamp/tabs/Feed/utils/feedUtils';
 
 // --- COMPONENTS ---
 import BrandedHeader from '../../components/BrandedHeader';
@@ -67,9 +69,8 @@ const Home = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    const userId = user?._id || user?.id;
-    if (userId) dispatch(getEchoesAsync(userId));
-  }, [dispatch, user?._id, user?.id]);
+    dispatch(getGlobalEchoesAsync()); 
+  }, [dispatch]);
 
   const filteredList = useMemo(() => {
     const data = Array.isArray(list) ? list : [];
@@ -81,12 +82,9 @@ const Home = () => {
   }, [searchQuery, list]);
 
   const onRefresh = async () => {
-    const userId = user?._id || user?.id;
-    if (userId) {
-      setRefreshing(true);
-      await dispatch(getEchoesAsync(userId));
-      setRefreshing(false);
-    }
+    setRefreshing(true);
+    await dispatch(getGlobalEchoesAsync());
+    setRefreshing(false);
   };
 
   const handleDelete = (id) => {
@@ -112,8 +110,22 @@ const Home = () => {
     const animationSource = config ? EMOTION_ASSETS[config.assetKey] : EMOTION_ASSETS.Calm;
     const displayLabel = config ? config.label : item.emotion;
 
+    // 1. Check if userId is a populated object or just a string ID
+    const isPopulated = item.userId && typeof item.userId === 'object';
+    const authorId = isPopulated ? (item.userId._id || item.userId.id) : item.userId;
+    
+    // 2. Determine if it's the current user's post
+    const isOwnPost = authorId?.toString() === (user?._id || user?.id)?.toString();
+
+    // 3. Resolve Author object: Use Redux user for self, otherwise use the populated data
+    const author = isOwnPost ? user : (isPopulated ? item.userId : null);
+
     return (
-      <Swipeable renderRightActions={() => renderRightActions(item._id)} overshootRight={false}>
+      <Swipeable 
+        renderRightActions={() => isOwnPost ? renderRightActions(item._id) : null} 
+        enabled={isOwnPost}
+        overshootRight={false}
+      >
         <AnimatedPressable
           style={[
             styles.echoCard,
@@ -128,31 +140,43 @@ const Home = () => {
             <BlurView intensity={15} style={StyleSheet.absoluteFill} tint="dark" />
           )}
 
-          <View style={styles.cardHeader}>
-            <View style={styles.titleContainer}>
-              <Text style={[styles.echoTitle, { color: colors.textMain }]}>{item.title}</Text>
-              <Text style={[styles.echoDate, { color: colors.textSecondary }]}>
-                {new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-              </Text>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={[styles.avatarContainer, { backgroundColor: colors.primary + '20' }]}>
+                {author?.profilePicture ? (
+                    <Image source={{ uri: author.profilePicture }} style={styles.avatarImage} />
+                ) : (
+                    <Text style={{ color: colors.primary, fontWeight: '800', fontSize: 14 }}>
+                        {author?.firstName ? author.firstName[0].toUpperCase() : 
+                         (author?.username ? author.username[0].toUpperCase() : 'U')}
+                    </Text>
+                )}
             </View>
 
-            <View style={styles.emotionContainer}>
-              <LottieView source={animationSource} autoPlay loop style={styles.emotionLottie} />
-              <Text style={[styles.echoEmotion, { color: colors.primary }]}>{displayLabel}</Text>
+            <View style={{ flex: 1 }}>
+                <View style={styles.cardHeader}>
+                    <View style={styles.titleContainer}>
+                    <Text style={[styles.echoTitle, { color: colors.textMain, fontSize: 16 }]}>
+                        {author?.firstName
+                          ? `${author.firstName} ${author.lastName || ''}`.trim()
+                          : (author?.username || author?.displayName || 'Explorer')}
+                    </Text>
+                    <Text style={[styles.echoDate, { color: colors.textSecondary }]}>
+                        • {getRelativeTime(item.createdAt)}
+                    </Text>
+                    </View>
+                    <View style={styles.emotionContainer}>
+                    <LottieView source={animationSource} autoPlay loop style={{ width: 55, height: 55 }} />
+                    </View>
+                </View>
+
+                <Text style={[styles.echoTitle, { color: colors.textMain, marginTop: 4, fontSize: 18 }]}>{item.title}</Text>
+                
+                {item.description && (
+                    <Text style={[styles.echoDescription, { color: colors.textSecondary, marginBottom: 10 }]} numberOfLines={3}>
+                    {item.description}
+                    </Text>
+                )}
             </View>
-          </View>
-
-          {item.description && (
-            <Text style={[styles.echoDescription, { color: colors.textSecondary }]} numberOfLines={2}>
-              {item.description}
-            </Text>
-          )}
-
-          <View style={[styles.cardFooter, { borderTopColor: colors.glassBorder }]}>
-            <Ionicons name="location-outline" size={12} color={colors.primary} />
-            <Text style={[styles.locationText, { color: colors.textSecondary }]} numberOfLines={1}>
-              {item.location?.address || 'Somewhere beautiful'}
-            </Text>
           </View>
         </AnimatedPressable>
       </Swipeable>
@@ -169,11 +193,22 @@ const Home = () => {
 
         <View style={styles.headerContainer}>
           <View style={styles.headerTop}>
-            <View>
-              <Text style={[styles.welcomeText, { color: colors.textSecondary }]}>Hello,</Text>
-              <Text style={[styles.userName, { color: colors.textMain }]}>
-                {user?.username || "Explorer"}
-              </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={[styles.avatarContainer, { backgroundColor: colors.primary + '20', width: 50, height: 50, borderRadius: 25 }]}>
+                {user?.profilePicture ? (
+                  <Image source={{ uri: user.profilePicture }} style={styles.avatarImage} />
+                ) : (
+                  <Text style={{ color: colors.primary, fontWeight: '800', fontSize: 18 }}>
+                    {user?.firstName?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase() || 'E'}
+                  </Text>
+                )}
+              </View>
+              <View>
+                <Text style={[styles.welcomeText, { color: colors.textSecondary }]}>Hello,</Text>
+                <Text style={[styles.userName, { color: colors.textMain, fontSize: 24 }]}>
+                  {user?.firstName ? user.firstName : (user?.username || "Explorer")}
+                </Text>
+              </View>
             </View>
 
             {/* Direct toggle for Dark/Light mode */}
@@ -272,6 +307,8 @@ const styles = StyleSheet.create({
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
   titleContainer: { flex: 1 },
+  avatarContainer: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  avatarImage: { width: '100%', height: '100%' },
   echoTitle: { fontSize: 20, fontWeight: '900', letterSpacing: -0.5, marginBottom: 4 },
   echoDate: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, opacity: 0.5 },
   emotionContainer: { alignItems: 'center' },

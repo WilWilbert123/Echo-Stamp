@@ -1,4 +1,21 @@
 const Echo = require('../models/Echo');
+const User = require('../models/User'); // Ensure User model is available for population
+
+// @desc    Get all echoes from all users (Global Feed)
+// @route   GET /api/echoes/global
+exports.getGlobalEchoes = async (req, res) => {
+    try {
+        const echoes = await Echo.find()
+            .populate('userId', 'username firstName lastName profilePicture')
+            .sort({ createdAt: -1 });
+
+        console.log(`[GET] Global Feed: Found ${echoes.length} items`);
+        res.status(200).json(echoes);
+    } catch (error) {
+        console.error("GlobalEchoes Error:", error.message);
+        res.status(500).json({ message: error.message });
+    }
+};
 
 // @desc    Get memories based on user and type
 // @route   GET /api/echoes/:userId/:type
@@ -15,7 +32,9 @@ exports.getEchoes = async (req, res) => {
         const echoes = await Echo.find({ 
             userId: userId, 
             type: type 
-        }).sort({ createdAt: -1 });
+        })
+        .populate('userId', 'username firstName lastName profilePicture')
+        .sort({ createdAt: -1 });
 
         console.log(`[GET] Found ${echoes.length} items for User: ${userId} Type: ${type}`);
         
@@ -36,7 +55,9 @@ exports.createEcho = async (req, res) => {
             type: req.body.type || 'mood'
         };
 
-        const newEcho = await Echo.create(echoData);
+        let newEcho = await Echo.create(echoData);
+        // Populate user details so the feed shows the correct info immediately after creation
+        newEcho = await Echo.findById(newEcho._id).populate('userId', 'username firstName lastName profilePicture');
         
         console.log(`[POST] New Echo created with ID: ${newEcho._id}`);
         res.status(201).json(newEcho);

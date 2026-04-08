@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import * as SecureStore from "expo-secure-store";
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { Image, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { setCredentials, setLoading } from "../redux/authSlice";
 import ForgotPassword from "../screens/Auths/ForgotPassword";
@@ -64,16 +64,24 @@ const HomeStackNavigator = () => {
         checkAutoLogin();
     }, [dispatch]);
 
-    if (loading || isAppLoading) {
+    // Only unmount the entire navigator during the initial boot check
+    if (isAppLoading) {
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
-                <ActivityIndicator size="large" color="#fff" />
+                <Image 
+                    source={require('../../assets/images/ECHOLOGOll.png')} 
+                    style={{ width: 140, height: 140 }}
+                    resizeMode="contain"
+                />
             </View>
         );
     }
 
     return (
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Navigator 
+            screenOptions={{ headerShown: false }}
+            initialRouteName={isAuthenticated ? "MainTabsRoot" : "Intro"}
+        >
             {isAuthenticated ? (
                 < >
                     <Stack.Screen name="MainTabsRoot" component={MainTabs} />

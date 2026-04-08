@@ -48,7 +48,7 @@ exports.sendMessage = async (req, res) => {
         const senderId = req.user._id;
         const senderName = req.user.firstName || "Someone";
 
-        if (!receiverId || (!content && !voiceUrl && !imageUrl && !videoUrl)) {
+        if (!receiverId || (!content && !voiceUrl && (!media || media.length === 0))) {
             return res.status(400).json({ message: 'Receiver ID and either content or voice message are required' });
         }
 
@@ -97,11 +97,21 @@ exports.getMessages = async (req, res) => {
         const otherUserId = req.params.userId;
         const myId = req.user._id;
 
+        // Update current user's status to online
+        await User.findByIdAndUpdate(myId, { isOnline: true }, { timestamps: false });
+
         const conversation = await Message.findOne({ 
             participants: { $all: [myId, otherUserId] } 
-        });
+        }).populate('participants', 'firstName lastName username profilePicture isOnline'); // Populate participants here
 
-        res.status(200).json(conversation ? conversation.messages : []);
+        let otherUser = null;
+        if (conversation) {
+            otherUser = conversation.participants.find(p => p._id.toString() !== myId.toString());
+        } else {
+            otherUser = await User.findById(otherUserId, 'firstName lastName username profilePicture isOnline');
+        }
+
+        res.status(200).json({ messages: conversation ? conversation.messages : [], otherUser: otherUser });
     } catch (error) {
         console.error("GET_MESSAGES_ERROR:", error);
         res.status(500).json({ message: 'Server Error: Could not fetch messages', error: error.message });
@@ -112,9 +122,12 @@ exports.getConversations = async (req, res) => {
     try {
         const myId = req.user._id;
         
+        // Update current user's status to online
+        await User.findByIdAndUpdate(myId, { isOnline: true }, { timestamps: false });
+
         // Find conversations and sort by updatedAt (latest activity)
         const conversations = await Message.find({ participants: myId })
-            .populate('participants', 'firstName lastName username profilePicture')
+            .populate('participants', 'firstName lastName username profilePicture isOnline')
             .sort({ updatedAt: -1 });
 
         const conversationList = conversations.map(conv => {

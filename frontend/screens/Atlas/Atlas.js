@@ -252,8 +252,6 @@ const Atlas = () => {
         toggleSelect={atlas.toggleUserSelection}
         searchQuery={atlas.userSearchQuery}
         setSearchQuery={atlas.setUserSearchQuery}
-        onShare={atlas.handleShareLocation}
-        loading={atlas.isSharing}
         colors={colors}
       />
     </View>

@@ -113,7 +113,7 @@ const messageSlice = createSlice({
             })
             .addCase(getChatHistory.fulfilled, (state, action) => {
                 state.loading = false;
-                state.activeConversation = action.payload;
+                state.activeConversation = action.payload.messages;
             })
             // Get Conversations List
             .addCase(getConversationsList.pending, (state) => {

@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     twoFactorEnabled: { type: Boolean, default: false },
-    isPublic: { type: Boolean, default: false, required: true },
+    isPublic: { type: Boolean, default: true, required: true },
     profilePicture: { type: String, default: null },
     pushToken: { type: String, default: null },
     notificationsEnabled: { type: Boolean, default: true },

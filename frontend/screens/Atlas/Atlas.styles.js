@@ -61,6 +61,7 @@ const styles = StyleSheet.create({
   input: { width: '100%', borderRadius: 15, padding: 15, marginBottom: 12, borderWidth: 1 },
   buttonRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
   btnSave: { paddingHorizontal: 25, paddingVertical: 12, borderRadius: 15 },
+  modalCloseIcon: { position: 'absolute', top: 25, right: 25, zIndex: 10 },
   btnSaveText: { color: '#fff', fontWeight: 'bold' },
   cancelNavBtn: { position: 'absolute', right: 20, zIndex: 20 },
   cancelNavCard: { flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 15, backgroundColor: 'rgba(0,0,0,0.6)' },

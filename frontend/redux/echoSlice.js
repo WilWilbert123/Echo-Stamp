@@ -18,6 +18,19 @@ export const getEchoesAsync = createAsyncThunk(
   }
 );
 
+/* --- FETCH GLOBAL FEED (ALL USERS) --- */
+export const getGlobalEchoesAsync = createAsyncThunk(
+  'echoes/getGlobal',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.fetchGlobalEchoes();
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || "Error fetching global feed");
+    }
+  }
+);
+
 /* --- ADD NEW ECHO --- */
 export const addEchoAsync = createAsyncThunk(
   'echoes/add',
@@ -84,6 +97,18 @@ const echoSlice = createSlice({
         state.list = action.payload;
       })
       .addCase(getEchoesAsync.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload;
+      })
+      /* Global Echoes Cases */
+      .addCase(getGlobalEchoesAsync.pending, (state) => {
+        state.status = 'loading';
+      })
+      .addCase(getGlobalEchoesAsync.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.list = action.payload;
+      })
+      .addCase(getGlobalEchoesAsync.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload;
       })

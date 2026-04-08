@@ -1,3 +1,7 @@
+import * as FileSystem from 'expo-file-system/legacy';
+import * as MediaLibrary from 'expo-media-library';
+import { Alert } from 'react-native';
+
 export const checkIsVideo = (uri) => {
     if (!uri || typeof uri !== 'string') return false;
     const url = uri.toLowerCase();
@@ -21,5 +25,36 @@ export const getRelativeTime = (date) => {
         return past.toLocaleDateString();
     } catch (e) {
         return 'Recently';
+    }
+};
+
+export const downloadMedia = async (uri) => {
+    if (!uri) return;
+    try {
+       
+        const { status } = await MediaLibrary.requestPermissionsAsync(true);
+        if (status !== 'granted') {
+            Alert.alert('Permission Denied', 'Please enable media library permissions in your device settings to download files.');
+            return;
+        }
+
+        // Clean filename: remove query params and add a timestamp to avoid name collisions
+        let cleanName = uri.split('/').pop().split('?')[0];
+        if (!cleanName.includes('.')) {
+            cleanName += checkIsVideo(uri) ? '.mp4' : '.jpg';
+        }
+        const filename = `${Date.now()}_${cleanName}`;
+        const fileUri = `${FileSystem.documentDirectory}${filename}`;
+
+        const downloadResumable = FileSystem.createDownloadResumable(uri, fileUri);
+        const { uri: localUri } = await downloadResumable.downloadAsync();
+
+        if (localUri) {
+            await MediaLibrary.createAssetAsync(localUri);
+            Alert.alert('Success', 'Media saved to gallery!');
+        }
+    } catch (error) {
+        console.error("Download Error:", error);
+        Alert.alert('Error', 'Failed to download media. Please check your connection.');
     }
 };

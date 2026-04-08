@@ -1,27 +1,30 @@
 import { useNavigation } from '@react-navigation/native';
-import { Eye, Heart, MapPin, MessageCircle, MoreHorizontal, Play, Share2 } from 'lucide-react-native';
+import { Download, Eye, Heart, MapPin, MessageCircle, MoreHorizontal, Play } from 'lucide-react-native';
 import { memo } from 'react';
-import { Image, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { toggleLikeAsync } from '../../../../../redux/journalSlice';
 import { styles } from '../feed.styles';
-import { checkIsVideo, getRelativeTime } from '../utils/feedUtils';
+import { checkIsVideo, downloadMedia, getRelativeTime } from '../utils/feedUtils';
 
 const PostItem = memo(({ item, colors, onOpenGallery, onOpenComments }) => {
     const dispatch = useDispatch();
     const navigation = useNavigation();
     const currentUser = useSelector(state => state.auth.user);
     const isLiked = item.likes?.includes(currentUser?._id || currentUser?.id);
-    
-    const author = item.userId;
+
+    // Resolve identity safely
+    const authorRaw = item.userId;
+    const authorId = (authorRaw && typeof authorRaw === 'object') ? (authorRaw._id || authorRaw.id) : authorRaw;
+
+    const isOwnPost = authorId === (currentUser?._id || currentUser?.id);
+    const author = isOwnPost ? currentUser : (authorRaw && typeof authorRaw === 'object' ? authorRaw : null);
+
     const mediaCount = item.media?.length || 0;
     const isMainVid = checkIsVideo(item.media?.[0]);
 
-    const handleShare = async () => {
-        try {
-            const shareMsg = `Check out this Echo: ${item.title}\n${item.description}\n\n${item.media?.[0] || ''}`;
-            await Share.share({ message: shareMsg });
-        } catch (error) { console.log(error); }
+    const handleDownload = () => {
+        if (item.media?.[0]) downloadMedia(item.media[0]);
     };
 
     const handleViewEcho = () => {
@@ -46,14 +49,17 @@ const PostItem = memo(({ item, colors, onOpenGallery, onOpenComments }) => {
                     {author?.profilePicture ? (
                         <Image source={{ uri: author.profilePicture }} style={styles.avatarImage} />
                     ) : (
-                        <Text style={[styles.avatarLetter, { color: colors.primary }]}>
-                            {author?.firstName ? author.firstName.charAt(0).toUpperCase() : 'U'}
+                        <Text style={[styles.avatarLetter, { color: colors.primary, fontSize: 14 }]}>
+                            {author?.firstName ? author.firstName.charAt(0).toUpperCase() : 
+                             (author?.username ? author.username.charAt(0).toUpperCase() : 'U')}
                         </Text>
                     )}
                 </View>
                 <View style={{ flex: 1 }}>
                     <Text style={[styles.userName, { color: colors.textMain }]}>
-                        {author?.firstName ? `${author.firstName} ${author.lastName}` : (author?.username || 'Explorer')}
+                        {author?.firstName
+                          ? `${author.firstName} ${author.lastName}` 
+                          : (author?.username || 'User')}
                     </Text>
                     <View style={styles.locationRow}>
                         <MapPin size={10} color={colors.primary} style={{ marginTop: 2 }} />
@@ -75,9 +81,20 @@ const PostItem = memo(({ item, colors, onOpenGallery, onOpenComments }) => {
             </TouchableOpacity>
 
             {mediaCount > 0 && (
-                <TouchableOpacity activeOpacity={0.9} style={styles.imageGrid} onPress={() => onOpenGallery(item.media)}>
+                <TouchableOpacity 
+                    activeOpacity={0.9} 
+                    style={styles.imageGrid} 
+                    onPress={() => onOpenGallery(item.media)}
+                    onLongPress={handleDownload}
+                >
                     <View style={styles.gridImageMain}>
                         <Image source={{ uri: item.media[0] }} style={StyleSheet.absoluteFill} />
+                        <TouchableOpacity 
+                            style={[styles.downloadGallery, { top: 10, right: 10 }]} 
+                            onPress={handleDownload}
+                        >
+                            <Download size={20} color="white" />
+                        </TouchableOpacity>
                         {isMainVid && (
                             <View style={styles.overlay}>
                                 <Play size={32} color="white" fill="white" />
@@ -112,8 +129,8 @@ const PostItem = memo(({ item, colors, onOpenGallery, onOpenComments }) => {
                         <MessageCircle size={20} color={colors.textSecondary} />
                         <Text style={[styles.statText, { color: colors.textSecondary }]}>{item.comments?.length || 0}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.statItem} onPress={handleShare}>
-                        <Share2 size={18} color={colors.textSecondary} />
+                    <TouchableOpacity style={styles.statItem} onPress={handleDownload}>
+                        <Download size={18} color={colors.textSecondary} />
                     </TouchableOpacity>
                 </View>
                 <TouchableOpacity style={[styles.reactBtn, { backgroundColor: colors.primary }]} onPress={handleViewEcho}>

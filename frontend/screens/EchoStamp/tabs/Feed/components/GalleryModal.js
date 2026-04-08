@@ -1,8 +1,8 @@
-import { X } from 'lucide-react-native';
+import { Download, X } from 'lucide-react-native';
 import { Dimensions, FlatList, Image, Modal, TouchableOpacity, View } from 'react-native';
 import GalleryVideoItem from '../components/GalleryVideoItem';
 import { styles } from '../feed.styles';
-import { checkIsVideo } from '../utils/feedUtils';
+import { checkIsVideo, downloadMedia } from '../utils/feedUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -11,6 +11,12 @@ const GalleryModal = ({ visible, images, activeIndex, onClose, onScroll }) => (
         <View style={styles.blackBg}>
             <TouchableOpacity style={styles.closeGallery} onPress={onClose}>
                 <X color="white" size={28} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+                style={styles.downloadGallery} 
+                onPress={() => downloadMedia(images[activeIndex])}
+            >
+                <Download color="white" size={28} />
             </TouchableOpacity>
             <FlatList
                 data={images}
