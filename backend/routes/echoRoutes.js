@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { getEchoes, createEcho, deleteEcho } = require('../controllers/echoController');
+const { getEchoes, createEcho, deleteEcho, getGlobalEchoes } = require('../controllers/echoController');
 
- 
+router.get('/feed/global', getGlobalEchoes);
+
 router.get('/:userId/:type', getEchoes);
 
  

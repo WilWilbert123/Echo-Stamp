@@ -3,17 +3,17 @@ import * as Location from 'expo-location';
 import LottieView from 'lottie-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    Dimensions,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
@@ -149,18 +149,6 @@ const CreateEcho = ({ navigation }) => {
             </TouchableOpacity>
             <Text style={[styles.headerTitle, { color: colors.textMain }]}>New Echo</Text>
             <View style={{ width: 44 }} />
-          </View>
-
-          {/* Location Bar */}
-          <View style={[styles.locationStatus, { backgroundColor: colors.glass, borderColor: colors.glassBorder, borderWidth: 1 }]}>
-            <Ionicons
-              name={address && !address.includes("denied") ? "location" : "location-outline"}
-              size={14}
-              color={colors.primary}
-            />
-            <Text numberOfLines={1} style={[styles.locationStatusText, { color: colors.textSecondary }]}>
-              {isLocating ? "Finding your spot..." : address || "Location ready"}
-            </Text>
           </View>
 
           {/* Main Input Area */}

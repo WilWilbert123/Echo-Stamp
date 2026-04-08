@@ -43,6 +43,7 @@ export const styles = StyleSheet.create({
     gallerySlide: { width: width, height: height, justifyContent: 'center', alignItems: 'center' },
     fullImg: { width: width, height: height * 0.8 },
     closeGallery: { position: 'absolute', top: 60, right: 25, zIndex: 20, backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 25 },
+    downloadGallery: { position: 'absolute', top: 60, right: 85, zIndex: 20, backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 25 },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
     modalContent: { borderTopLeftRadius: 40, borderTopRightRadius: 40, padding: 24, height: '75%' },
     modalHeader: { alignItems: 'center', marginBottom: 25 },

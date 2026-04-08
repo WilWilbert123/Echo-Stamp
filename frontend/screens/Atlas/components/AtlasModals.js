@@ -2,15 +2,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import React from 'react';
 import {
-  ActivityIndicator, FlatList,
-  Image,
-  Modal,
-  ScrollView,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator, FlatList,
+    Image,
+    Modal,
+    ScrollView,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import GlassCard from '../../../components/GlassCard';
 import styles from '../Atlas.styles';
@@ -163,7 +163,7 @@ export const MediaViewerModal = ({
 
 export const ShareLocationModal = ({ 
   visible, setVisible, users, selectedIds, toggleSelect, 
-  searchQuery, setSearchQuery, onShare, loading, colors 
+  searchQuery, setSearchQuery, colors 
 }) => {
   const filteredUsers = users.filter(u => 
     `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -174,6 +174,9 @@ export const ShareLocationModal = ({
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.modalOverlay}>
         <GlassCard style={[styles.modalContent, { backgroundColor: colors.background[1], borderColor: colors.glassBorder, height: '70%' }]}>
+          <TouchableOpacity style={styles.modalCloseIcon} onPress={() => setVisible(false)}>
+            <Ionicons name="close" size={26} color={colors.textSecondary} />
+          </TouchableOpacity>
           <Text style={[styles.modalHeader, { color: colors.textMain }]}>Share Location</Text>
           <TextInput
             style={[styles.modalSearchInput, { color: colors.textMain, borderColor: colors.glassBorder, backgroundColor: colors.glass }]}
@@ -206,18 +209,6 @@ export const ShareLocationModal = ({
               );
             }}
           />
-          <View style={styles.shareModalFooter}>
-            <TouchableOpacity style={styles.shareCancelBtn} onPress={() => setVisible(false)}>
-              <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.shareSubmitBtn, { backgroundColor: colors.primary }]} 
-              onPress={onShare}
-              disabled={loading}
-            >
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: 'bold' }}>Update Sharing</Text>}
-            </TouchableOpacity>
-          </View>
         </GlassCard>
       </View>
     </Modal>

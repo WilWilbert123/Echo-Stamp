@@ -82,6 +82,7 @@ const MainTabs = () => {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
+        tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: colors.textMain,
         tabBarInactiveTintColor: isDark ? '#555' : '#AAA',
         tabBarStyle: {

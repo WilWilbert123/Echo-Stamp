@@ -35,6 +35,7 @@ export const register = (data) => API.post('/users/register', data);
 
   /* --- echo --- */
 
+export const fetchGlobalEchoes = () => API.get('/echoes/feed/global');
 export const fetchEchoes = (userId, type) => API.get(`/echoes/${userId}/${type}`);
 export const postEcho = (echoData) => API.post('/echoes', echoData);
 export const deleteEcho = (id) => API.delete(`/echoes/${id}`);

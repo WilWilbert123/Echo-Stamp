@@ -6,10 +6,10 @@ import { Alert, Dimensions } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import thisisit from '../../../config/config';
 import {
-  addJournalAsync,
-  deleteJournalAsync,
-  getJournalsAsync,
-  removeJournalMediaAsync
+    addJournalAsync,
+    deleteJournalAsync,
+    getJournalsAsync,
+    removeJournalMediaAsync
 } from '../../../redux/journalSlice';
 import { getActiveShares, startSharing, stopSharing } from '../../../redux/shareLocationSlice';
 import { fetchAllUsers, fetchMyOutgoingShare, updateLiveLocation } from '../../../services/api';
@@ -177,45 +177,30 @@ export const useAtlas = () => {
     }
   };
 
-  const handleShareLocation = async () => {
-    // If no one is selected, we interpret this as "Stop Sharing All"
-    if (selectedUserIds.length === 0) {
-      return handleStopSharing();
-    }
+  const toggleUserSelection = async (userId) => {
+    const isCurrentlySelected = selectedUserIds.includes(userId);
+    const newSelectedIds = isCurrentlySelected 
+      ? selectedUserIds.filter(id => id !== userId) 
+      : [...selectedUserIds, userId];
+    
+    setSelectedUserIds(newSelectedIds);
 
-    if (!userLocation) return Alert.alert("Error", "Could not determine your location.");
-
-    setIsSharing(true);
     try {
-      await dispatch(startSharing({
-        recipientIds: selectedUserIds,
-        durationMinutes: 60 // Share for 1 hour
-      })).unwrap();
-
-      Alert.alert("Live Sharing Active", `You are now sharing live coordinates with ${selectedUserIds.length} friend(s).`);
-      setShareModalVisible(false);
-      setSelectedUserIds([]);
-      setUserSearchQuery('');
+      if (newSelectedIds.length === 0) {
+        await dispatch(stopSharing()).unwrap();
+      } else {
+        if (!userLocation) {
+          Alert.alert("Error", "Could not determine your location to start sharing.");
+          return;
+        }
+        await dispatch(startSharing({
+          recipientIds: newSelectedIds,
+          durationMinutes: 60
+        })).unwrap();
+      }
     } catch (e) {
-      Alert.alert("Error", e || "Failed to share location.");
-    } finally {
-      setIsSharing(false);
+      console.error("Location share toggle failed:", e);
     }
-  };
-
-  const handleStopSharing = async () => {
-    try {
-      await dispatch(stopSharing()).unwrap();
-      Alert.alert("Stopped", "Live sharing has been disabled.");
-    } catch (e) {
-      Alert.alert("Error", e || "Failed to stop sharing.");
-    }
-  };
-
-  const toggleUserSelection = (userId) => {
-    setSelectedUserIds(prev => 
-      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
-    );
   };
 
   const handleSearch = async () => {
@@ -352,11 +337,11 @@ export const useAtlas = () => {
     setRouteCoordinates, arrowHeading, setArrowHeading, title, setTitle, 
     description, setDescription, mediaList, setMediaList, markers,
     shareModalVisible, setShareModalVisible, allUsers, selectedUserIds,
-    userSearchQuery, setUserSearchQuery, isSharing, activeShares,
+    userSearchQuery, setUserSearchQuery, activeShares,
     // Methods
     handleSearch, pickMedia, handleSave, handleDeleteJournal,
     handleRemoveSingleSavedMedia, cancelNavigation, openShareModal,
-    handleShareLocation, handleStopSharing, toggleUserSelection,
+    toggleUserSelection,
     // Constants/Config
     GOOGLE_MAPS_APIKEY, width
   };
