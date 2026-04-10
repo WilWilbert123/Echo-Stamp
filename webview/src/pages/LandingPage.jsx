@@ -15,7 +15,7 @@ const LandingPage = ({ onExplore }) => {
         <section className="hero-split-container fade-in">
           <div className="hero-text-content">
             <h1 className="hero-title">
-              Next-Gen <span className="text-gradient">Echos</span> <br />
+              Next-Gen <span className="text-gradient">Echoes</span> <br />
               for a <span className="text-shimmer">Smarter World</span>
             </h1>
             
