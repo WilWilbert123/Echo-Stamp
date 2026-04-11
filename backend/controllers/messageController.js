@@ -1,6 +1,29 @@
 const Message = require('../models/messageModel');
 const User = require('../models/User');
 const axios = require('axios');
+const cloudinary = require('cloudinary').v2;
+
+const getPublicIdFromUrl = (url) => {
+    try {
+        const parts = url.split('/');
+        const uploadIndex = parts.indexOf('upload');
+        const pathAfterUpload = parts.slice(uploadIndex + 2).join('/'); 
+        return pathAfterUpload.split('.')[0]; 
+    } catch (error) {
+        return null;
+    }
+};
+
+const deleteFromCloudinary = async (url) => {
+    const publicId = getPublicIdFromUrl(url);
+    if (!publicId) return;
+    const isVideo = url.includes('/video/upload/');
+    try {
+        await cloudinary.uploader.destroy(publicId, { resource_type: isVideo ? 'video' : 'image' });
+    } catch (err) {
+        console.error(`[Cloudinary] Delete failed for ${publicId}:`, err.message);
+    }
+};
 
 const sendPushNotification = async (expoPushToken, title, body, data) => {
     const message = {
@@ -9,6 +32,7 @@ const sendPushNotification = async (expoPushToken, title, body, data) => {
         title: title,
         body: body,
         android: { channelId: 'default' },
+        priority: 'high',
         data: data,
     };
 
@@ -182,24 +206,23 @@ exports.editMessage = async (req, res) => {
         const { content } = req.body;
         const myId = req.user._id;
 
-        const conversation = await Message.findOneAndUpdate(
-            { 
-                "messages._id": messageId, 
-                "messages.sender": myId 
-            },
-            { 
-                $set: { 
-                    "messages.$.content": content,
-                    "messages.$.isEdited": true 
-                } 
-            },
-            { new: true }
-        );
-
+        const conversation = await Message.findOne({ "messages._id": messageId });
         if (!conversation) return res.status(404).json({ message: "Message not found or unauthorized" });
         
-        const updatedMessage = conversation.messages.id(messageId);
+        const message = conversation.messages.id(messageId);
+        if (!message) return res.status(404).json({ message: "Message not found" });
+
+        // Security: Only sender can edit
+        if (message.sender.toString() !== myId.toString()) {
+            return res.status(403).json({ message: "Unauthorized" });
+        }
+
+        message.content = content;
+        message.isEdited = true;
+        await conversation.save();
+
         res.status(200).json(updatedMessage);
+        res.status(200).json(message);
     } catch (error) {
         res.status(500).json({ message: 'Error editing message' });
     }
@@ -210,13 +233,20 @@ exports.deleteMessage = async (req, res) => {
         const { messageId } = req.params;
         const myId = req.user._id;
 
-        const conversation = await Message.findOneAndUpdate(
-            { "messages._id": messageId, "messages.sender": myId },
-            { $pull: { messages: { _id: messageId } } },
-            { new: true }
-        );
-
+        const conversation = await Message.findOne({ "messages._id": messageId, "messages.sender": myId });
         if (!conversation) return res.status(404).json({ message: "Message not found or unauthorized" });
+
+        const message = conversation.messages.id(messageId);
+        
+        // Cleanup Cloudinary
+        if (message.voiceUrl) await deleteFromCloudinary(message.voiceUrl);
+        if (message.media && message.media.length > 0) {
+            await Promise.all(message.media.map(m => deleteFromCloudinary(m.url)));
+        }
+
+        conversation.messages.pull(messageId);
+        await conversation.save();
+
         res.status(200).json({ message: "Deleted", messageId });
     } catch (error) {
         res.status(500).json({ message: 'Error deleting message' });
@@ -228,11 +258,20 @@ exports.deleteConversation = async (req, res) => {
         const { otherUserId } = req.params;
         const myId = req.user._id;
 
-        const conversation = await Message.findOneAndDelete({
+        const conversation = await Message.findOne({
             participants: { $all: [myId, otherUserId] }
         });
-
         if (!conversation) return res.status(404).json({ message: "Conversation not found" });
+
+        // Cleanup all media in the conversation
+        for (const msg of conversation.messages) {
+            if (msg.voiceUrl) await deleteFromCloudinary(msg.voiceUrl);
+            if (msg.media && msg.media.length > 0) {
+                await Promise.all(msg.media.map(m => deleteFromCloudinary(m.url)));
+            }
+        }
+
+        await Message.findByIdAndDelete(conversation._id);
 
         res.status(200).json({ message: "Conversation deleted", otherUserId });
     } catch (error) {

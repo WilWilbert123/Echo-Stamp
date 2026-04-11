@@ -1,5 +1,4 @@
 import axios from 'axios';
-
 const API = axios.create({
    //baseURL: 'http://192.168.0.223:10000/api', 
    baseURL: 'https://echo-stamp.onrender.com/api',
@@ -114,6 +113,8 @@ export const fetchGroups = () => API.get('/groups');
 export const fetchGroupMessages = (groupId) => API.get(`/groups/${groupId}`);
 export const postGroupMessage = (data) => API.post('/groups/message', data);
 export const removeGroup = (groupId) => API.delete(`/groups/${groupId}`);
+export const removeGroupMessage = (groupId, messageId) => API.delete(`/groups/${groupId}/message/${messageId}`);
+export const updateGroupMessage = (groupId, messageId, content) => API.patch(`/groups/${groupId}/message/${messageId}`, { content });
 export const markGroupRead = (groupId) => API.put(`/groups/read/${groupId}`);
 
 // Optional: Mark messages as read

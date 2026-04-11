@@ -20,6 +20,10 @@ const groupSchema = new mongoose.Schema({
         },
         seenBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
         voiceUrl: { type: String },
+        media: [{
+            url: { type: String },
+            mediaType: { type: String, enum: ['image', 'video'] }
+        }],
         duration: { type: Number },
         isEdited: { type: Boolean, default: false },
         createdAt: { type: Date, default: Date.now }

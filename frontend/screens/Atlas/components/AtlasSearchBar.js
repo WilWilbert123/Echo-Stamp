@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, TextInput, View } from 'react-native';
 import GlassCard from '../../../components/GlassCard';
 import styles from '../Atlas.styles';
-
 const AtlasSearchBar = ({ 
   insets, colors, isSearching, searchQuery, setSearchQuery, handleSearch 
 }) => {
