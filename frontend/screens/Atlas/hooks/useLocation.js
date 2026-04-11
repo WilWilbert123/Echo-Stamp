@@ -1,7 +1,6 @@
 import * as Location from 'expo-location';
 import { useEffect } from 'react';
 import { Alert } from 'react-native';
-
 export const useLocation = (showDirections, routeCoordinates, setUserLocation, setArrowHeading) => {
   
   const calculateHeading = (currentPos, path) => {
@@ -16,6 +15,7 @@ export const useLocation = (showDirections, routeCoordinates, setUserLocation, s
 
   useEffect(() => {
     let locationSubscription;
+    let headingSubscription;
 
     const startTracking = async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
@@ -26,8 +26,9 @@ export const useLocation = (showDirections, routeCoordinates, setUserLocation, s
 
       locationSubscription = await Location.watchPositionAsync(
         {
-          accuracy: Location.Accuracy.High,
-          distanceInterval: 1,
+          accuracy: Location.Accuracy.BestForNavigation,
+          distanceInterval: 0.5, // Update even on tiny movements
+          timeInterval: 500,    // Update twice a second for smoothness
         },
         (location) => {
           const newCoords = {
@@ -35,15 +36,20 @@ export const useLocation = (showDirections, routeCoordinates, setUserLocation, s
             longitude: location.coords.longitude,
           };
           setUserLocation(newCoords);
-
-          if (showDirections && routeCoordinates.length > 0) {
-            calculateHeading(newCoords, routeCoordinates);
-          }
         }
       );
+
+      // Add heading tracking to detect phone rotation like a compass
+      headingSubscription = await Location.watchHeadingAsync((data) => {
+        const heading = data.trueHeading || data.magHeading;
+        setArrowHeading(heading);
+      });
     };
 
     startTracking();
-    return () => { if (locationSubscription) locationSubscription.remove(); };
+    return () => { 
+      if (locationSubscription) locationSubscription.remove(); 
+      if (headingSubscription) headingSubscription.remove();
+    };
   }, [showDirections, routeCoordinates]);
 };

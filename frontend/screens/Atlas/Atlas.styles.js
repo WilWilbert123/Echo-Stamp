@@ -74,9 +74,18 @@ const styles = StyleSheet.create({
   userAvatar: { width: 40, height: 40, borderRadius: 20, marginRight: 12 },
   userSelectBadge: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
   modalSearchInput: { height: 50, borderRadius: 15, paddingHorizontal: 15, marginBottom: 10, borderWidth: 1 },
-  shareModalFooter: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
-  shareSubmitBtn: { flex: 1, height: 50, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginLeft: 10 },
-  shareCancelBtn: { flex: 0.4, height: 50, justifyContent: 'center', alignItems: 'center' },
+  
+  // New styles for travel mode and estimated time
+  travelModeContainer: { position: 'absolute', width: '100%', alignItems: 'center', zIndex: 10, paddingHorizontal: 20, paddingBottom: 80 },
+  travelModeCard: { padding: 10, borderRadius: 25, borderWidth: 1, flexDirection: 'column', alignItems: 'center' },
+  travelModeButtons: { flexDirection: 'row', justifyContent: 'space-around', width: '100%', marginBottom: 10 },
+  travelModeButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 8, borderRadius: 20, marginHorizontal: 2 },
+  travelModeButtonText: { marginLeft: 4, fontWeight: '600', fontSize: 12 },
+  estimatedTimeText: { fontSize: 16, fontWeight: '700', textAlign: 'center', marginBottom: 5 },
+
+  shareModalFooter: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }, // Existing, ensure no conflict
+  shareSubmitBtn: { flex: 1, height: 50, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginLeft: 10 }, // Existing, ensure no conflict
+  shareCancelBtn: { flex: 0.4, height: 50, justifyContent: 'center', alignItems: 'center' }, // Existing, ensure no conflict
 });
 
 export default styles;

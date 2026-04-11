@@ -6,10 +6,10 @@ import { Alert, Dimensions } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import thisisit from '../../../config/config';
 import {
-    addJournalAsync,
-    deleteJournalAsync,
-    getJournalsAsync,
-    removeJournalMediaAsync
+  addJournalAsync,
+  deleteJournalAsync,
+  getJournalsAsync,
+  removeJournalMediaAsync
 } from '../../../redux/journalSlice';
 import { getActiveShares, startSharing, stopSharing } from '../../../redux/shareLocationSlice';
 import { fetchAllUsers, fetchMyOutgoingShare, updateLiveLocation } from '../../../services/api';
@@ -49,8 +49,13 @@ export const useAtlas = () => {
   const [userLocation, setUserLocation] = useState(null);
   const [destination, setDestination] = useState(null);
   const [searchResult, setSearchResult] = useState(null);
+  const [navigationOrigin, setNavigationOrigin] = useState(null); // Stable origin for directions
   const [routeCoordinates, setRouteCoordinates] = useState([]);
+  const [alternativeRoutes, setAlternativeRoutes] = useState([]); // New state for alternative routes
+  const [travelMode, setTravelMode] = useState('driving'); // New state for travel mode
+  const [estimatedTime, setEstimatedTime] = useState(null); // New state for estimated time
   const [arrowHeading, setArrowHeading] = useState(0);
+  const [hasCenteredInitial, setHasCenteredInitial] = useState(false);
 
   // Form State
   const [title, setTitle] = useState('');
@@ -61,6 +66,22 @@ export const useAtlas = () => {
   const markers = useMemo(() => {
     return (list || []).filter(j => j.location && typeof j.location.lat === 'number');
   }, [list]);
+
+  // Throttled Navigation Origin Logic: Only update route if user moves > 30 meters
+  useEffect(() => {
+    if (showDirections && userLocation) {
+      if (!navigationOrigin) {
+        setNavigationOrigin(userLocation);
+        return;
+      }
+      
+      const latDiff = Math.abs(userLocation.latitude - navigationOrigin.latitude);
+      const lngDiff = Math.abs(userLocation.longitude - navigationOrigin.longitude);
+      if (latDiff > 0.0003 || lngDiff > 0.0003) { // Approx 30 meters
+        setNavigationOrigin(userLocation);
+      }
+    }
+  }, [userLocation, showDirections]);
 
   // Handle Incoming Route Params  
   useEffect(() => {
@@ -140,6 +161,18 @@ export const useAtlas = () => {
       });
     }
   }, [route.params]);
+
+  // Auto-center on user location once when first acquired
+  useEffect(() => {
+    if (userLocation && mapRef.current && !hasCenteredInitial) {
+      mapRef.current.animateToRegion({
+        ...userLocation,
+        latitudeDelta: 0.015,
+        longitudeDelta: 0.015,
+      }, 1000);
+      setHasCenteredInitial(true);
+    }
+  }, [userLocation, hasCenteredInitial, mapRef.current]);
 
   // Initial Fetch
   useEffect(() => {
@@ -322,6 +355,15 @@ export const useAtlas = () => {
     setShowDirections(false);
     setRouteCoordinates([]);
     setDestination(null);
+    setAlternativeRoutes([]); // Clear alternative routes
+    setEstimatedTime(null); // Clear estimated time
+    setTravelMode('driving'); // Reset travel mode to default
+  };
+
+  const startNavigation = (coords) => {
+    setDestination(coords);
+    setNavigationOrigin(userLocation); // Initialize origin immediately to prevent "Line Gone" delay
+    setShowDirections(true);
   };
 
   return {
@@ -332,12 +374,12 @@ export const useAtlas = () => {
     selectedJournal, setSelectedJournal, tempCoords, setTempCoords,
     activeMediaIndex, setActiveMediaIndex, searchQuery, setSearchQuery,
     isSearching, loading, userLocation, setUserLocation, showDirections, 
-    setShowDirections, showStreetView, setShowStreetView, destination, 
+    setShowDirections, showStreetView, setShowStreetView, destination,
     setDestination, searchResult, setSearchResult, routeCoordinates, 
-    setRouteCoordinates, arrowHeading, setArrowHeading, title, setTitle, 
+    setRouteCoordinates, alternativeRoutes, setAlternativeRoutes, travelMode, setTravelMode, estimatedTime, setEstimatedTime, arrowHeading, setArrowHeading, title, setTitle,
     description, setDescription, mediaList, setMediaList, markers,
     shareModalVisible, setShareModalVisible, allUsers, selectedUserIds,
-    userSearchQuery, setUserSearchQuery, activeShares,
+    userSearchQuery, setUserSearchQuery, activeShares, startNavigation,
     // Methods
     handleSearch, pickMedia, handleSave, handleDeleteJournal,
     handleRemoveSingleSavedMedia, cancelNavigation, openShareModal,

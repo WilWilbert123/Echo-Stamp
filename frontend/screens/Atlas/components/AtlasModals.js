@@ -2,15 +2,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import React from 'react';
 import {
-    ActivityIndicator, FlatList,
-    Image,
-    Modal,
-    ScrollView,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator, FlatList,
+  Image,
+  Modal,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import GlassCard from '../../../components/GlassCard';
 import styles from '../Atlas.styles';

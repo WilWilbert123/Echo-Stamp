@@ -30,7 +30,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import BrandedHeader from '../../components/BrandedHeader';
 import { useTheme } from '../../context/ThemeContext';
-import { clearGroupChat, createGroupAction, deleteGroupAction, getGroupHistory, getGroupsList, markGroupReadAction, sendGroupMessageAction, setActiveGroupId } from '../../redux/groupSlice';
+import { clearGroupChat, createGroupAction, deleteGroupAction, deleteGroupMessageAction, editGroupMessageAction, getGroupHistory, getGroupsList, markGroupReadAction, sendGroupMessageAction, setActiveGroupId } from '../../redux/groupSlice';
 import {
     clearChat,
     deleteConversationAction,
@@ -348,7 +348,15 @@ const Messages = () => {
         const messageText = message.trim();
 
         if (editingMessage) {
-            dispatch(editMessageAction({ messageId: editingMessage._id, content: messageText }));
+            if (selectedUser.isGroup) {
+                dispatch(editGroupMessageAction({ 
+                    groupId: selectedUser._id, 
+                    messageId: editingMessage._id, 
+                    content: messageText 
+                }));
+            } else {
+                dispatch(editMessageAction({ messageId: editingMessage._id, content: messageText }));
+            }
             setEditingMessage(null);
         } else {
             let voiceUrl = null;
@@ -448,7 +456,13 @@ const Messages = () => {
                 },
                 {
                     text: "Delete",
-                    onPress: () => dispatch(deleteMessageAction(item._id)),
+                    onPress: () => {
+                        if (selectedUser.isGroup) {
+                            dispatch(deleteGroupMessageAction({ groupId: selectedUser._id, messageId: item._id }));
+                        } else {
+                            dispatch(deleteMessageAction(item._id));
+                        }
+                    },
                     style: "destructive"
                 },
                 { text: "Cancel", style: "cancel" }
@@ -693,7 +707,7 @@ const Messages = () => {
                                                         {item.content && <View style={{ height: 5 }} />}
                                                     </View>
                                                 )}
-                                                {item.voiceUrl ? (
+                                                {item.voiceUrl && (
                                                     <TouchableOpacity
                                                         onPress={() => playVoice(item.voiceUrl, item._id)}
                                                         style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 5 }}
@@ -708,8 +722,9 @@ const Messages = () => {
                                                             </Text>
                                                         </View>
                                                     </TouchableOpacity>
-                                                ) : (
-                                                    <Text style={{ color: isMe ? '#FFF' : colors.textMain, fontSize: 15, lineHeight: 20 }}>
+                                                )}
+                                                {(!item.voiceUrl || item.isEdited) && item.content && (
+                                                    <Text style={{ color: isMe ? '#FFF' : colors.textMain, fontSize: 15, lineHeight: 20, marginTop: item.voiceUrl ? 5 : 0 }}>
                                                         {item.content}
                                                     </Text>
                                                 )}

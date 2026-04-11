@@ -3,7 +3,6 @@ import { Image, View } from 'react-native';
 import { Marker } from 'react-native-maps';
 import styles from '../Atlas.styles';
 import { checkIsVideo } from '../utils/mediaHelpers';
-
 const AtlasMarker = ({ journal, colors, isDark, onPress }) => {
   return (
     <Marker

@@ -1,8 +1,33 @@
 const Group = require('../models/Group');
 const User = require('../models/User');
+const cloudinary = require('cloudinary').v2;
 
 // Reuse the push notification logic
 const axios = require('axios');
+
+const getPublicIdFromUrl = (url) => {
+    try {
+        const parts = url.split('/');
+        const uploadIndex = parts.indexOf('upload');
+        const pathAfterUpload = parts.slice(uploadIndex + 2).join('/'); 
+        return pathAfterUpload.split('.')[0]; 
+    } catch (error) {
+        return null;
+    }
+};
+
+const deleteFromCloudinary = async (url) => {
+    const publicId = getPublicIdFromUrl(url);
+    if (!publicId) return;
+
+    const isVideo = url.includes('/video/upload/');
+    try {
+        await cloudinary.uploader.destroy(publicId, { resource_type: isVideo ? 'video' : 'image' });
+    } catch (err) {
+        console.error(`[Cloudinary] Delete failed for ${publicId}:`, err.message);
+    }
+};
+
 const sendPushNotification = async (expoPushToken, title, body, data) => {
     const message = {
         to: expoPushToken,
@@ -75,14 +100,14 @@ exports.getGroups = async (req, res) => {
 
 exports.sendGroupMessage = async (req, res) => {
     try {
-        const { groupId, content, voiceUrl, duration } = req.body;
+        const { groupId, content, voiceUrl, duration, media } = req.body;
         const senderId = req.user._id;
         const senderName = req.user.firstName || "Someone";
 
         const group = await Group.findOne({ _id: groupId, participants: senderId });
         if (!group) return res.status(404).json({ message: "Group not found" });
 
-        const newMessage = { sender: senderId, senderName, content, voiceUrl, duration, seenBy: [senderId] };
+        const newMessage = { sender: senderId, senderName, content, voiceUrl, duration, media, seenBy: [senderId] };
         group.messages.push(newMessage);
         await group.save();
 
@@ -93,7 +118,11 @@ exports.sendGroupMessage = async (req, res) => {
         const users = await User.find({ _id: { $in: others } });
         users.forEach(u => {
             if (u.pushToken && u.notificationsEnabled) {
-                sendPushNotification(u.pushToken, `${group.name}: ${senderName}`, content, { groupId });
+                // Better notification text for media
+                const notificationBody = (media && media.length > 0) 
+                    ? `Sent ${media.length > 1 ? 'photos' : 'a photo'}` 
+                    : content;
+                sendPushNotification(u.pushToken, `${group.name}: ${senderName}`, notificationBody, { groupId });
             }
         });
 
@@ -130,10 +159,21 @@ exports.getGroupMessages = async (req, res) => {
 
 exports.deleteGroup = async (req, res) => {
     try {
-        const group = await Group.findOneAndDelete({ _id: req.params.groupId, admin: req.user._id });
-        if (!group) return res.status(403).json({ message: "Unauthorized" });
+        const group = await Group.findOne({ _id: req.params.groupId, admin: req.user._id });
+        if (!group) return res.status(403).json({ message: "Unauthorized or Group not found" });
+
+        // Cleanup all media in the group
+        for (const message of group.messages) {
+            if (message.voiceUrl) await deleteFromCloudinary(message.voiceUrl);
+            if (message.media && message.media.length > 0) {
+                await Promise.all(message.media.map(m => deleteFromCloudinary(m.url)));
+            }
+        }
+
+        await Group.findByIdAndDelete(req.params.groupId);
         res.status(200).json({ message: "Group deleted" });
     } catch (error) {
+        console.error("Delete Group Error:", error);
         res.status(500).json({ message: 'Error deleting group' });
     }
 };
@@ -156,5 +196,64 @@ exports.markGroupAsRead = async (req, res) => {
         res.status(200).json({ message: "Group messages marked as read" });
     } catch (error) {
         res.status(500).json({ message: 'Error marking group as read' });
+    }
+};
+
+exports.deleteGroupMessage = async (req, res) => {
+    try {
+        const { groupId, messageId } = req.params;
+        const myId = req.user._id;
+
+        const group = await Group.findById(groupId);
+        if (!group) return res.status(404).json({ message: "Group not found" });
+
+        const message = group.messages.id(messageId);
+        if (!message) return res.status(404).json({ message: "Message not found" });
+
+        // Security: Only the sender can delete their message
+        if (message.sender.toString() !== myId.toString()) {
+            return res.status(403).json({ message: "Unauthorized" });
+        }
+
+        // Cleanup Cloudinary storage
+        if (message.voiceUrl) await deleteFromCloudinary(message.voiceUrl);
+        if (message.media && message.media.length > 0) {
+            await Promise.all(message.media.map(m => deleteFromCloudinary(m.url)));
+        }
+
+        group.messages.pull(messageId);
+        await group.save();
+        res.status(200).json({ message: "Deleted", messageId });
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting message' });
+    }
+};
+
+exports.editGroupMessage = async (req, res) => {
+    try {
+        const { groupId, messageId } = req.params;
+        const { content } = req.body;
+        const myId = req.user._id;
+
+        const group = await Group.findById(groupId);
+        if (!group) return res.status(404).json({ message: "Group not found" });
+
+        const message = group.messages.id(messageId);
+        if (!message) return res.status(404).json({ message: "Message not found" });
+
+        // Security: Only sender can edit
+        if (message.sender.toString() !== myId.toString()) {
+            return res.status(403).json({ message: "Unauthorized" });
+        }
+
+        message.content = content;
+        message.isEdited = true;
+        await group.save();
+
+        await group.populate('messages.sender', 'firstName lastName');
+        const updatedMessage = group.messages.id(messageId);
+        res.status(200).json(updatedMessage);
+    } catch (error) {
+        res.status(500).json({ message: 'Error editing group message' });
     }
 };

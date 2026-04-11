@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createGroup, getGroups, sendGroupMessage, getGroupMessages, deleteGroup, markGroupAsRead } = require('../controllers/groupController');
+const { createGroup, getGroups, sendGroupMessage, getGroupMessages, deleteGroup, markGroupAsRead, deleteGroupMessage, editGroupMessage } = require('../controllers/groupController');
 const { protect } = require('../middleware/authMiddleware');
 
 router.use(protect);
@@ -11,5 +11,7 @@ router.post('/message', sendGroupMessage);
 router.get('/:groupId', getGroupMessages);
 router.delete('/:groupId', deleteGroup);
 router.put('/read/:groupId', markGroupAsRead);
+router.delete('/:groupId/message/:messageId', deleteGroupMessage);
+router.patch('/:groupId/message/:messageId', editGroupMessage);
 
 module.exports = router;

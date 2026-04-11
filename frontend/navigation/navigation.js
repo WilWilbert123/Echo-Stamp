@@ -70,7 +70,7 @@ const HomeStackNavigator = () => {
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
                 <Image 
                     source={require('../../assets/images/ECHOLOGOll.png')} 
-                    style={{ width: 140, height: 140 }}
+                    style={{ width: 190, height: 190 }}
                     resizeMode="contain"
                 />
             </View>

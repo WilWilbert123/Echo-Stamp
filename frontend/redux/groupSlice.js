@@ -26,6 +26,16 @@ export const deleteGroupAction = createAsyncThunk('groups/delete', async (groupI
     return groupId;
 });
 
+export const deleteGroupMessageAction = createAsyncThunk('groups/deleteMessage', async ({ groupId, messageId }) => {
+    await api.removeGroupMessage(groupId, messageId);
+    return messageId;
+});
+
+export const editGroupMessageAction = createAsyncThunk('groups/editMessage', async ({ groupId, messageId, content }) => {
+    const response = await api.updateGroupMessage(groupId, messageId, content);
+    return response.data;
+});
+
 export const markGroupReadAction = createAsyncThunk(
     'groups/markRead',
     async (groupId, thunkAPI) => {
@@ -69,6 +79,15 @@ const groupSlice = createSlice({
             })
             .addCase(createGroupAction.fulfilled, (state, action) => {
                 state.groups.unshift(action.payload);
+            })
+            .addCase(deleteGroupMessageAction.fulfilled, (state, action) => {
+                state.activeGroupMessages = state.activeGroupMessages.filter(m => m._id !== action.payload);
+            })
+            .addCase(editGroupMessageAction.fulfilled, (state, action) => {
+                const index = state.activeGroupMessages.findIndex(m => m._id === action.payload._id);
+                if (index !== -1) {
+                    state.activeGroupMessages[index] = action.payload;
+                }
             })
             .addCase(markGroupReadAction.fulfilled, (state, action) => {
                 const group = state.groups.find(g => g._id === action.payload);

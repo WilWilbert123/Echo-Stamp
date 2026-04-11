@@ -3,8 +3,6 @@ export const checkIsVideo = (uri) => {
   const url = uri.toLowerCase();
   return url.includes('/video/upload/') || url.endsWith('.mp4') || url.endsWith('.mov');
 };
-
-
 export const renderStreetViewHTML = (lat, lng, apikey) => `
 <!DOCTYPE html>
 <html>
