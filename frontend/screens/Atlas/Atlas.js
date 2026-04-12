@@ -119,7 +119,8 @@ const Atlas = () => {
         userInterfaceStyle={isDark ? 'dark' : 'light'}
         showsBuildings={true} // Enable 3D buildings
         showsTraffic={true} // Explicitly keeping traffic layer enabled
-        showsIndoors={true}
+        showsIndoors={false}
+        showsIndoorLevelPicker={false}
         showsUserLocation={false} // Hide the native blue dot to prevent overlapping
         showsMyLocationButton={false} // We can use a custom one
       >
