@@ -3,6 +3,38 @@ const User = require('../models/User');
 const cloudinary = require('cloudinary').v2;
 const mongoose = require('mongoose');
 const Notification = require('../models/Notification');
+const axios = require('axios');
+
+// --- PUSH NOTIFICATION HELPER ---
+const sendPushNotification = async (recipientId, title, body, data) => {
+    try {
+        const user = await User.findById(recipientId);
+        if (!user || !user.pushToken || !user.notificationsEnabled) return;
+
+        const message = {
+            to: user.pushToken,
+            sound: 'default',
+            title: title,
+            body: body,
+            data: data,  
+            android: { 
+                channelId: 'default',
+                priority: 'high'
+            },
+            priority: 'high',
+        };
+
+        await axios.post('https://exp.host/--/api/v2/push/send', message, {
+            headers: {
+                'Accept': 'application/json',
+                'Accept-encoding': 'gzip, deflate',
+                'Content-Type': 'application/json',
+            },
+        });
+    } catch (error) {
+        console.error("Push Notification Error:", error.message);
+    }
+};
 
 // --- HELPERS ---
 
@@ -184,6 +216,15 @@ exports.toggleLike = async (req, res) => {
                     journalId: journal._id,
                     content: 'liked your journal entry'
                 });
+
+                // Send Push Notification
+                const sender = await User.findById(userId);
+                await sendPushNotification(
+                    journal.userId,
+                    "New Interaction",
+                    `${sender.firstName} liked your echo`,
+                    { type: 'like', journalId: journal._id }
+                );
             }
         } catch (notifErr) {
             console.error("Notification trigger failed:", notifErr.message);
@@ -206,17 +247,6 @@ exports.addComment = async (req, res) => {
         const { text } = req.body;
         const user = await User.findById(req.user.id);
 
-        const originalJournal = await Journal.findById(id);
-        if (originalJournal && originalJournal.userId.toString() !== user._id.toString()) {
-            await Notification.create({
-                recipient: originalJournal.userId,
-                sender: user._id,
-                type: 'comment',
-                journalId: originalJournal._id,
-                content: 'commented on your echo'
-            });
-        }
-
         const journal = await Journal.findByIdAndUpdate(
             id,
             { 
@@ -233,6 +263,32 @@ exports.addComment = async (req, res) => {
         ).populate('userId', 'username firstName lastName profilePicture')
          .populate('comments.userId', 'username profilePicture')
          .populate('comments.replies.userId', 'username profilePicture');
+
+        // Create notification after update so we can get the comment ID
+        if (journal && journal.userId.toString() !== user._id.toString()) {
+            const newComment = journal.comments[journal.comments.length - 1];
+            await Notification.create({
+                recipient: journal.userId,
+                sender: user._id,
+                type: 'comment',
+                journalId: journal._id,
+                commentId: newComment._id,
+                content: 'commented on your echo'
+            });
+
+            // Send Push Notification
+            await sendPushNotification(
+                journal.userId,
+                "New Comment",
+                `${user.firstName} commented on your echo`,
+                { 
+                    type: 'comment', 
+                    journalId: journal._id, 
+                    commentId: newComment._id, 
+                    focusComment: true 
+                }
+            );
+        }
 
         res.status(201).json(journal);
     } catch (error) {
@@ -256,8 +312,22 @@ exports.addReply = async (req, res) => {
                 sender: user._id,
                 type: 'comment',
                 journalId: originalJournal._id,
+                commentId: commentId, // Include the parent comment ID
                 content: 'replied to your comment'
             });
+
+            // Send Push Notification
+            await sendPushNotification(
+                targetComment.userId,
+                "New Reply",
+                `${user.firstName} replied to your reflection`,
+                { 
+                    type: 'comment', 
+                    journalId: originalJournal._id, 
+                    commentId: commentId, 
+                    focusComment: true 
+                }
+            );
         }
 
         const journal = await Journal.findOneAndUpdate(

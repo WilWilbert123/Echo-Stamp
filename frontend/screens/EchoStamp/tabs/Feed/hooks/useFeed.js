@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useRoute } from '@react-navigation/native';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { getGlobalJournalsAsync } from '../../../../../redux/journalSlice';
 
 export const useFeed = (filter) => {
     const dispatch = useDispatch();
+    const route = useRoute();
     const { globalList: journals, globalLoading: loading } = useSelector((state) => state.journals);
     
     const [refreshing, setRefreshing] = useState(false);
@@ -12,6 +14,9 @@ export const useFeed = (filter) => {
     const [galleryModal, setGalleryModal] = useState(false);
     const [galleryImages, setGalleryImages] = useState([]);
     const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
+    
+    const flatListRef = useRef(null);
+    const lastHandledJournal = useRef(null);
 
     const loadData = useCallback(() => {
         dispatch(getGlobalJournalsAsync());
@@ -38,8 +43,31 @@ export const useFeed = (filter) => {
         setCommentModal(true);
     }, []);
 
+    // Deep Linking logic: Handle navigation from notifications
+    useEffect(() => {
+        const { journalId, focusComment } = route.params || {};
+        
+        if (journalId && journals.length > 0 && lastHandledJournal.current !== journalId) {
+            const index = journals.findIndex(j => j._id === journalId);
+            if (index !== -1) {
+                lastHandledJournal.current = journalId;
+                const post = journals[index];
+                
+                // 1. Scroll to the specific post
+                setTimeout(() => {
+                    flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0 });
+                }, 500);
+
+                // 2. Open the comments modal automatically
+                if (focusComment) {
+                    openComments(post);
+                }
+            }
+        }
+    }, [route.params, journals, openComments]);
+
     return {
-        journals, loading, refreshing, onRefresh,
+        journals, loading, refreshing, onRefresh, flatListRef,
         galleryModal, setGalleryModal, galleryImages,
         activeGalleryIndex, setActiveGalleryIndex,
         commentModal, setCommentModal, selectedPost,

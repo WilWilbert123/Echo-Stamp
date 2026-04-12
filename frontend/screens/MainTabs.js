@@ -72,6 +72,13 @@ const MainTabs = () => {
             callType: data.callType, 
             isCaller: false 
         });
+      } else if (data.journalId) {
+        // Navigate to the Echo tab and pass the parameters for deep linking
+        navigation.navigate('Echo', { 
+            journalId: data.journalId,
+            commentId: data.commentId,
+            focusComment: data.focusComment 
+        });
       }
     });
 

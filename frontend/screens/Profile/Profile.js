@@ -181,6 +181,8 @@ const Profile = ({ navigation }) => {
             await Notifications.setNotificationChannelAsync('default', {
                 name: 'default',
                 importance: Notifications.AndroidImportance.MAX,
+                vibrationPattern: [0, 250, 250, 250],
+                lightColor: '#FF231F7C',
             });
         }
 
@@ -337,6 +339,18 @@ const Profile = ({ navigation }) => {
             await markNotificationsUnread();
             dispatch(getNotificationsAsync());
         } catch (e) { Alert.alert("Error", "Failed to update notifications"); }
+    };
+
+    const handleNotificationPress = (item) => {
+        setIsNotifModalVisible(false);
+        
+        // Navigate to the 'Echo' tab (EchoStamp component) as defined in MainTabs.js
+        // We pass journalId and commentId to the screen
+        navigation.navigate('Echo', { 
+            journalId: item.journalId?._id || item.journalId,
+            commentId: item.commentId,
+            focusComment: true 
+        });
     };
 
     const handleDeleteNotification = async (id) => {
@@ -671,7 +685,7 @@ const Profile = ({ navigation }) => {
                                         )}
                                         overshootRight={false}
                                     >
-                                        <View style={[styles.notifRow, { borderBottomColor: colors.glassBorder, backgroundColor: colors.background[0] }]}>
+                                        <TouchableOpacity onPress={() => handleNotificationPress(item)} style={[styles.notifRow, { borderBottomColor: colors.glassBorder, backgroundColor: colors.background[0] }]}>
                                             <View style={styles.notifAvatar}>
                                                 {item.sender?.profilePicture ? (
                                                     <Image source={{ uri: item.sender.profilePicture }} style={styles.avatarImage} />
@@ -694,7 +708,7 @@ const Profile = ({ navigation }) => {
                                             {!item.isRead && (
                                                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />
                                             )}
-                                        </View>
+                                        </TouchableOpacity>
                                     </Swipeable>
                                 )}
                             />

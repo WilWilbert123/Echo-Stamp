@@ -1,3 +1,4 @@
+import { useRoute } from '@react-navigation/native';
 import LottieView from 'lottie-react-native';
 import React, { useCallback } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, Text, View } from 'react-native';
@@ -12,8 +13,9 @@ import PostItem from '../Feed/components/PostItem';
 
 const Feed = ({ filter }) => {
     const { colors, isDark } = useTheme();
+    const route = useRoute();
     const {
-        journals, loading, refreshing, onRefresh,
+        journals, loading, refreshing, onRefresh, flatListRef,
         galleryModal, setGalleryModal, galleryImages,
         activeGalleryIndex, setActiveGalleryIndex,
         commentModal, setCommentModal, selectedPost,
@@ -38,6 +40,7 @@ const Feed = ({ filter }) => {
                 </View>
             ) : (
                 <FlatList
+                    ref={flatListRef}
                     data={journals}
                     renderItem={renderItem}
                     keyExtractor={item => item._id || Math.random().toString()}
@@ -55,6 +58,10 @@ const Feed = ({ filter }) => {
                             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No Journals found yet.</Text>
                         </View>
                     }
+                    onScrollToIndexFailed={(info) => {
+                        // Attempt to scroll again if the list hasn't finished rendering layout
+                        flatListRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true });
+                    }}
                 />
             )}
 
@@ -72,6 +79,7 @@ const Feed = ({ filter }) => {
                 colors={colors}
                 isDark={isDark}
                 onClose={() => setCommentModal(false)}
+                initialCommentId={route.params?.commentId}
             />
         </View>
     );
