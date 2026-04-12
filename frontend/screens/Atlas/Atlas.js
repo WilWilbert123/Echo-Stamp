@@ -85,6 +85,8 @@ const Atlas = () => {
           searchQuery={atlas.searchQuery}
           setSearchQuery={atlas.setSearchQuery}
           handleSearch={atlas.handleSearch}
+          isListening={atlas.isListening}
+          toggleListening={atlas.toggleListening}
         />
       )}
 
