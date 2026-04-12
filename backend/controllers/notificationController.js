@@ -5,6 +5,7 @@ exports.getNotifications = async (req, res) => {
         const notifications = await Notification.find({ recipient: req.user._id })
             .populate('sender', 'username firstName lastName profilePicture')
             .populate('journalId', 'title')
+            .populate('echoId', 'title')
             .sort({ createdAt: -1 })
             .limit(50);
         

@@ -73,9 +73,16 @@ const MainTabs = () => {
             isCaller: false 
         });
       } else if (data.journalId) {
-        // Navigate to the Echo tab and pass the parameters for deep linking
+        // Navigate to the Stamp (Journal) tab
         navigation.navigate('Echo', { 
             journalId: data.journalId,
+            commentId: data.commentId,
+            focusComment: data.focusComment 
+        });
+      } else if (data.echoId) {
+        // Navigate to the Global Echo Feed (Home)
+        navigation.navigate('Home', { 
+            echoId: data.echoId,
             commentId: data.commentId,
             focusComment: data.focusComment 
         });

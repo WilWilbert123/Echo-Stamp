@@ -344,13 +344,21 @@ const Profile = ({ navigation }) => {
     const handleNotificationPress = (item) => {
         setIsNotifModalVisible(false);
         
-        // Navigate to the 'Echo' tab (EchoStamp component) as defined in MainTabs.js
-        // We pass journalId and commentId to the screen
-        navigation.navigate('Echo', { 
-            journalId: item.journalId?._id || item.journalId,
-            commentId: item.commentId,
-            focusComment: true 
-        });
+        if (item.echoId) {
+            // Navigate to the Global Echo Feed (Home)
+            navigation.navigate('Home', { 
+                echoId: item.echoId?._id || item.echoId,
+                commentId: item.commentId,
+                focusComment: true 
+            });
+        } else if (item.journalId) {
+            // Navigate to the Stamp (Journal) tab
+            navigation.navigate('Echo', { 
+                journalId: item.journalId?._id || item.journalId,
+                commentId: item.commentId,
+                focusComment: true 
+            });
+        }
     };
 
     const handleDeleteNotification = async (id) => {
@@ -700,6 +708,7 @@ const Profile = ({ navigation }) => {
                                                     <Text style={{ fontWeight: 'bold' }}>{item.sender?.firstName} {item.sender?.lastName}</Text>
                                                     {` ${item.content} `}
                                                     {item.journalId?.title && <Text style={{ fontWeight: '600', color: colors.primary }}>"{item.journalId.title}"</Text>}
+                                                    {item.echoId?.title && <Text style={{ fontWeight: '600', color: colors.primary }}>"{item.echoId.title}"</Text>}
                                                 </Text>
                                                 <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 4 }}>
                                                     {new Date(item.createdAt).toLocaleDateString()} at {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
