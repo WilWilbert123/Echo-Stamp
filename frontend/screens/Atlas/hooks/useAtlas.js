@@ -1,4 +1,7 @@
+import Voice from '@react-native-voice/voice';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { Audio } from 'expo-av';
+import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -34,6 +37,7 @@ export const useAtlas = () => {
   const [showDirections, setShowDirections] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
   const [selectedUserIds, setSelectedUserIds] = useState([]);
@@ -236,14 +240,15 @@ export const useAtlas = () => {
     }
   };
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+  const handleSearch = async (queryOverride) => {
+    const currentQuery = typeof queryOverride === 'string' ? queryOverride : searchQuery;
+    if (!currentQuery.trim()) return;
     setIsSearching(true);
     setSearchResult(null);
 
     try {
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(searchQuery)}&inputtype=textquery&fields=photos,geometry,name,formatted_address&key=${GOOGLE_MAPS_APIKEY}`
+        `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(currentQuery)}&inputtype=textquery&fields=photos,geometry,name,formatted_address&key=${GOOGLE_MAPS_APIKEY}`
       );
       const data = await response.json();
 
@@ -275,6 +280,75 @@ export const useAtlas = () => {
     } finally {
       setIsSearching(false);
       setSearchQuery('');
+    }
+  };
+
+  // Keep a ref to handleSearch to use in Voice listeners safely
+  const handleSearchRef = useRef(handleSearch);
+  handleSearchRef.current = handleSearch;
+
+  useEffect(() => {
+    const setupVoice = async () => {
+      try {
+        Voice.onSpeechStart = () => setIsListening(true);
+        Voice.onSpeechEnd = () => setIsListening(false);
+        Voice.onSpeechError = (e) => {
+          console.log("Speech recognition error:", e);
+          setIsListening(false);
+        };
+        Voice.onSpeechResults = (e) => {
+          if (e.value && e.value.length > 0) {
+            const spokenText = e.value[0];
+            setSearchQuery(spokenText);
+            if (handleSearchRef.current) handleSearchRef.current(spokenText);
+          }
+        };
+      } catch (e) {
+        console.log("Voice module not initialized:", e.message);
+      }
+    };
+
+    setupVoice();
+
+    return () => {
+      try {
+        if (Voice && typeof Voice.destroy === 'function') {
+          Voice.destroy().then(() => Voice.removeAllListeners?.());
+        }
+      } catch (e) {
+        console.log("Voice cleanup error:", e);
+      }
+    };
+  }, []);
+
+  const toggleListening = async () => {
+    try {
+      // Check if the native module is actually linked/available
+      if (Constants.appOwnership === 'expo' || !Voice || typeof Voice.start !== 'function') {
+        Alert.alert("Environment Error", "Voice Recognition is not available in Expo Go. Please use a Development or Production build.");
+        return;
+      }
+
+      // Ensure microphone permissions are granted via Expo
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert("Permission Denied", "Microphone access is required for voice search.");
+        return;
+      }
+
+      if (isListening) {
+        await Voice.stop();
+      } else {
+        setSearchQuery(''); // Clear previous search
+        await Voice.start('en-US');
+      }
+    } catch (e) {
+      if (e.message && e.message.includes('null')) {
+        Alert.alert("Environment Error", "Voice Recognition module not found. This feature requires a Development Client build (not Expo Go).");
+      } else {
+        console.error("Voice recognition error:", e);
+        Alert.alert("Voice Error", "Could not start voice recognition. Please try again.");
+      }
     }
   };
 
@@ -380,6 +454,7 @@ export const useAtlas = () => {
     description, setDescription, mediaList, setMediaList, markers,
     shareModalVisible, setShareModalVisible, allUsers, selectedUserIds,
     userSearchQuery, setUserSearchQuery, activeShares, startNavigation,
+    isListening, toggleListening,
     // Methods
     handleSearch, pickMedia, handleSave, handleDeleteJournal,
     handleRemoveSingleSavedMedia, cancelNavigation, openShareModal,

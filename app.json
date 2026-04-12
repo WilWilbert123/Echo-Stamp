@@ -26,7 +26,9 @@
         "ACCESS_FINE_LOCATION",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
-        "CAMERA"
+        "CAMERA",
+        "RECORD_AUDIO",
+        "MODIFY_AUDIO_SETTINGS"
       ],
       "config": {
         "notification": {
@@ -67,6 +69,13 @@
         {
           "photosPermission": "Allow Echo Stamp to save photos.",
           "savePhotosPermission": "Allow Echo Stamp to save photos."
+        }
+      ],
+      [
+        "@react-native-voice/voice",
+        {
+          "microphonePermission": "Allow Echo Stamp to access the microphone for voice search.",
+          "speechRecognitionPermission": "Allow Echo Stamp to use speech recognition for finding locations."
         }
       ]
     ],

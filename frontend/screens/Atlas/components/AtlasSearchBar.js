@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ActivityIndicator, TextInput, View } from 'react-native';
+import { ActivityIndicator, TextInput, TouchableOpacity, View } from 'react-native';
 import GlassCard from '../../../components/GlassCard';
 import styles from '../Atlas.styles';
 const AtlasSearchBar = ({ 
-  insets, colors, isSearching, searchQuery, setSearchQuery, handleSearch 
+  insets, colors, isSearching, searchQuery, setSearchQuery, handleSearch, isListening, toggleListening 
 }) => {
   return (
     <View style={[styles.searchContainer, { top: insets.top + 10 }]}>
@@ -21,6 +21,13 @@ const AtlasSearchBar = ({
           onChangeText={setSearchQuery}
           onSubmitEditing={handleSearch}
         />
+        <TouchableOpacity 
+          onPress={toggleListening} 
+          style={{ paddingLeft: 10 }}
+          activeOpacity={0.7}
+        >
+          <Ionicons name={isListening ? "mic" : "mic-outline"} size={22} color={isListening ? "#ff4444" : colors.primary} />
+        </TouchableOpacity>
       </GlassCard>
     </View>
   );
