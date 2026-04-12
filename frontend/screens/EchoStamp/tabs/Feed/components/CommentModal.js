@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { addCommentAsync, addReplyAsync, deleteCommentAsync, editCommentAsync, editReplyAsync } from '../../../../../redux/journalSlice';
 import { styles } from '../feed.styles';
 
-const CommentModal = ({ visible, post, colors, isDark, onClose }) => {
+const CommentModal = ({ visible, post, colors, isDark, onClose, initialCommentId }) => {
     const dispatch = useDispatch();
     const currentUser = useSelector(state => state.auth.user);
     const [text, setText] = useState('');
@@ -78,7 +78,14 @@ const CommentModal = ({ visible, post, colors, isDark, onClose }) => {
                         data={livePost?.comments || []}
                         keyExtractor={(item) => item._id}
                         renderItem={({ item }) => (
-                            <View style={{ marginBottom: 15 }}>
+                            <View style={{ 
+                                marginBottom: 15,
+                                backgroundColor: initialCommentId === item._id ? colors.primary + '20' : 'transparent',
+                                borderRadius: 12,
+                                padding: initialCommentId === item._id ? 8 : 0,
+                                borderWidth: initialCommentId === item._id ? 1 : 0,
+                                borderColor: initialCommentId === item._id ? colors.primary : 'transparent'
+                            }}>
                                 <TouchableOpacity 
                                     onLongPress={() => handleLongPress(item, 'comment')}
                                     style={styles.commentRow}>

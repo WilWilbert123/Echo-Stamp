@@ -5,6 +5,7 @@ const notificationSchema = new mongoose.Schema({
     sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     type: { type: String, enum: ['like', 'comment'], required: true },
     journalId: { type: mongoose.Schema.Types.ObjectId, ref: 'Journal' },
+    commentId: { type: mongoose.Schema.Types.ObjectId }, // Added for deep linking
     content: { type: String },
     isRead: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now }
