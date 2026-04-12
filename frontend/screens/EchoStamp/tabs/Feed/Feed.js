@@ -1,7 +1,8 @@
-import { useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import LottieView from 'lottie-react-native';
+import { Plus } from 'lucide-react-native';
 import React, { useCallback } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../../../../context/ThemeContext';
 import { styles } from '../Feed/feed.styles';
 import { useFeed } from '../Feed/hooks/useFeed';
@@ -14,6 +15,7 @@ import PostItem from '../Feed/components/PostItem';
 const Feed = ({ filter }) => {
     const { colors, isDark } = useTheme();
     const route = useRoute();
+    const navigation = useNavigation();
     const {
         journals, loading, refreshing, onRefresh, flatListRef,
         galleryModal, setGalleryModal, galleryImages,
@@ -81,6 +83,15 @@ const Feed = ({ filter }) => {
                 onClose={() => setCommentModal(false)}
                 initialCommentId={route.params?.commentId}
             />
+
+            {/* Floating Action Button to Create New Echo */}
+            <TouchableOpacity 
+                style={[styles.fab, { backgroundColor: colors.primary }]}
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate('Atlas', { mode: 'stamping' })}
+            >
+                <Plus color="white" size={32} strokeWidth={2.5} />
+            </TouchableOpacity>
         </View>
     );
 };

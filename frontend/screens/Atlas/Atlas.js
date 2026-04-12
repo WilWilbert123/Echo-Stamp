@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useRef } from 'react';
 import { Image, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -22,6 +23,8 @@ import { renderStreetViewHTML } from './utils/mediaHelpers';
 const Atlas = () => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+  const route = useRoute();
+  const navigation = useNavigation();
 
   const travelModes = [
     { key: 'driving', icon: 'car', label: 'Car' },
@@ -76,6 +79,23 @@ const Atlas = () => {
         translucent
         backgroundColor="transparent"
       />
+
+      {/* Stamping Instruction Overlay */}
+      {route.params?.mode === 'stamping' && !atlas.modalVisible && !atlas.searchResult && (
+        <View style={[
+            styles.stampingOverlay, 
+            { bottom: insets.bottom + 100, backgroundColor: colors.primary }
+        ]}>
+          <View style={{ flex: 1, paddingRight: 10 }}>
+            <Text style={{ color: 'white', fontWeight: '800', fontSize: 14 }}>
+               Search a location and click the PIN button or long-press the map.
+            </Text>
+          </View>
+          <TouchableOpacity onPress={() => navigation.setParams({ mode: null })}>
+            <Ionicons name="close-circle" size={26} color="white" />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {!atlas.showDirections && (
         <AtlasSearchBar

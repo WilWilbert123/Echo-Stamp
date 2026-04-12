@@ -288,6 +288,10 @@ export const useAtlas = () => {
   handleSearchRef.current = handleSearch;
 
   useEffect(() => {
+    // Avoid initializing Voice if in Expo Go or if native module is missing
+    const isUnavailable = Constants.appOwnership === 'expo' || !Voice;
+    if (isUnavailable) return;
+
     const setupVoice = async () => {
       try {
         Voice.onSpeechStart = () => setIsListening(true);
@@ -312,8 +316,11 @@ export const useAtlas = () => {
 
     return () => {
       try {
-        if (Voice && typeof Voice.destroy === 'function') {
-          Voice.destroy().then(() => Voice.removeAllListeners?.());
+        if (!isUnavailable && typeof Voice.destroy === 'function') {
+            Voice.destroy().then(() => {
+                // Safely call removeAllListeners only if the native module exists
+                if (Voice.removeAllListeners) Voice.removeAllListeners();
+            }).catch(e => console.log("Voice destroy error:", e));
         }
       } catch (e) {
         console.log("Voice cleanup error:", e);

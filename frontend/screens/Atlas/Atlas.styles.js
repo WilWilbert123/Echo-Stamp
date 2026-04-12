@@ -86,6 +86,21 @@ const styles = StyleSheet.create({
   shareModalFooter: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }, // Existing, ensure no conflict
   shareSubmitBtn: { flex: 1, height: 50, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginLeft: 10 }, // Existing, ensure no conflict
   shareCancelBtn: { flex: 0.4, height: 50, justifyContent: 'center', alignItems: 'center' }, // Existing, ensure no conflict
+  stampingOverlay: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    zIndex: 1000,
+    borderRadius: 22,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
 });
 
 export default styles;

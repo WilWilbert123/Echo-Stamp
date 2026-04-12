@@ -256,7 +256,7 @@ const Home = () => {
                     </View>
                 </View>
 
-                <Text style={[styles.echoTitle, { color: colors.textMain, marginTop: -5, fontSize: 15, paddingRight: 70 }]}>{item.title}</Text>
+                <Text style={[styles.echoTitle, { color: colors.textMain, paddingTop: 10, fontSize: 15, paddingRight: 70 }]}>{item.title}</Text>
                 
                 {item.description && (
                     <Text style={[styles.echoDescription, { color: colors.textSecondary, marginBottom: 8, fontSize: 12, paddingRight: 70 }]} numberOfLines={2}>
@@ -272,7 +272,7 @@ const Home = () => {
                   >
                     <Ionicons 
                       name={isLiked ? "heart" : "heart-outline"} 
-                      size={16} 
+                      size={20} 
                       color={isLiked ? "#EF4444" : colors.textSecondary} 
                     />
                     <Text style={[styles.interactionText, { color: isLiked ? "#EF4444" : colors.textSecondary, fontSize: 11 }]}>
@@ -284,7 +284,7 @@ const Home = () => {
                     onPress={() => { setSelectedEchoId(item._id); setCommentModalVisible(true); }}
                     style={styles.interactionBtn}
                   >
-                    <Ionicons name="chatbubble-outline" size={15} color={colors.textSecondary} />
+                    <Ionicons name="chatbubble-outline" size={20} color={colors.textSecondary} />
                     <Text style={[styles.interactionText, { color: colors.textSecondary, fontSize: 11 }]}>
                       {commentCount}
                     </Text>

@@ -64,17 +64,33 @@ const Insights = () => {
         setChartKey(prev => prev + 1);
     }, [timeframe, journalList, echoesList]);
 
-    const moodColors = {
+  const moodColors = {
         Burnout: '#FF4B2B', Calm: '#4FC3F7', Fire: '#FF8C00', Play: '#FF5722',
         Loved: '#E91E63', Sad: '#546E7A', Sick: '#9E9E9E', Walk: '#4CAF50',
         ChillBeach: '#00BCD4', NoEnergy: '#78909C', Jogging: '#8BC34A',
         Ok: '#CDDC39', Rides: '#673AB7', Haha: '#FFEB3B', What: '#FF9800',
-        Blee: '#F06292', Beach: '#03A9F4', Sneaking: '#634242', Crying: '#4703f4' , Drunk: '#000000' ,Thinking: '#ffffff'
+        Blee: '#F06292', Beach: '#03A9F4', Sneaking: '#634242', Crying: '#4703f4', 
+        Drunk: '#000000', Thinking: '#ffffff',
+        // New Asset Colors
+        Dragonflying: '#607D8B', Guitarist: '#795548', WaveyBirdie: '#81D4FA', 
+        Dogparty: '#FF4081', Groovywalk: '#FFC107', TotoroWalk: '#C5E1A5', 
+        MoodyDog: '#37474F', Hrundel: '#A1887F', Fatherday: '#3F51B5', 
+        AvocadoFruit: '#43A047', Handwave: '#FFCCBC', ClappingHands: '#FFF176', 
+        Snake: '#2E7D32', Book: '#FB8C00', EmojiMoney: '#FFD700', 
+        FlyingMoney: '#4CAF50', AngryEmoji: '#D32F2F', CatMarkLoading: '#9575CD', 
+        CatInBox: '#BDBDBD'
     };
     
     const moodWeights = { 
-        'Play': 10, 'Fire': 9,  'Loved': 8,  'Walk': 7,  'Calm': 6,   'Ok': 5,  'Burnout': 3, 
-        'Sad': 2,  'Sick': 1, 'Haha': 9, 'Beach': 8, 'Drunk': 4, 'NoEnergy': 2,'Crying': 1
+        'Play': 10, 'Fire': 9, 'Haha': 9, 'Loved': 8, 'Beach': 8, 'Walk': 7, 
+        'Calm': 6, 'Ok': 5, 'Drunk': 4, 'Burnout': 3, 'Sad': 2, 'NoEnergy': 2, 
+        'Sick': 1, 'Crying': 1,
+        // New Asset Weights (Intensity/Positivity scale)
+        'Dragonflying': 7, 'Guitarist': 8, 'WaveyBirdie': 6, 'Dogparty': 10,
+        'Groovywalk': 8, 'TotoroWalk': 7, 'MoodyDog': 3, 'Hrundel': 5,
+        'Fatherday': 9, 'AvocadoFruit': 6, 'Handwave': 5, 'ClappingHands': 7,
+        'Snake': 4, 'Book': 6, 'EmojiMoney': 8, 'FlyingMoney': 9,
+        'AngryEmoji': 2, 'CatMarkLoading': 4, 'CatInBox': 5
     };
 
     const parseDate = (dateData) => {
