@@ -56,4 +56,19 @@ export const styles = StyleSheet.create({
     emptyContainer: { alignItems: 'center', marginTop: 80 },
     emptyLottie: { width: 200, height: 200 },
     emptyText: { marginTop: -20, fontSize: 16, fontWeight: '700', opacity: 0.5 },
+    fab: {
+        position: 'absolute',
+        right: 20,
+        bottom: 110, // Adjusted to sit above the tab bar
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4.65,
+    },
 });
