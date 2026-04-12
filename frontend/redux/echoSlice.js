@@ -72,6 +72,58 @@ export const deleteEchoAsync = createAsyncThunk(
   }
 );
 
+/* --- LIKE ECHO --- */
+export const likeEchoAsync = createAsyncThunk(
+  'echoes/like',
+  async ({ id, userId }, { rejectWithValue }) => {
+    try {
+      const response = await api.likeEcho(id, userId);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || "Error liking echo");
+    }
+  }
+);
+
+/* --- COMMENT ON ECHO --- */
+export const commentEchoAsync = createAsyncThunk(
+  'echoes/comment',
+  async ({ id, data }, { rejectWithValue }) => {
+    try {
+      const response = await api.commentEcho(id, data);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || "Error commenting on echo");
+    }
+  }
+);
+
+/* --- REPLY TO COMMENT --- */
+export const replyToEchoCommentAsync = createAsyncThunk(
+  'echoes/reply',
+  async ({ id, commentId, data }, { rejectWithValue }) => {
+    try {
+      const response = await api.replyToEchoComment(id, commentId, data);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || "Error replying to comment");
+    }
+  }
+);
+
+/* --- DELETE COMMENT --- */
+export const deleteEchoCommentAsync = createAsyncThunk(
+  'echoes/deleteComment',
+  async ({ id, commentId }, { rejectWithValue }) => {
+    try {
+      const response = await api.removeEchoComment(id, commentId);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || "Error deleting comment");
+    }
+  }
+);
+
 const echoSlice = createSlice({
   name: 'echoes',
   initialState: { 
@@ -121,6 +173,23 @@ const echoSlice = createSlice({
       /* Delete Echo Case */
       .addCase(deleteEchoAsync.fulfilled, (state, action) => {
         state.list = state.list.filter(e => e._id !== action.payload);
+      })
+      /* Social Interaction Success Cases (Updating the specific echo in the list) */
+      .addCase(likeEchoAsync.fulfilled, (state, action) => {
+        const index = state.list.findIndex(e => e._id === action.payload._id);
+        if (index !== -1) state.list[index] = action.payload;
+      })
+      .addCase(commentEchoAsync.fulfilled, (state, action) => {
+        const index = state.list.findIndex(e => e._id === action.payload._id);
+        if (index !== -1) state.list[index] = action.payload;
+      })
+      .addCase(replyToEchoCommentAsync.fulfilled, (state, action) => {
+        const index = state.list.findIndex(e => e._id === action.payload._id);
+        if (index !== -1) state.list[index] = action.payload;
+      })
+      .addCase(deleteEchoCommentAsync.fulfilled, (state, action) => {
+        const index = state.list.findIndex(e => e._id === action.payload._id);
+        if (index !== -1) state.list[index] = action.payload;
       });
   },
 });

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from 'lottie-react-native';
@@ -9,6 +9,7 @@ import {
   Dimensions,
   FlatList,
   Image,
+  Modal,
   Platform,
   Pressable,
   RefreshControl,
@@ -16,6 +17,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
@@ -29,7 +31,13 @@ import { useDispatch, useSelector } from 'react-redux';
 import GlassButton from '../../components/GlassButton';
 import { EMOTION_ASSETS, EMOTION_CONFIG } from '../../constants/assets';
 import { useTheme } from '../../context/ThemeContext';
-import { deleteEchoAsync, getGlobalEchoesAsync } from '../../redux/echoSlice';
+import {
+  commentEchoAsync,
+  deleteEchoAsync,
+  getGlobalEchoesAsync,
+  likeEchoAsync,
+  replyToEchoCommentAsync
+} from '../../redux/echoSlice';
 import { getRelativeTime } from '../EchoStamp/tabs/Feed/utils/feedUtils';
 
 // --- COMPONENTS ---
@@ -57,6 +65,7 @@ const AnimatedPressable = ({ children, onPress, style }) => {
 const Home = () => {
   const dispatch = useDispatch();
   const navigation = useNavigation();
+  const route = useRoute();
   const insets = useSafeAreaInsets();
 
   // Use toggleTheme directly from context
@@ -67,6 +76,35 @@ const Home = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+
+  // Modal/Interaction States
+  const [selectedEchoId, setSelectedEchoId] = useState(null);
+  const [commentModalVisible, setCommentModalVisible] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [replyText, setReplyText] = useState('');
+  const [activeCommentId, setActiveCommentId] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Derive the active echo from Redux list to ensure real-time updates in modal
+  const activeEcho = useMemo(() => {
+    return list.find(e => e._id === selectedEchoId);
+  }, [list, selectedEchoId]);
+
+  // Handle deep linking from notifications
+  useEffect(() => {
+    if (route.params?.echoId) {
+      setSelectedEchoId(route.params.echoId);
+      setCommentModalVisible(true);
+      if (route.params.commentId) {
+        setActiveCommentId(route.params.commentId);
+      }
+      navigation.setParams({ 
+        echoId: undefined, 
+        commentId: undefined, 
+        focusComment: undefined 
+      });
+    }
+  }, [route.params?.echoId, route.params?.commentId, navigation]);
 
   useEffect(() => {
     dispatch(getGlobalEchoesAsync()); 
@@ -80,6 +118,50 @@ const Home = () => {
       echo.description?.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [searchQuery, list]);
+
+  const handleLike = (id) => {
+    dispatch(likeEchoAsync({ id, userId: user?._id || user?.id }));
+  };
+
+  const handleAddComment = async () => {
+    if (!commentText.trim() || !selectedEchoId) return;
+    setIsSubmitting(true);
+    try {
+      await dispatch(commentEchoAsync({
+        id: selectedEchoId,
+        data: {
+          userId: user?._id || user?.id,
+          username: user?.username,
+          profilePicture: user?.profilePicture,
+          text: commentText.trim()
+        }
+      })).unwrap();
+      setCommentText('');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReply = async (commentId) => {
+    if (!replyText.trim() || !selectedEchoId) return;
+    setIsSubmitting(true);
+    try {
+      await dispatch(replyToEchoCommentAsync({
+        id: selectedEchoId,
+        commentId,
+        data: {
+          userId: user?._id || user?.id,
+          username: user?.username,
+          profilePicture: user?.profilePicture,
+          text: replyText.trim()
+        }
+      })).unwrap();
+      setReplyText('');
+      setActiveCommentId(null);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -120,6 +202,11 @@ const Home = () => {
     // 3. Resolve Author object: Use Redux user for self, otherwise use the populated data
     const author = isOwnPost ? user : (isPopulated ? item.userId : null);
 
+    // 4. Like Status
+    const isLiked = item.likes?.includes(user?._id || user?.id);
+    const likeCount = item.likes?.length || 0;
+    const commentCount = item.comments?.length || 0;
+
     return (
       <Swipeable 
         renderRightActions={() => isOwnPost ? renderRightActions(item._id) : null} 
@@ -140,12 +227,12 @@ const Home = () => {
             <BlurView intensity={15} style={StyleSheet.absoluteFill} tint="dark" />
           )}
 
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <View style={[styles.avatarContainer, { backgroundColor: colors.primary + '20' }]}>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={[styles.avatarContainer, { backgroundColor: colors.primary + '20', width: 32, height: 32 }]}>
                 {author?.profilePicture ? (
                     <Image source={{ uri: author.profilePicture }} style={styles.avatarImage} />
                 ) : (
-                    <Text style={{ color: colors.primary, fontWeight: '800', fontSize: 14 }}>
+                    <Text style={{ color: colors.primary, fontWeight: '800', fontSize: 12 }}>
                         {author?.firstName ? author.firstName[0].toUpperCase() : 
                          (author?.username ? author.username[0].toUpperCase() : 'U')}
                     </Text>
@@ -155,7 +242,7 @@ const Home = () => {
             <View style={{ flex: 1 }}>
                 <View style={styles.cardHeader}>
                     <View style={styles.titleContainer}>
-                    <Text style={[styles.echoTitle, { color: colors.textMain, fontSize: 16 }]}>
+                    <Text style={[styles.echoTitle, { color: colors.textMain, fontSize: 13 }]}>
                         {author?.firstName
                           ? `${author.firstName} ${author.lastName || ''}`.trim()
                           : (author?.username || author?.displayName || 'Explorer')}
@@ -164,18 +251,45 @@ const Home = () => {
                         • {getRelativeTime(item.createdAt)}
                     </Text>
                     </View>
-                    <View style={styles.emotionContainer}>
-                    <LottieView source={animationSource} autoPlay loop style={{ width: 55, height: 55 }} />
+                    <View style={[styles.emotionContainer, { position: 'absolute', top: 10, right: -15 }]}>
+                      <LottieView source={animationSource} autoPlay loop style={{ width: 95, height: 95 }} />
                     </View>
                 </View>
 
-                <Text style={[styles.echoTitle, { color: colors.textMain, marginTop: 4, fontSize: 18 }]}>{item.title}</Text>
+                <Text style={[styles.echoTitle, { color: colors.textMain, marginTop: -5, fontSize: 15, paddingRight: 70 }]}>{item.title}</Text>
                 
                 {item.description && (
-                    <Text style={[styles.echoDescription, { color: colors.textSecondary, marginBottom: 10 }]} numberOfLines={3}>
+                    <Text style={[styles.echoDescription, { color: colors.textSecondary, marginBottom: 8, fontSize: 12, paddingRight: 70 }]} numberOfLines={2}>
                     {item.description}
                     </Text>
                 )}
+
+                {/* Interaction Bar */}
+                <View style={[styles.interactionBar, { paddingTop: 8 }]}>
+                  <TouchableOpacity 
+                    onPress={() => handleLike(item._id)}
+                    style={styles.interactionBtn}
+                  >
+                    <Ionicons 
+                      name={isLiked ? "heart" : "heart-outline"} 
+                      size={16} 
+                      color={isLiked ? "#EF4444" : colors.textSecondary} 
+                    />
+                    <Text style={[styles.interactionText, { color: isLiked ? "#EF4444" : colors.textSecondary, fontSize: 11 }]}>
+                      {likeCount}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    onPress={() => { setSelectedEchoId(item._id); setCommentModalVisible(true); }}
+                    style={styles.interactionBtn}
+                  >
+                    <Ionicons name="chatbubble-outline" size={15} color={colors.textSecondary} />
+                    <Text style={[styles.interactionText, { color: colors.textSecondary, fontSize: 11 }]}>
+                      {commentCount}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
             </View>
           </View>
         </AnimatedPressable>
@@ -243,7 +357,7 @@ const Home = () => {
           <View style={styles.loaderContainer}>
             <LottieView
               source={require('../../assets/Loadingblue.json')}
-              autoPlay loop style={{ width: 100, height: 100 }}
+              autoPlay loop style={{ width: 180, height: 180 }}
             />
           </View>
         ) : (
@@ -278,6 +392,84 @@ const Home = () => {
         color={isDark ? (colors.primary === '#FFFFFF' ? '#000' : '#FFF') : colors.primary}
       />
     </GlassButton>
+
+      {/* Simple Comment Modal */}
+      <Modal 
+        visible={commentModalVisible} 
+        animationType="slide" 
+        transparent={true}
+        onRequestClose={() => setCommentModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background[0], borderColor: colors.glassBorder }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.textMain }]}>Comments</Text>
+              <TouchableOpacity onPress={() => setCommentModalVisible(false)}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={activeEcho?.comments || []}
+              keyExtractor={(item) => item._id}
+              style={{ flex: 1 }}
+              renderItem={({ item }) => (
+                <View style={styles.commentItem}>
+                  <View style={styles.commentUserRow}>
+                    <Image source={{ uri: item.profilePicture }} style={styles.commentAvatar} />
+                    <View>
+                      <Text style={[styles.commentUsername, { color: colors.textMain }]}>{item.username}</Text>
+                      <Text style={[styles.commentText, { color: colors.textSecondary }]}>{item.text}</Text>
+                    </View>
+                  </View>
+                  
+                  {/* Replies */}
+                  {item.replies?.map((reply, idx) => (
+                    <View key={idx} style={styles.replyItem}>
+                      <Text style={[styles.commentUsername, { color: colors.textMain, fontSize: 12 }]}>{reply.username}</Text>
+                      <Text style={[styles.commentText, { color: colors.textSecondary, fontSize: 13 }]}>{reply.text}</Text>
+                    </View>
+                  ))}
+
+                  {/* Reply Input Trigger */}
+                  {activeCommentId === item._id ? (
+                    <View style={styles.replyInputRow}>
+                      <TextInput
+                        style={[styles.replyInput, { color: colors.textMain, borderColor: colors.glassBorder }]}
+                        placeholder="Write a reply..."
+                        placeholderTextColor={colors.textSecondary}
+                        value={replyText}
+                        onChangeText={setReplyText}
+                        autoFocus
+                      />
+                      <TouchableOpacity onPress={() => handleReply(item._id)}>
+                        <Ionicons name="send" size={20} color={colors.primary} />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity onPress={() => setActiveCommentId(item._id)}>
+                      <Text style={{ fontSize: 12, color: colors.primary, marginLeft: 50, marginTop: 5 }}>Reply</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            />
+
+            <View style={[styles.commentInputRow, { borderTopColor: colors.glassBorder }]}>
+              <TextInput
+                style={[styles.commentInput, { color: colors.textMain, backgroundColor: colors.glass }]}
+                placeholder="Add a comment..."
+                placeholderTextColor={colors.textSecondary}
+                value={commentText}
+                onChangeText={setCommentText}
+              />
+              <TouchableOpacity onPress={handleAddComment} disabled={isSubmitting}>
+                <Ionicons name="send" size={24} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
       </View>
     </View>
   );
@@ -295,9 +487,9 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, marginLeft: 12, fontSize: 16, fontWeight: '500' },
   listContent: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 150 },
   echoCard: {
-    borderRadius: 32,
-    padding: 24,
-    marginBottom: 16,
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 12,
     borderWidth: 1,
     overflow: 'hidden',
     ...Platform.select({
@@ -305,16 +497,19 @@ const styles = StyleSheet.create({
       android: {}
     })
   },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 },
   titleContainer: { flex: 1 },
   avatarContainer: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   avatarImage: { width: '100%', height: '100%' },
   echoTitle: { fontSize: 20, fontWeight: '900', letterSpacing: -0.5, marginBottom: 4 },
-  echoDate: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, opacity: 0.5 },
+  echoDate: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, opacity: 0.5 },
   emotionContainer: { alignItems: 'center' },
   emotionLottie: { width: 50, height: 50 },
   echoEmotion: { fontSize: 9, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1, marginTop: -4 },
   echoDescription: { fontSize: 15, lineHeight: 22, marginBottom: 20, opacity: 0.7, fontWeight: '400' },
+  interactionBar: { flexDirection: 'row', gap: 20, marginTop: 10, borderTopWidth: 0.5, borderTopColor: 'rgba(0,0,0,0.05)', paddingTop: 12 },
+  interactionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  interactionText: { fontSize: 14, fontWeight: '600' },
   cardFooter: { flexDirection: 'row', alignItems: 'center', paddingTop: 16, borderTopWidth: 1 },
   locationText: { flex: 1, fontSize: 12, marginLeft: 8, fontWeight: '600', opacity: 0.6 },
   fab: { position: 'absolute', bottom: 90, right: 20, width: 70, height: 65,alignItems: 'center', justifyContent: 'center'  },
@@ -323,8 +518,24 @@ const styles = StyleSheet.create({
   deleteGradient: { flex: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 32, marginLeft: 10 },
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyContainer: { alignItems: 'center', marginTop: 80 },
-  emptyLottie: { width: 200, height: 200 },
+  emptyLottie: { width: 300, height: 300 },
   emptyText: { marginTop: -20, fontSize: 16, fontWeight: '700', opacity: 0.5 },
+  
+  // Modal Styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { height: '80%', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, borderWidth: 1 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+  modalTitle: { fontSize: 20, fontWeight: '800' },
+  commentItem: { marginBottom: 20 },
+  commentUserRow: { flexDirection: 'row', gap: 12 },
+  commentAvatar: { width: 36, height: 36, borderRadius: 18 },
+  commentUsername: { fontWeight: '700', fontSize: 14 },
+  commentText: { fontSize: 14 },
+  commentInputRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 15, borderTopWidth: 1 },
+  commentInput: { flex: 1, height: 45, borderRadius: 22, paddingHorizontal: 15 },
+  replyItem: { marginLeft: 50, marginTop: 10, paddingLeft: 10, borderLeftWidth: 1, borderLeftColor: '#eee' },
+  replyInputRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginLeft: 50, marginTop: 10 },
+  replyInput: { flex: 1, fontSize: 13, borderBottomWidth: 1, paddingVertical: 4 },
 });
 
 export default Home;

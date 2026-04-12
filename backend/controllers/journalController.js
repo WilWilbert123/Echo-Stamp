@@ -222,7 +222,7 @@ exports.toggleLike = async (req, res) => {
                 await sendPushNotification(
                     journal.userId,
                     "New Interaction",
-                    `${sender.firstName} liked your echo`,
+                    `${sender.firstName} liked your journal entry`,
                     { type: 'like', journalId: journal._id }
                 );
             }
@@ -281,6 +281,7 @@ exports.addComment = async (req, res) => {
                 journal.userId,
                 "New Comment",
                 `${user.firstName} commented on your echo`,
+                `${user.firstName} commented on your journal`,
                 { 
                     type: 'comment', 
                     journalId: journal._id, 
