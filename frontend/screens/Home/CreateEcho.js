@@ -1,19 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as Location from 'expo-location';
 import LottieView from 'lottie-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
-    Alert,
-    Dimensions,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
@@ -32,8 +31,6 @@ const CreateEcho = ({ navigation }) => {
   const [description, setDescription] = useState('');
   const [emotion, setEmotion] = useState('Calm');
   const [loading, setLoading] = useState(false);
-  const [address, setAddress] = useState('');
-  const [isLocating, setIsLocating] = useState(false);
 
   // Search States
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,51 +42,6 @@ const CreateEcho = ({ navigation }) => {
   const filteredEmotions = EMOTION_CONFIG.filter((item) =>
     item.label.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  useEffect(() => {
-    const preFetchLocation = async () => {
-      try {
-        setIsLocating(true);
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          setAddress("Permission denied");
-          return;
-        }
-
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High,
-        });
-
-        if (location) {
-          const reverseGeocode = await Location.reverseGeocodeAsync({
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-          });
-
-          if (reverseGeocode.length > 0) {
-            const area = reverseGeocode[0];
-            const streetName = area.street && !area.street.includes('+') ? area.street : "";
-            const brgy = area.district || "";
-            const cityName = area.city || "";
-            const province = (area.region && area.region !== "Metro Manila") ? area.region : "";
-
-            const formattedAddress = [streetName, brgy, cityName, province]
-              .filter(Boolean)
-              .join(', ');
-
-            setAddress(formattedAddress || "Taguig City");
-          }
-        }
-      } catch (error) {
-        console.warn("Location fetch failed:", error.message);
-        setAddress("Taguig City");
-      } finally {
-        setIsLocating(false);
-      }
-    };
-
-    preFetchLocation();
-  }, []);
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -110,7 +62,7 @@ const CreateEcho = ({ navigation }) => {
         description: description.trim(),
         emotion: emotion,
         location: {
-          address: address || "Somewhere beautiful"
+          address: "Somewhere beautiful"
         }
       };
 
