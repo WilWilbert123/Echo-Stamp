@@ -15,7 +15,7 @@ import {
 } from '../../../redux/journalSlice';
 import { getActiveShares, startSharing, stopSharing } from '../../../redux/shareLocationSlice';
 import { fetchAllUsers, fetchMyOutgoingShare, updateLiveLocation } from '../../../services/api';
-import { uploadImageToCloudinary } from '../../../services/cloudinary';
+import { uploadImageToCloudinary, uploadWithConcurrency } from '../../../services/cloudinary';
 const { width } = Dimensions.get('window');
 const GOOGLE_MAPS_APIKEY = thisisit;
 
@@ -380,9 +380,9 @@ export const useAtlas = () => {
     if (!title) return Alert.alert("Wait!", "Title is required.");
     setLoading(true);
     try {
-      const uploadedUrls = await Promise.all((mediaList || []).map(async (item) =>
-        item.uri.startsWith('http') ? item.uri : await uploadImageToCloudinary(item.uri)
-      ));
+      const uploadedUrls = await uploadWithConcurrency(mediaList || [], async (item) =>
+        item.uri.startsWith('http') ? item.uri : await uploadImageToCloudinary(item.uri),
+      3);
       
       let addr = "Pinned Location";
       try {

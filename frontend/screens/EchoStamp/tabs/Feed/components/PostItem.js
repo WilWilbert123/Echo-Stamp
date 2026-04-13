@@ -1,13 +1,14 @@
 import { useNavigation } from '@react-navigation/native';
-import { Download, Eye, Heart, MapPin, MessageCircle, MoreHorizontal, Play } from 'lucide-react-native';
+import { Download, Eye, Heart, MapPin, MessageCircle, MoreHorizontal } from 'lucide-react-native';
 import { memo } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { toggleLikeAsync } from '../../../../../redux/journalSlice';
+import { VideoPlayerWithThumbnail } from '../../../../../utils/videoThumbnail';
 import { styles } from '../feed.styles';
 import { checkIsVideo, downloadMedia, getRelativeTime } from '../utils/feedUtils';
 
-const PostItem = memo(({ item, colors, onOpenGallery, onOpenComments }) => {
+const PostItem = memo(({ item, colors, onOpenGallery, onOpenComments, isVisible = false }) => {
     const dispatch = useDispatch();
     const navigation = useNavigation();
     const currentUser = useSelector(state => state.auth.user);
@@ -88,18 +89,24 @@ const PostItem = memo(({ item, colors, onOpenGallery, onOpenComments }) => {
                     onLongPress={handleDownload}
                 >
                     <View style={styles.gridImageMain}>
-                        <Image source={{ uri: item.media[0] }} style={StyleSheet.absoluteFill} />
+                        {isMainVid ? (
+                            <VideoPlayerWithThumbnail
+                                uri={item.media[0]}
+                                style={StyleSheet.absoluteFill}
+                                nativeControls={false}
+                                contentFit="cover"
+                                autoPlay={isVisible}
+                                isVisible={isVisible}
+                            />
+                        ) : (
+                            <Image source={{ uri: item.media[0] }} style={StyleSheet.absoluteFill} />
+                        )}
                         <TouchableOpacity 
                             style={[styles.downloadGallery, { top: 10, right: 10 }]} 
                             onPress={handleDownload}
                         >
                             <Download size={20} color="white" />
                         </TouchableOpacity>
-                        {isMainVid && (
-                            <View style={styles.overlay}>
-                                <Play size={32} color="white" fill="white" />
-                            </View>
-                        )}
                     </View>
                     {mediaCount > 1 && (
                         <View style={styles.sideImages}>

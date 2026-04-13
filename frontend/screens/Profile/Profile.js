@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { ResizeMode, Video } from 'expo-av';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -99,8 +100,8 @@ const Profile = ({ navigation }) => {
                         url,
                         journalId: journal._id,
                         createdAt: journal.createdAt,
-                        isVideo: url.toLowerCase().includes('/video/upload/') || 
-                                 url.match(/\.(mp4|mov|m4v|avi|webm)$/i)
+                        isVideo: url.toLowerCase().includes('/video/upload/') ||
+                            url.match(/\.(mp4|mov|m4v|avi|webm)$/i)
                     });
                 });
             }
@@ -238,10 +239,10 @@ const Profile = ({ navigation }) => {
     const handleSaveCredentials = async () => {
         const newValue = !isSaveCredsEnabled;
         setSaveCredsEnabled(newValue);
-        
+
         try {
             await AsyncStorage.setItem(`save_creds_pref_${user?.email}`, newValue.toString());
-            
+
             if (!newValue) {
                 // Clear saved credentials if disabled
                 const sanitized = user.email.toLowerCase().trim().replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -271,7 +272,7 @@ const Profile = ({ navigation }) => {
     };
 
     const handleSaveProfile = async () => {
-        if (!tempFirstName.trim() || !tempLastName.trim()) 
+        if (!tempFirstName.trim() || !tempLastName.trim())
             return Alert.alert("Error", "Name fields cannot be empty");
         setIsSaving(true);
         try {
@@ -292,7 +293,7 @@ const Profile = ({ navigation }) => {
 
             const updatedUser = response.data.user;
             dispatch(setCredentials({ user: updatedUser, token: authToken }));
-            
+
             // Sync changes to the Journal Feed locally
             dispatch(updateJournalUser({
                 userId: updatedUser.id,
@@ -325,12 +326,14 @@ const Profile = ({ navigation }) => {
     const handleClearAll = async () => {
         Alert.alert("Clear All", "Delete all notifications?", [
             { text: "Cancel", style: "cancel" },
-            { text: "Clear", style: "destructive", onPress: async () => {
-                try {
-                    await clearNotifications();
-                    dispatch(getNotificationsAsync());
-                } catch (e) { Alert.alert("Error", "Failed to clear notifications"); }
-            }}
+            {
+                text: "Clear", style: "destructive", onPress: async () => {
+                    try {
+                        await clearNotifications();
+                        dispatch(getNotificationsAsync());
+                    } catch (e) { Alert.alert("Error", "Failed to clear notifications"); }
+                }
+            }
         ]);
     };
 
@@ -343,20 +346,20 @@ const Profile = ({ navigation }) => {
 
     const handleNotificationPress = (item) => {
         setIsNotifModalVisible(false);
-        
+
         if (item.echoId) {
             // Navigate to the Global Echo Feed (Home)
-            navigation.navigate('Home', { 
+            navigation.navigate('Home', {
                 echoId: item.echoId?._id || item.echoId,
                 commentId: item.commentId,
-                focusComment: true 
+                focusComment: true
             });
         } else if (item.journalId) {
             // Navigate to the Stamp (Journal) tab
-            navigation.navigate('Echo', { 
+            navigation.navigate('Echo', {
                 journalId: item.journalId?._id || item.journalId,
                 commentId: item.commentId,
-                focusComment: true 
+                focusComment: true
             });
         }
     };
@@ -364,12 +367,14 @@ const Profile = ({ navigation }) => {
     const handleDeleteNotification = async (id) => {
         Alert.alert("Delete Notification", "Remove this activity from your list?", [
             { text: "Cancel", style: "cancel" },
-            { text: "Delete", style: "destructive", onPress: async () => {
-                try {
-                    await removeNotification(id);
-                    dispatch(getNotificationsAsync());
-                } catch (e) { Alert.alert("Error", "Failed to delete notification"); }
-            }}
+            {
+                text: "Delete", style: "destructive", onPress: async () => {
+                    try {
+                        await removeNotification(id);
+                        dispatch(getNotificationsAsync());
+                    } catch (e) { Alert.alert("Error", "Failed to delete notification"); }
+                }
+            }
         ]);
     };
 
@@ -417,7 +422,7 @@ const Profile = ({ navigation }) => {
             <BrandedHeader colors={colors} isDark={isDark} />
 
             {/* Settings Icon (Top Left) */}
-            <TouchableOpacity 
+            <TouchableOpacity
                 onPress={() => setIsSettingsModalVisible(true)}
                 style={[styles.settingsHeaderBtn, { top: insets.top + 15 }]}
             >
@@ -425,7 +430,7 @@ const Profile = ({ navigation }) => {
             </TouchableOpacity>
 
             {/* Notification Bell Icon */}
-            <TouchableOpacity 
+            <TouchableOpacity
                 onPress={openNotifModal}
                 style={[styles.notifHeaderBtn, { top: insets.top + 15 }]}
             >
@@ -444,8 +449,8 @@ const Profile = ({ navigation }) => {
             >
                 {/* Profile Identity */}
                 <View style={styles.header}>
-                   
-                     <TouchableOpacity onPress={openEditModal} activeOpacity={0.8}>
+
+                    <TouchableOpacity onPress={openEditModal} activeOpacity={0.8}>
                         <View style={styles.avatarWrapper}>
                             <LinearGradient
                                 colors={isDark ? [colors.primary, '#0ea5e9'] : [colors.primary, '#475569']}
@@ -460,10 +465,10 @@ const Profile = ({ navigation }) => {
                                 )}
                             </LinearGradient>
                             <View style={[
-                                styles.editIconBadge, 
-                                { 
-                                    backgroundColor: colors.primary, 
-                                    borderColor: isDark ? colors.background[0] : '#FFF' 
+                                styles.editIconBadge,
+                                {
+                                    backgroundColor: colors.primary,
+                                    borderColor: isDark ? colors.background[0] : '#FFF'
                                 }
                             ]}>
                                 <Ionicons name="pencil" size={14} color="#FFF" />
@@ -508,7 +513,7 @@ const Profile = ({ navigation }) => {
                 {/* Media Grid (Echoes) */}
                 <View style={styles.mediaGridHeader}>
                     <Text style={[styles.sectionLabel, { color: colors.textSecondary, marginBottom: 0 }]}>MY ECHOES</Text>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={[styles.filterButton, { backgroundColor: isFilterActive ? colors.primary : colors.glass, borderColor: isFilterActive ? colors.primary : colors.glassBorder }]}
                         onPress={showPicker}
                     >
@@ -525,12 +530,12 @@ const Profile = ({ navigation }) => {
                         </Text>
                     </TouchableOpacity>
                 )}
-                
+
                 <View style={styles.mediaGrid}>
                     {filteredMedia.length > 0 ? (
                         filteredMedia.map((item, index) => (
-                            <TouchableOpacity 
-                                key={`${item.journalId}-${index}`} 
+                            <TouchableOpacity
+                                key={`${item.journalId}-${index}`}
                                 style={styles.mediaItem}
                                 activeOpacity={0.8}
                                 onPress={() => {
@@ -538,10 +543,25 @@ const Profile = ({ navigation }) => {
                                     setIsPreviewVisible(true);
                                 }}
                             >
-                                <Image 
-                                    source={{ uri: item.url }} 
-                                    style={styles.mediaImage} 
-                                />
+                                {item.isVideo ? (
+                                    /* Render Video if it's a video */
+                                    <Video
+                                        source={{ uri: item.url }}
+                                        style={styles.mediaImage} // Reuse your existing image style for consistency
+                                        resizeMode={ResizeMode.COVER}
+                                        isMuted={true}
+                                        shouldPlay={false} // Usually better to keep off in a grid to save battery
+                                        useNativeControls={false}
+                                    />
+                                ) : (
+                                    /* Render Image if it's not a video */
+                                    <Image
+                                        source={{ uri: item.url }}
+                                        style={styles.mediaImage}
+                                    />
+                                )}
+
+                                {/* Video Overlay Badge */}
                                 {item.isVideo && (
                                     <View style={styles.videoBadge}>
                                         <Ionicons name="play" size={12} color="#FFF" />
@@ -557,7 +577,7 @@ const Profile = ({ navigation }) => {
                     )}
                 </View>
 
-                <Text style={[styles.footerText, { color: colors.textSecondary }]}>v1.0.8 Build 2603</Text>
+
             </ScrollView>
 
             {/* Edit Profile Modal */}
@@ -565,7 +585,7 @@ const Profile = ({ navigation }) => {
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalContent, { backgroundColor: colors.background[0] }]}>
                         <Text style={[styles.modalTitle, { color: colors.textMain }]}>Edit Profile</Text>
-                        
+
                         <TouchableOpacity onPress={handlePickImage} style={styles.modalAvatarWrapper}>
                             {tempImage ? (
                                 <Image source={{ uri: tempImage }} style={styles.modalAvatar} />
@@ -578,8 +598,8 @@ const Profile = ({ navigation }) => {
                                 <Text style={styles.changePhotoText}>Change Photo</Text>
                             </View>
                             {tempImage && (
-                                <TouchableOpacity 
-                                    style={styles.deletePhotoBtn} 
+                                <TouchableOpacity
+                                    style={styles.deletePhotoBtn}
                                     onPress={() => setTempImage(null)}
                                 >
                                     <Ionicons name="trash" size={16} color="#FFF" />
@@ -590,8 +610,8 @@ const Profile = ({ navigation }) => {
                         <View style={styles.inputGroup}>
                             <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>FIRST NAME</Text>
                             <TextInput
-                                style={[styles.modalInput, { 
-                                    color: colors.textMain, 
+                                style={[styles.modalInput, {
+                                    color: colors.textMain,
                                     backgroundColor: colors.glass,
                                     borderColor: colors.glassBorder
                                 }]}
@@ -603,8 +623,8 @@ const Profile = ({ navigation }) => {
 
                             <Text style={[styles.inputLabel, { color: colors.textSecondary, marginTop: 15 }]}>LAST NAME</Text>
                             <TextInput
-                                style={[styles.modalInput, { 
-                                    color: colors.textMain, 
+                                style={[styles.modalInput, {
+                                    color: colors.textMain,
                                     backgroundColor: colors.glass,
                                     borderColor: colors.glassBorder
                                 }]}
@@ -616,8 +636,8 @@ const Profile = ({ navigation }) => {
 
                             <Text style={[styles.inputLabel, { color: colors.textSecondary, marginTop: 15 }]}>USERNAME</Text>
                             <TextInput
-                                style={[styles.modalInput, { 
-                                    color: colors.textMain, 
+                                style={[styles.modalInput, {
+                                    color: colors.textMain,
                                     backgroundColor: colors.glass,
                                     borderColor: colors.glassBorder
                                 }]}
@@ -630,14 +650,14 @@ const Profile = ({ navigation }) => {
                         </View>
 
                         <View style={styles.modalActions}>
-                            <TouchableOpacity 
-                                style={[styles.modalBtn, { backgroundColor: colors.glass }]} 
+                            <TouchableOpacity
+                                style={[styles.modalBtn, { backgroundColor: colors.glass }]}
                                 onPress={() => setIsEditModalVisible(false)}
                             >
                                 <Text style={{ color: colors.textMain, fontWeight: '700' }}>Cancel</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity 
-                                style={[styles.modalBtn, { backgroundColor: colors.primary }]} 
+                            <TouchableOpacity
+                                style={[styles.modalBtn, { backgroundColor: colors.primary }]}
                                 onPress={handleSaveProfile}
                                 disabled={isSaving}
                             >
@@ -667,7 +687,7 @@ const Profile = ({ navigation }) => {
                                     </TouchableOpacity>
                                 </View>
                             </View>
-                            
+
                             <FlatList
                                 data={notifications}
                                 keyExtractor={item => item._id}
@@ -743,14 +763,27 @@ const Profile = ({ navigation }) => {
                         <Ionicons name="close-circle" size={40} color="#FFF" />
                     </TouchableOpacity>
                     <View style={styles.previewContent}>
-                        <Image source={{ uri: selectedMedia?.url }} style={styles.previewImage} resizeMode="contain" />
-                        {selectedMedia?.isVideo && (
-                            <View style={styles.previewVideoIcon}>
-                                <Ionicons name="play-circle" size={80} color="rgba(255,255,255,0.6)" />
-                            </View>
+                        {/* REMOVE the extra <Image /> line that was here */}
+
+                        {selectedMedia?.isVideo ? (
+                            <Video
+                                source={{ uri: selectedMedia.url }}
+                                style={styles.previewVideo}
+                                useNativeControls
+                                resizeMode={ResizeMode.CONTAIN}
+                                shouldPlay
+                                isLooping
+                                onError={(e) => console.log('Video Error:', e)}
+                            />
+                        ) : (
+                            <Image
+                                source={{ uri: selectedMedia?.url }}
+                                style={styles.previewImage}
+                                resizeMode="contain"
+                            />
                         )}
                     </View>
-                    
+
                 </View>
             </Modal>
 
@@ -792,14 +825,14 @@ const Profile = ({ navigation }) => {
                                     isToggle={true}
                                     toggleValue={isSaveCredsEnabled}
                                 />
-                                <SettingItem 
-                                    icon="shield-outline" 
-                                    title="Privacy & Security" 
-                                    isLast 
+                                <SettingItem
+                                    icon="shield-outline"
+                                    title="Privacy & Security"
+                                    isLast
                                     onPress={() => {
                                         setIsSettingsModalVisible(false);
                                         navigation.navigate('PrivacySecurity');
-                                    }} 
+                                    }}
                                 />
                             </View>
 
@@ -819,8 +852,8 @@ const Profile = ({ navigation }) => {
                                 }} />
                             </View>
 
-                            <TouchableOpacity 
-                                style={[styles.logoutBtn, { backgroundColor: isDark ? 'rgba(255, 82, 82, 0.1)' : 'rgba(255, 82, 82, 0.05)' }]} 
+                            <TouchableOpacity
+                                style={[styles.logoutBtn, { backgroundColor: isDark ? 'rgba(255, 82, 82, 0.1)' : 'rgba(255, 82, 82, 0.05)' }]}
                                 onPress={() => {
                                     setIsSettingsModalVisible(false);
                                     handleLogout();
@@ -909,7 +942,7 @@ const styles = StyleSheet.create({
     previewContent: { width: width, height: height * 0.7, justifyContent: 'center', alignItems: 'center' },
     previewImage: { width: '100%', height: '100%' },
     previewVideoIcon: { position: 'absolute' },
-    
+    previewVideo: { flex: 1, width: '100%', height: '100%' },
     viewJournalText: { color: '#FFF', fontWeight: '800', fontSize: 14 },
     deleteNotifAction: { width: 70, height: '100%' },
     deleteNotifGradient: { flex: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 12, marginVertical: 8, marginRight: 10 },

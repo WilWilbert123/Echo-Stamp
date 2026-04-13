@@ -2,13 +2,18 @@
   "expo": {
     "name": "Echo Stamp",
     "slug": "Echo-Stamp",
-    "version": "1.0.9",
+    "version": "1.0.10",
     "orientation": "portrait",
     "icon": "./assets/images/echologo.png",
     "scheme": "echostamp",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to select and upload images and videos.",
+        "NSCameraUsageDescription": "This app needs access to your camera to take photos and videos.",
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone for voice search."
+      }
     },
     "android": {
       "googleServicesFile": "./google-services.json",
@@ -73,7 +78,7 @@
             "packagingOptions": {
               "pickFirst": [
                 "**/libc++_shared.so",
-                 "/libfbjni.so"
+                "/libfbjni.so"
               ]
             }
           }
@@ -86,7 +91,8 @@
           "speechRecognitionPermission": "Allow Echo Stamp to use speech recognition for finding locations."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "react-native-compressor"
     ],
     "extra": {
       "router": {},

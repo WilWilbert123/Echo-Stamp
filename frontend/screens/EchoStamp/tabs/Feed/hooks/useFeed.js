@@ -14,9 +14,22 @@ export const useFeed = (filter) => {
     const [galleryModal, setGalleryModal] = useState(false);
     const [galleryImages, setGalleryImages] = useState([]);
     const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
+    const [visibleItems, setVisibleItems] = useState({}); // Track visible journal IDs
     
     const flatListRef = useRef(null);
     const lastHandledJournal = useRef(null);
+
+    const handleViewableItemsChanged = useCallback(({ viewableItems }) => {
+        const visible = {};
+        viewableItems.forEach((item) => {
+            visible[item.item._id] = true;
+        });
+        setVisibleItems(visible);
+    }, []);
+
+    const viewabilityConfig = useRef({
+        itemVisiblePercentThreshold: 70, // Video must be 70% visible to auto-play
+    });
 
     const loadData = useCallback(() => {
         dispatch(getGlobalJournalsAsync());
@@ -71,6 +84,7 @@ export const useFeed = (filter) => {
         galleryModal, setGalleryModal, galleryImages,
         activeGalleryIndex, setActiveGalleryIndex,
         commentModal, setCommentModal, selectedPost,
-        openGallery, openComments
+        openGallery, openComments,
+        handleViewableItemsChanged, viewabilityConfig, visibleItems
     };
 };
