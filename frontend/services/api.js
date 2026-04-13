@@ -38,6 +38,10 @@ export const fetchGlobalEchoes = () => API.get('/echoes/feed/global');
 export const fetchEchoes = (userId, type) => API.get(`/echoes/${userId}/${type}`);
 export const postEcho = (echoData) => API.post('/echoes', echoData);
 export const deleteEcho = (id) => API.delete(`/echoes/${id}`);
+export const likeEcho = (id, userId) => API.post(`/echoes/${id}/like`, { userId });
+export const commentEcho = (id, data) => API.post(`/echoes/${id}/comment`, data);
+export const replyToEchoComment = (id, commentId, data) => API.post(`/echoes/${id}/comment/${commentId}/reply`, data);
+export const deleteEchoComment = (id, commentId) => API.delete(`/echoes/${id}/comment/${commentId}`);
 
 
 // --- 3. Journals (Private Atlas Entries) ---

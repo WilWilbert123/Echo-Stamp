@@ -1,4 +1,3 @@
-import Voice from '@react-native-voice/voice';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import Constants from 'expo-constants';
@@ -25,6 +24,7 @@ export const useAtlas = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const mapRef = useRef(null);
+  const voiceModuleRef = useRef(null);
 
   // Redux State
   const { list } = useSelector((state) => state.journals);
@@ -288,16 +288,23 @@ export const useAtlas = () => {
   handleSearchRef.current = handleSearch;
 
   useEffect(() => {
-    // Avoid initializing Voice if in Expo Go or if native module is missing
-    const isUnavailable = Constants.appOwnership === 'expo' || !Voice;
-    if (isUnavailable) return;
+    const isExpoGo = Constants.appOwnership === 'expo';
+    if (isExpoGo) return;
 
     const setupVoice = async () => {
       try {
+        const importedVoice = require('@react-native-voice/voice');
+        voiceModuleRef.current = importedVoice?.default || importedVoice;
+        const Voice = voiceModuleRef.current;
+        if (!Voice) {
+          console.log('Voice module could not be loaded.');
+          return;
+        }
+
         Voice.onSpeechStart = () => setIsListening(true);
         Voice.onSpeechEnd = () => setIsListening(false);
         Voice.onSpeechError = (e) => {
-          console.log("Speech recognition error:", e);
+          console.log('Speech recognition error:', e);
           setIsListening(false);
         };
         Voice.onSpeechResults = (e) => {
@@ -308,7 +315,7 @@ export const useAtlas = () => {
           }
         };
       } catch (e) {
-        console.log("Voice module not initialized:", e.message);
+        console.log('Voice module not initialized:', e?.message || e);
       }
     };
 
@@ -316,21 +323,21 @@ export const useAtlas = () => {
 
     return () => {
       try {
-        if (!isUnavailable && typeof Voice.destroy === 'function') {
-            Voice.destroy().then(() => {
-                // Safely call removeAllListeners only if the native module exists
-                if (Voice.removeAllListeners) Voice.removeAllListeners();
-            }).catch(e => console.log("Voice destroy error:", e));
+        const Voice = voiceModuleRef.current;
+        if (Voice && typeof Voice.destroy === 'function') {
+          Voice.destroy().then(() => {
+            if (Voice.removeAllListeners) Voice.removeAllListeners();
+          }).catch(e => console.log('Voice destroy error:', e));
         }
       } catch (e) {
-        console.log("Voice cleanup error:", e);
+        console.log('Voice cleanup error:', e);
       }
     };
   }, []);
 
   const toggleListening = async () => {
     try {
-      // Check if the native module is actually linked/available
+      const Voice = voiceModuleRef.current;
       if (Constants.appOwnership === 'expo' || !Voice || typeof Voice.start !== 'function') {
         Alert.alert("Environment Error", "Voice Recognition is not available in Expo Go. Please use a Development or Production build.");
         return;
