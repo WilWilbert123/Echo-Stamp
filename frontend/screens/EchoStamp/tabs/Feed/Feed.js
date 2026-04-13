@@ -1,7 +1,7 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import LottieView from 'lottie-react-native';
 import { Plus } from 'lucide-react-native';
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../../../../context/ThemeContext';
 import { styles } from '../Feed/feed.styles';
@@ -21,7 +21,8 @@ const Feed = ({ filter }) => {
         galleryModal, setGalleryModal, galleryImages,
         activeGalleryIndex, setActiveGalleryIndex,
         commentModal, setCommentModal, selectedPost,
-        openGallery, openComments
+        openGallery, openComments,
+        handleViewableItemsChanged, viewabilityConfig, visibleItems
     } = useFeed(filter);
 
     const renderItem = useCallback(({ item }) => (
@@ -29,9 +30,10 @@ const Feed = ({ filter }) => {
             item={item} 
             colors={colors} 
             onOpenGallery={openGallery} 
-            onOpenComments={openComments} 
+            onOpenComments={openComments}
+            isVisible={visibleItems[item._id] || false}
         />
-    ), [colors, openGallery, openComments]);
+    ), [colors, openGallery, openComments, visibleItems]);
 
     return (
         <View style={[styles.flex1, { backgroundColor: colors.background[0] }]}>
@@ -48,6 +50,8 @@ const Feed = ({ filter }) => {
                     keyExtractor={item => item._id || Math.random().toString()}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.listPadding}
+                    onViewableItemsChanged={handleViewableItemsChanged}
+                    viewabilityConfig={viewabilityConfig.current}
                     refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
                     }

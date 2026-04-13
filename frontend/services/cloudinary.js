@@ -28,6 +28,9 @@ export const uploadImageToCloudinary = async (fileUri) => {
       `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, 
       {
         method: "POST",
+        headers: {
+          Accept: 'application/json',
+        },
         body: data,
       }
     );
@@ -44,4 +47,21 @@ export const uploadImageToCloudinary = async (fileUri) => {
     console.error("Cloudinary Upload Error:", error);
     throw error;
   }
+};
+
+export const uploadWithConcurrency = async (items, iteratorFn, concurrency = 3) => {
+  if (!Array.isArray(items) || items.length === 0) return [];
+
+  const results = new Array(items.length);
+  let currentIndex = 0;
+
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (currentIndex < items.length) {
+      const index = currentIndex++;
+      results[index] = await iteratorFn(items[index], index, items);
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
 };

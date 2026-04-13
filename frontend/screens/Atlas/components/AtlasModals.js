@@ -1,6 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { VideoView, useVideoPlayer } from 'expo-video';
-import React from 'react';
 import {
   ActivityIndicator, FlatList,
   Image,
@@ -13,27 +11,19 @@ import {
   View
 } from 'react-native';
 import GlassCard from '../../../components/GlassCard';
+import { VideoPlayerWithThumbnail } from '../../../utils/videoThumbnail';
 import styles from '../Atlas.styles';
 import { checkIsVideo } from '../utils/mediaHelpers';
 
 const VideoPlayerItem = ({ uri, isVisible }) => {
-  const player = useVideoPlayer(uri, (p) => {
-    p.loop = true;
-    p.muted = false;
-    if (isVisible) p.play();
-  });
-
-  React.useEffect(() => {
-    if (isVisible) player.play();
-    else player.pause();
-  }, [isVisible, player]);
-
   return (
-    <VideoView
+    <VideoPlayerWithThumbnail
+      uri={uri}
       style={styles.fullMedia}
-      player={player}
       nativeControls={true}
       contentFit="contain"
+      isVisible={isVisible}
+      autoPlay={isVisible}
     />
   );
 };

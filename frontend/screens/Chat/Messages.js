@@ -5,8 +5,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as MediaLibrary from 'expo-media-library';
-import { VideoView, useVideoPlayer } from 'expo-video';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -42,15 +41,15 @@ import {
     sendMessageAction
 } from '../../redux/messageSlice';
 import { fetchAllUsers } from '../../services/api';
-import { uploadImageToCloudinary } from '../../services/cloudinary';
+import { uploadImageToCloudinary, uploadWithConcurrency } from '../../services/cloudinary';
+import { VideoPlayerWithThumbnail } from '../../utils/videoThumbnail';
 
 const MessageVideoPlayer = ({ uri, onDownload }) => {
-    const player = useVideoPlayer(uri, (p) => { p.loop = false; });
     return (
         <View>
-            <VideoView
+            <VideoPlayerWithThumbnail
+                uri={uri}
                 style={{ width: 220, height: 150, borderRadius: 12, marginBottom: 5 }}
-                player={player}
                 nativeControls={true}
                 contentFit="cover"
             />
@@ -349,10 +348,10 @@ const Messages = () => {
 
         if (editingMessage) {
             if (selectedUser.isGroup) {
-                dispatch(editGroupMessageAction({ 
-                    groupId: selectedUser._id, 
-                    messageId: editingMessage._id, 
-                    content: messageText 
+                dispatch(editGroupMessageAction({
+                    groupId: selectedUser._id,
+                    messageId: editingMessage._id,
+                    content: messageText
                 }));
             } else {
                 dispatch(editMessageAction({ messageId: editingMessage._id, content: messageText }));
@@ -374,22 +373,22 @@ const Messages = () => {
 
             if (attachedMedia.length > 0) {
                 try {
-                    mediaArray = await Promise.all(attachedMedia.map(async (file) => {
+                    mediaArray = await uploadWithConcurrency(attachedMedia, async (file) => {
                         const url = await uploadImageToCloudinary(file.uri);
                         return {
                             url,
                             mediaType: file.type === 'video' ? 'video' : 'image'
                         };
-                    }));
+                    }, 3);
                 } catch (error) {
                     return Alert.alert("Error", "Failed to upload media");
                 }
             }
 
             const messagePayload = {
-                content: (voiceUrl || mediaArray.length > 0)
-                    ? (voiceUrl ? "Voice Message" : `${mediaArray.length} Media shared`)
-                    : messageText,
+                content: voiceUrl
+                    ? "Voice Message"
+                    : messageText,  
                 voiceUrl,
                 duration,
                 media: mediaArray
@@ -590,7 +589,7 @@ const Messages = () => {
                     </View>
                     <View style={styles.messageRow}>
                         <Text numberOfLines={1} style={[styles.lastMessage, { color: item?.unreadCount > 0 ? colors.textMain : colors.textSecondary, fontWeight: item?.unreadCount > 0 ? '600' : '400' }]}>
-                            {item?.lastMessage || 'No messages yet'}
+                            {item?.lastMessage || 'Sent a Message'}
                         </Text>
                         {item?.unreadCount > 0 && (
                             <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]}>
@@ -611,8 +610,8 @@ const Messages = () => {
                 <KeyboardAvoidingView
                     style={{ flex: 1 }}
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    
-                keyboardVerticalOffset={0} 
+
+                    keyboardVerticalOffset={0}
                 >
                     {/* Header */}
                     <View style={[styles.chatViewHeader, { borderBottomColor: colors.glassBorder }]}>
