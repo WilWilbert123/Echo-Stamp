@@ -16,7 +16,7 @@
       "package": "com.wilbert03.EchoStamp",
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
-        "foregroundImage": "./assets/images/echologo.png"
+        "foregroundImage": "./assets/images/echologowbg.png"
       },
       "config": {
         "googleMaps": {
@@ -72,7 +72,8 @@
             "memoryMaximumSize": "4096m",
             "packagingOptions": {
               "pickFirst": [
-                "**/libc++_shared.so"
+                "**/libc++_shared.so",
+                 "/libfbjni.so"
               ]
             }
           }
