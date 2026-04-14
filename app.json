@@ -61,7 +61,6 @@
       "expo-location",
       "expo-notifications",
       "expo-mail-composer",
-      "@react-native-community/datetimepicker",
       [
         "expo-media-library",
         {
@@ -75,11 +74,18 @@
           "android": {
             "newArchEnabled": true,
             "memoryMaximumSize": "4096m",
+            "enableMultiDex": true,
             "packagingOptions": {
               "pickFirst": [
                 "**/libc++_shared.so",
-                "/libfbjni.so"
+                "**/libfbjni.so"
               ]
+            },
+            "extraProguardRules": "-keep class com.google.android.gms.internal.** { *; }",
+            "manifestSelectors": {
+              "application": {
+                "tools:replace": "android:appComponentFactory"
+              }
             }
           }
         }
@@ -92,7 +98,8 @@
         }
       ],
       "expo-asset",
-      "react-native-compressor"
+      "react-native-compressor",
+      "@react-native-community/datetimepicker"
     ],
     "extra": {
       "router": {},
