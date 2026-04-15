@@ -34,10 +34,10 @@ const FeatureSection = () => {
           Looks polished, feels easy,<br />
           and makes <span className="text-gradient">sense right away.</span>
         </h2>
-        
+
         <p className="feature-subtitle">
-          The experience is built around real-time workflows: 
-          home snapshots, location visibility, calendar history, 
+          The experience is built around real-time workflows:
+          home snapshots, location visibility, calendar history,
           and fast entry, keeping your echoes organized.
         </p>
       </div>
@@ -47,10 +47,14 @@ const FeatureSection = () => {
         <div className="feature-item-group">
           <div className="feature-text-content">
             <h3 className="feature-item-title" id="feat-core">Echo <span className="text-shimmer">Command Center</span></h3>
-            <p className="feature-description">Orchestrate your digital presence. Seamlessly organize real-time activities into a high-fidelity stream of consciousness that flows at the speed of your life.</p>
+            <p className="feature-description">
+              Orchestrate your digital presence. Seamlessly <strong>journal your memories</strong>,
+              <strong>navigate</strong> to new horizons, and stay connected with a real-time feed
+              of <strong>today's trending</strong> viral locations.
+            </p>
           </div>
           <div className="feature-image-box">
-            <img src={img1} alt="Visual representation of the Echo Command Center Dashboard" className="feature-img-item" />
+            <img src={img1} alt="Visual representation of the Echo Command Center Dashboard showing feed, navigation, and trending tags" className="feature-img-item" />
           </div>
         </div>
 
@@ -58,10 +62,14 @@ const FeatureSection = () => {
         <div className="feature-item-group reversed">
           <div className="feature-text-content">
             <h3 className="feature-item-title">Resonance <span className="text-shimmer">Atlas</span></h3>
-            <p className="feature-description">Visualize your global impact. Explore a living map of human stories and trace the unique frequency of your personal journey across the world.</p>
+            <p className="feature-description">
+              Discover the world with precision. Explore <strong>nearby locations</strong>—from cafes to hotels—and
+              join <strong>local events</strong>. Build curated <strong>collections of saved places</strong>
+              and track your personal journey through <strong>visual insights</strong> and contribution heatmaps.
+            </p>
           </div>
           <div className="feature-image-box">
-            <img src={img2} alt="Feature 2" className="feature-img-item" />
+            <img src={img2} alt="Resonance Atlas interface showing nearby search, saved collections, and user insights" className="feature-img-item" />
           </div>
         </div>
 
@@ -69,10 +77,14 @@ const FeatureSection = () => {
         <div className="feature-item-group">
           <div className="feature-text-content">
             <h3 className="feature-item-title">AR Memory <span className="text-shimmer">Anchors</span></h3>
-            <p className="feature-description">Transcend physical boundaries. Drop immersive stamps into the real world to preserve your most vivid moments exactly where they were born.</p>
+            <p className="feature-description">
+              Immerse yourself in every journey. Explore through <strong>Street View</strong>,
+              stay connected with <strong>integrated messaging</strong>, and <strong>anchor new Echoes</strong>
+              to your current location to preserve your most vivid moments exactly where they were born.
+            </p>
           </div>
           <div className="feature-image-box">
-            <img src={img3} alt="Feature 3" className="feature-img-item" />
+            <img src={img3} alt="AR Memory interface showing Street View, New Echo creation, messaging list, and live map navigation" className="feature-img-item" />
           </div>
         </div>
 
