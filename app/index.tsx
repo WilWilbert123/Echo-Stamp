@@ -6,7 +6,6 @@ import NoInternet from '../frontend/components/NoInternet';
 import { ThemeProvider } from '../frontend/context/ThemeContext';
 import HomeStackNavigator from '../frontend/navigation/navigation';
 import { store } from '../frontend/redux/store';
-
 const Index = () => {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
