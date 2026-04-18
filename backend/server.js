@@ -1,3 +1,5 @@
+require('dotenv').config(); 
+
 const express = require('express');
 const morgan = require('morgan'); 
 const cors = require('cors');  
@@ -6,7 +8,7 @@ const connectDB = require('./config/db');
 const cloudinary = require('cloudinary').v2;
 const groupRoutes = require('./routes/groupRoutes');
 // Load environment variables
-require('dotenv').config();  
+ 
 
 // Connect to Database
 connectDB();  

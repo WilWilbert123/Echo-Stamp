@@ -1,5 +1,5 @@
 const Echo = require('../models/Echo');
-const User = require('../models/User'); // Ensure User model is available for population
+const User = require('../models/User');
 const Notification = require('../models/Notification');
 const axios = require('axios');
 
@@ -52,12 +52,10 @@ exports.getEchoes = async (req, res) => {
     try {
         const { userId, type } = req.params;
 
-        // Validation to ensure we don't query with undefined values
         if (!userId || !type) {
             return res.status(400).json({ message: "UserId and Type are required" });
         }
 
-        // We find by userId and type (which should be 'mode')
         const echoes = await Echo.find({ 
             userId: userId, 
             type: type 
@@ -74,18 +72,16 @@ exports.getEchoes = async (req, res) => {
     }
 };
 
-// @desc    Create a new memory (Text only)
+// @desc    Create a new memory
 // @route   POST /api/echoes
 exports.createEcho = async (req, res) => {
     try {
-        // Ensure type is 'mode' if it's missing from the body
         const echoData = {
             ...req.body,
             type: req.body.type || 'mood'
         };
 
         let newEcho = await Echo.create(echoData);
-        // Populate user details so the feed shows the correct info immediately after creation
         newEcho = await Echo.findById(newEcho._id).populate('userId', 'username firstName lastName profilePicture');
         
         console.log(`[POST] New Echo created with ID: ${newEcho._id}`);
@@ -125,7 +121,6 @@ exports.likeEcho = async (req, res) => {
         if (index === -1) {
             echo.likes.push(req.body.userId);
             
-            // Notify Author
             if (echo.userId.toString() !== req.body.userId.toString()) {
                 await Notification.create({
                     recipient: echo.userId,
@@ -168,7 +163,6 @@ exports.commentEcho = async (req, res) => {
         
         const newComment = echo.comments[echo.comments.length - 1];
 
-        // Notify Author
         if (echo.userId.toString() !== userId.toString()) {
             await Notification.create({
                 recipient: echo.userId,
@@ -208,7 +202,6 @@ exports.replyToComment = async (req, res) => {
         comment.replies.push({ userId, username, profilePicture, text });
         await echo.save();
 
-        // Notify Commenter
         if (comment.userId.toString() !== userId.toString()) {
             await Notification.create({
                 recipient: comment.userId,
@@ -246,5 +239,47 @@ exports.deleteComment = async (req, res) => {
         res.status(200).json(echo);
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+};
+ 
+ 
+exports.countUserEchoes = async (req, res) => {
+    try {
+        console.log("=== COUNT ECHOES DEBUG ===");
+        console.log("User ID:", req.user?._id);
+        console.log("Query params:", req.query);
+        
+        const userId = req.user._id;
+        const { type } = req.query;
+        
+        let query = { userId };
+        if (type && ['mood', 'gratitude', 'memory'].includes(type)) {
+            query.type = type;
+        }
+        
+        console.log("MongoDB Query:", query);
+        
+        // Simple count queries (avoiding aggregation issues)
+        const total = await Echo.countDocuments({ userId });
+        const mood = await Echo.countDocuments({ userId, type: 'mood' });
+        const gratitude = await Echo.countDocuments({ userId, type: 'gratitude' });
+        const memory = await Echo.countDocuments({ userId, type: 'memory' });
+        
+        const stats = {
+            total: total,
+            mood: mood,
+            gratitude: gratitude,
+            memory: memory
+        };
+        
+        console.log("Returning stats:", stats);
+        res.json(stats);
+        
+    } catch (error) {
+        console.error("Count Echoes Error:", error);
+        res.status(500).json({ 
+            error: "Failed to count echoes",
+            details: error.message 
+        });
     }
 };

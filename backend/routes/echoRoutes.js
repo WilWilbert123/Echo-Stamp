@@ -1,21 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const { getEchoes, createEcho, deleteEcho, getGlobalEchoes, likeEcho, commentEcho, replyToComment, deleteComment } = require('../controllers/echoController');
+const echoController = require('../controllers/echoController');
+const { protect } = require('../middleware/authMiddleware');
 
-router.get('/feed/global', getGlobalEchoes);
+// IMPORTANT: Specific routes MUST come BEFORE parameterized routes
+router.get('/count/my', protect, echoController.countUserEchoes);  // This MUST be first
+router.get('/feed/global', protect, echoController.getGlobalEchoes);
 
-router.get('/:userId/:type', getEchoes);
-
- 
-router.post('/', createEcho);
-
-// For deleting
-router.delete('/:id', deleteEcho);
-
-// Social interactions
-router.post('/:id/like', likeEcho);
-router.post('/:id/comment', commentEcho);
-router.post('/:id/comment/:commentId/reply', replyToComment);
-router.delete('/:id/comment/:commentId', deleteComment);
+// Parameterized routes (with :params) go AFTER specific routes
+router.get('/:userId/:type', protect, echoController.getEchoes);
+router.post('/', protect, echoController.createEcho);
+router.delete('/:id', protect, echoController.deleteEcho);
+router.post('/:id/like', protect, echoController.likeEcho);
+router.post('/:id/comment', protect, echoController.commentEcho);
+router.post('/:id/comment/:commentId/reply', protect, echoController.replyToComment);
+router.delete('/:id/comment/:commentId', protect, echoController.deleteComment);
 
 module.exports = router;
