@@ -1,5 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { FlatList, RefreshControl, View } from 'react-native';
+import { FlatList, RefreshControl, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../../../../context/ThemeContext';
 import { getStyles } from './Events.style';
 import { useEvents } from './hooks/useEvents';
@@ -7,7 +8,6 @@ import { useEvents } from './hooks/useEvents';
 // Internal Components
 import EventCard from './components/EventCard';
 import HostingModal from './components/HostingModal';
-import ListFooter from './components/ListFooter';
 import ListHeader from './components/ListHeader';
 
 const Events = () => {
@@ -34,13 +34,21 @@ const Events = () => {
           />
         )}
         ListHeaderComponent={<ListHeader colors={colors} styles={styles} />}
-        ListFooterComponent={<ListFooter colors={colors} styles={styles} onOpen={() => setIsHosting(true)} />}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       />
+
+      {/* Floating Action Button */}
+      <TouchableOpacity 
+        onPress={() => setIsHosting(true)}
+        style={styles.fab}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="add" size={32} color="#FFF" />
+      </TouchableOpacity>
 
       <HostingModal 
         visible={isHosting}

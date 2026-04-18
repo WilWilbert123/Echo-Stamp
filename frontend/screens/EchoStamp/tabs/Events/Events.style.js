@@ -56,5 +56,22 @@ export const getStyles = (colors, isDark) => StyleSheet.create({
   resultSub: { color: 'rgba(255,255,255,0.8)', fontSize: 12 },
   modalActions: { paddingVertical: 20, paddingBottom: 40, borderTopWidth: 1, borderTopColor: colors.glassBorder },
   actionBtn: { paddingVertical: 18, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary },
-  actionBtnText: { color: '#FFF', fontWeight: '900', fontSize: 18 }
+  actionBtnText: { color: '#FFF', fontWeight: '900', fontSize: 18 },
+   fab: {
+    position: 'absolute',
+    bottom: 100,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    zIndex: 999,
+  },
 });
