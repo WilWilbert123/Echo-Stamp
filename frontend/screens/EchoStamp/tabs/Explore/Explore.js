@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import LottieView from 'lottie-react-native';
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
@@ -9,20 +9,28 @@ import { useTheme } from '../../../../context/ThemeContext';
 import { styles } from './Explore.style';
 import { useExplore } from './hooks/useExplore';
 import { DARK_MAP_STYLE } from './utils/Explore.utils';
-
+// In Explore.js
 // Components
-import { CategoryList } from './components/CategoryList';
+import { CategoryGroupList } from './components/CategoryGroupList';
+import { CategoryModal } from './components/CategoryModal';
 import { ExploreModal } from './components/ExploreModal';
 import { PlaceCard } from './components/PlaceCard';
+import { QuickAccess } from './components/QuickAccess';
+import { RadiusSelector } from './components/RadiusSelector';
 
 const Explore = () => {
     const { colors, isDark } = useTheme();
     const navigation = useNavigation();
     const mapRef = useRef(null);
+    const [isRadiusModalVisible, setRadiusModalVisible] = useState(false);
+    const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
+    const [selectedGroup, setSelectedGroup] = useState(null);
+
     const {
         userLocation, searchQuery, setSearchQuery, places, loading, isFetching,
-        selectedCategory, selectedPlace, setSelectedPlace, isModalVisible, setModalVisible,
-        savedIds, fetchNearbyGoogle, handleSearch, toggleSave, updateMapRegion
+        selectedCategory, setSelectedCategory, selectedPlace, setSelectedPlace,
+        isModalVisible, setModalVisible, savedIds, fetchNearbyGoogle,
+        handleSearch, toggleSave, updateMapRegion, searchRadius, setSearchRadius
     } = useExplore(mapRef, colors);
 
     const goToAtlas = (place) => {
@@ -31,6 +39,28 @@ const Explore = () => {
             location: { latitude: place.lat, longitude: place.lon },
             placeName: place.name, placeAddress: place.address, placeImage: place.image
         });
+    };
+
+    const handleRadiusSelect = (radius) => {
+        setSearchRadius(radius);
+        if (userLocation && selectedCategory) {
+            fetchNearbyGoogle(userLocation.latitude, userLocation.longitude, selectedCategory, radius);
+        } else if (userLocation) {
+            const foodCategory = { name: 'Restaurants', type: 'restaurant', color: colors.primary, icon: 'restaurant' };
+            fetchNearbyGoogle(userLocation.latitude, userLocation.longitude, foodCategory, radius);
+        }
+    };
+
+    const handleSelectCategory = (category) => {
+        setSelectedCategory(category);
+        if (userLocation) {
+            fetchNearbyGoogle(userLocation.latitude, userLocation.longitude, category);
+        }
+    };
+
+    const handleSelectGroup = (group) => {
+        setSelectedGroup(group);
+        setCategoryModalVisible(true);
     };
 
     return (
@@ -47,10 +77,28 @@ const Explore = () => {
                         onSubmitEditing={handleSearch}
                         editable={!isFetching}
                     />
+                    <TouchableOpacity
+                        style={[styles.radiusBtn, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}
+                        onPress={() => setRadiusModalVisible(true)}
+                    >
+                        <Ionicons name="resize" size={18} color={colors.primary} />
+                        <Text style={[styles.radiusBtnText, { color: colors.textMain }]}>
+                            {searchRadius >= 1000 ? `${searchRadius / 1000}km` : `${searchRadius}m`}
+                        </Text>
+                    </TouchableOpacity>
                 </View>
-                <CategoryList 
-                    colors={colors} userLocation={userLocation} 
-                    selectedCategory={selectedCategory} onSelect={fetchNearbyGoogle} 
+
+                {/* Quick Access Categories */}
+                <QuickAccess
+                    colors={colors}
+                    selectedCategory={selectedCategory}
+                    onSelectCategory={handleSelectCategory}
+                />
+
+                {/* Category Groups */}
+                <CategoryGroupList
+                    colors={colors}
+                    onSelectGroup={handleSelectGroup}
                 />
             </View>
 
@@ -81,14 +129,16 @@ const Explore = () => {
                 </View>
 
                 <View style={styles.resultsHeader}>
-                    <Text style={[styles.sectionTitle, { color: colors.textMain }]}>{selectedCategory?.name || 'Explore'}</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.textMain }]}>
+                        {selectedCategory?.name || 'Explore'}
+                    </Text>
                     <Text style={{ color: colors.textSecondary }}>{places.length} found</Text>
                 </View>
 
-                {loading ? <ActivityIndicator size="large" color={colors.primary} /> : 
+                {loading ? <ActivityIndicator size="large" color={colors.primary} /> :
                     places.map(item => (
-                        <PlaceCard 
-                            key={item.id} item={item} colors={colors} 
+                        <PlaceCard
+                            key={item.id} item={item} colors={colors}
                             isSaved={savedIds.includes(item.id)} onSave={toggleSave}
                             onSelect={() => { setSelectedPlace(item); setModalVisible(true); }}
                         />
@@ -96,10 +146,27 @@ const Explore = () => {
                 }
             </ScrollView>
 
-            <ExploreModal 
+            <ExploreModal
                 visible={isModalVisible} place={selectedPlace} colors={colors} isDark={isDark}
                 isSaved={savedIds.includes(selectedPlace?.id)} onSave={toggleSave}
                 onClose={() => setModalVisible(false)} onGoToAtlas={() => selectedPlace && goToAtlas(selectedPlace)}
+            />
+
+            <RadiusSelector
+                visible={isRadiusModalVisible}
+                onClose={() => setRadiusModalVisible(false)}
+                currentRadius={searchRadius}
+                onSelectRadius={handleRadiusSelect}
+                colors={colors}
+            />
+           
+
+            <CategoryModal
+                visible={isCategoryModalVisible}
+                onClose={() => setCategoryModalVisible(false)}
+                group={selectedGroup}
+                onSelectCategory={handleSelectCategory}
+                colors={colors}
             />
         </View>
     );
