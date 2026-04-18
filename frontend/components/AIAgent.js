@@ -35,6 +35,7 @@ import {
     countMyEchoes,
     fetchChatHistory
 } from '../services/api';
+import { extractPlaceCategory, fetchNearbyPlacesForAI, formatPlacesForChat, isNearbyQuery } from '../utils/aiLocationHelper';
 
 const { width, height } = Dimensions.get("window");
 
@@ -136,9 +137,26 @@ const AIAgent = () => {
         if (visible) {
             loadMessages();
             loadEchoStats();
-            requestLocation();
+            requestLocation(); // This should request permissions
+            
+            // Also try to get initial location
+            getInitialLocation();
         }
     }, [visible]);
+
+    const getInitialLocation = async () => {
+        try {
+            const { status } = await Location.getForegroundPermissionsAsync();
+            if (status === 'granted') {
+                const loc = await Location.getCurrentPositionAsync({
+                    accuracy: Location.Accuracy.Balanced
+                });
+                console.log("Initial location obtained:", loc.coords);
+            }
+        } catch (err) {
+            console.warn("Could not get initial location", err);
+        }
+    };
 
     const loadEchoStats = async () => {
         try {
@@ -199,6 +217,24 @@ const AIAgent = () => {
         );
     };
 
+    // Handle nearby place queries locally
+    const handleNearbyQuery = async (userText, locationData) => {
+        if (!locationData || !locationData.latitude || !locationData.longitude) {
+            return "I need your location to find nearby places. Please enable location services and try again. 📍";
+        }
+        
+        const category = extractPlaceCategory(userText);
+        if (!category) return null;
+        
+        const places = await fetchNearbyPlacesForAI(
+            locationData.latitude, 
+            locationData.longitude, 
+            category
+        );
+        
+        return formatPlacesForChat(places, category);
+    };
+
     const processQueue = async () => {
         if (isProcessingQueue.current || requestQueue.current.length === 0) return;
 
@@ -232,15 +268,39 @@ const AIAgent = () => {
     const sendMessageToAI = async (userText) => {
         let locationData = null;
         try {
-            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-            locationData = {
-                latitude: loc.coords.latitude,
-                longitude: loc.coords.longitude
-            };
+            const { status } = await Location.getForegroundPermissionsAsync();
+            if (status === 'granted') {
+                const loc = await Location.getCurrentPositionAsync({ 
+                    accuracy: Location.Accuracy.Balanced 
+                });
+                locationData = {
+                    latitude: loc.coords.latitude,
+                    longitude: loc.coords.longitude
+                };
+                console.log("📍 Location obtained:", locationData);
+                
+                // CHECK FOR NEARBY QUERIES FIRST (BEFORE CALLING BACKEND)
+                if (isNearbyQuery(userText)) {
+                    console.log("📍 Nearby query detected, handling locally...");
+                    const nearbyResponse = await handleNearbyQuery(userText, locationData);
+                    if (nearbyResponse) {
+                        // Return a mock response structure
+                        return { data: { text: nearbyResponse } };
+                    }
+                }
+            } else {
+                console.log("❌ Location permission not granted");
+                
+                // Check if it's a nearby query but no location
+                if (isNearbyQuery(userText)) {
+                    return { data: { text: "I need your location to find nearby places. Please enable location services and try again. 📍" } };
+                }
+            }
         } catch (locErr) {
-            console.log("Could not get location for AI", locErr);
+            console.error("❌ Could not get location for AI:", locErr);
         }
 
+        // If not a nearby query or location failed, call the backend
         const response = await askAiAssistant(userText, locationData);
         return response;
     };
