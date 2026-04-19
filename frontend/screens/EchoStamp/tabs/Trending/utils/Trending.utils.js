@@ -1,13 +1,16 @@
+import { Image } from 'react-native';
 import thisisit from "../../../../../config/config";
-
 const GOOGLE_API_KEY = thisisit;
+const noImagePlaceholder = require('../../../../../../assets/images/echologowbg.png');
+const noImageUri = Image.resolveAssetSource(noImagePlaceholder).uri;
+
 
 export const formatPlaces = (results) => {
     return results.map(place => {
         const photoReference = place.photos?.[0]?.photo_reference;
         const imageUrl = photoReference
             ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${photoReference}&key=${GOOGLE_API_KEY}`
-            : 'https://images.unsplash.com/photo-1516690561799-46d8f74f9abf?w=800';
+            : noImageUri;
 
         return {
             id: place.place_id,

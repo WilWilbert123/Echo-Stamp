@@ -1,10 +1,13 @@
+import { Image } from 'react-native';
 import thisisit from "../../../../../config/config";
 
+const noImagePlaceholder = require('../../../../../../assets/images/echologowbg.png');
+const noImageUri = Image.resolveAssetSource(noImagePlaceholder).uri;
 export const GOOGLE_API_KEY = thisisit;
 
  
 export const getEventImage = (coords) => {
-  if (!coords?.latitude) return 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400';
+  if (!coords?.latitude) return noImageUri;
   return `https://maps.googleapis.com/maps/api/streetview?size=600x300&location=${coords.latitude},${coords.longitude}&fov=90&heading=235&pitch=10&key=${GOOGLE_API_KEY}`;
 };
 

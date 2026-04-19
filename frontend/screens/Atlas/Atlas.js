@@ -232,7 +232,7 @@ const Atlas = () => {
               <View style={styles.liveMarkerContainer}>
                 <View style={styles.liveMarker}>
                   <Image
-                    source={{ uri: friend.profilePicture || 'https://via.placeholder.com/100' }}
+                    source={{ uri: friend.profilePicture || 'https://static.vecteezy.com/system/resources/thumbnails/024/983/914/small_2x/simple-user-default-icon-free-png.png' }}
                     style={styles.liveAvatar}
                     resizeMode="cover"
                   />
