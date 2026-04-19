@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
-import { calculateDistance, formatGoogleResults, getRadiusForCategory, GOOGLE_API_KEY } from '../utils/Explore.utils';
+import { calculateDistance, CATEGORIES, formatGoogleResults, getRadiusForCategory, GOOGLE_API_KEY } from '../utils/Explore.utils';
 
 export const useExplore = (mapRef, colors) => {
     const [userLocation, setUserLocation] = useState(null);
@@ -10,11 +10,11 @@ export const useExplore = (mapRef, colors) => {
     const [places, setPlaces] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isFetching, setIsFetching] = useState(false);
-    const [selectedCategory, setSelectedCategory] = useState(null); // This exists
+    const [selectedCategory, setSelectedCategory] = useState(null);
     const [selectedPlace, setSelectedPlace] = useState(null);
     const [isModalVisible, setModalVisible] = useState(false);
     const [savedIds, setSavedIds] = useState([]);
-    const [searchRadius, setSearchRadius] = useState(500); // Default 500 meters
+    const [searchRadius, setSearchRadius] = useState(500);
 
     const updateMapRegion = useCallback((targetPlaces) => {
         if (targetPlaces?.length > 0 && mapRef.current) {
@@ -27,67 +27,122 @@ export const useExplore = (mapRef, colors) => {
         }
     }, [mapRef]);
 
-    const fetchNearbyGoogle = async (lat, lon, category, customRadius = null) => {
-        if (isFetching || !GOOGLE_API_KEY) return;
-        setLoading(true);
-        setIsFetching(true);
-        setSelectedCategory(category);
+   const fetchNearbyGoogle = async (lat, lon, category, customRadius = null) => {
+    if (isFetching || !GOOGLE_API_KEY) return;
+    setLoading(true);
+    setIsFetching(true);
+    setSelectedCategory(category);
 
-        let radius = customRadius || getRadiusForCategory(category);
+    let radius = customRadius || getRadiusForCategory(category);
+    if (radius < 50) radius = 50;
+
+    // Define which categories need keyword search instead of type search
+    const categoriesNeedingKeywordSearch = [
+        'Barbershops', 'Salons', 'Spas', 'Gyms', 'Dentists', 
+        'Veterinarians', 'Optometrists', 'Clinics', 'Car Washes', 
+        'Auto Repair', 'Dry Cleaners', 'Laundromats', 'Pet Stores',
+        'Florists', 'Gift Shops', 'Bookstores', 'Hardware Stores'
+    ];
+
+    let url;
+    
+    if (categoriesNeedingKeywordSearch.includes(category.name)) {
+        // Use keyword search for better results
+        const keywordMap = {
+            'Barbershops': 'barbershop hair cut',
+            'Salons': 'hair salon beauty salon',
+            'Spas': 'spa massage wellness',
+            'Gyms': 'gym fitness center',
+            'Dentists': 'dentist dental clinic',
+            'Veterinarians': 'veterinarian animal clinic',
+            'Optometrists': 'optometrist eye clinic',
+            'Clinics': 'medical clinic health clinic',
+            'Car Washes': 'car wash auto detailing',
+            'Auto Repair': 'auto repair car mechanic',
+            'Dry Cleaners': 'dry cleaner laundry',
+            'Laundromats': 'laundromat laundry service',
+            'Pet Stores': 'pet store pet supplies',
+            'Florists': 'florist flower shop',
+            'Gift Shops': 'gift shop souvenir',
+            'Bookstores': 'bookstore books',
+            'Hardware Stores': 'hardware store home improvement'
+        };
         
-        if (category.name === 'Cities') {
-            radius = 50000;
-        }
+        const searchKeyword = keywordMap[category.name] || category.name;
+        url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchKeyword)}&location=${lat},${lon}&radius=${radius}&key=${GOOGLE_API_KEY}`;
+    } else {
+        // Use type search for reliable categories
+        url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lon}&radius=${radius}&type=${category.type}&key=${GOOGLE_API_KEY}`;
+    }
 
-        if (radius < 50 && category.name !== 'Cities') {
-            radius = 50;
-        }
-
-        const url = category.name === 'Cities'
-            ? `https://maps.googleapis.com/maps/api/place/textsearch/json?query=city&location=${lat},${lon}&radius=${radius}&type=locality&key=${GOOGLE_API_KEY}`
-            : `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lon}&radius=${radius}&type=${category.type}&key=${GOOGLE_API_KEY}`;
-
-        try {
-            const response = await fetch(url);
-            const data = await response.json();
-            if (data.status === "OK") {
-                let filteredResults = data.results;
-                
-                if (category.type === 'cafe') {
-                    filteredResults = data.results.filter(r => !r.name.toLowerCase().includes('hotel'));
-                }
-                
-                let formatted = formatGoogleResults(filteredResults, category.color, category.icon);
-                
-                formatted = formatted.map(place => ({
-                    ...place,
-                    distance: calculateDistance(lat, lon, place.lat, place.lon)
-                }));
-                
-                formatted.sort((a, b) => a.distance - b.distance);
-                
-                const maxResults = 60;
-                if (formatted.length > maxResults) {
-                    formatted = formatted.slice(0, maxResults);
-                }
-                
-                setPlaces(formatted);
-                
-                if (formatted.length > 0) {
-                    updateMapRegion(formatted);
-                }
-            } else {
-                console.log('No results found:', data.status);
-                setPlaces([]);
+    try {
+        console.log(`Fetching ${category.name} with ${categoriesNeedingKeywordSearch.includes(category.name) ? 'keyword' : 'type'} search`);
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.status === "OK") {
+            let filteredResults = data.results;
+            
+            // Additional filtering for specific categories
+            if (category.name === 'Barbershops') {
+                filteredResults = data.results.filter(r => 
+                    r.name.toLowerCase().includes('barber') || 
+                    r.name.toLowerCase().includes('cut') ||
+                    r.types?.includes('barber_shop')
+                );
             }
-        } catch (error) {
-            console.error(error);
-            Alert.alert("Error", "Could not fetch nearby places. Please try again.");
-        } finally {
-            setLoading(false);
-            setIsFetching(false);
+            
+            if (category.name === 'Salons') {
+                filteredResults = data.results.filter(r => 
+                    r.name.toLowerCase().includes('salon') || 
+                    r.name.toLowerCase().includes('hair') ||
+                    r.types?.includes('hair_care')
+                );
+            }
+            
+            if (category.name === 'Cafés') {
+                filteredResults = data.results.filter(r => 
+                    !r.name.toLowerCase().includes('hotel') &&
+                    !r.name.toLowerCase().includes('restaurant')
+                );
+            }
+            
+            let formatted = formatGoogleResults(filteredResults, category.color, category.icon);
+            
+            formatted = formatted.map(place => ({
+                ...place,
+                distance: calculateDistance(lat, lon, place.lat, place.lon)
+            }));
+            
+            formatted.sort((a, b) => a.distance - b.distance);
+            
+            if (formatted.length > 60) {
+                formatted = formatted.slice(0, 60);
+            }
+            
+            setPlaces(formatted);
+            
+            if (formatted.length > 0) {
+                updateMapRegion(formatted);
+            } else {
+                Alert.alert("No Results", `No ${category.name} found within ${radius/1000}km of your location.`);
+            }
+        } else if (data.status === "ZERO_RESULTS") {
+            setPlaces([]);
+            Alert.alert("No Results", `No ${category.name} found nearby. Try increasing the search radius.`);
+        } else {
+            console.log('API returned status:', data.status);
+            setPlaces([]);
+            Alert.alert("Error", `Could not find ${category.name} nearby. Please try again.`);
         }
-    };
+    } catch (error) {
+        console.error(error);
+        Alert.alert("Error", "Could not fetch nearby places. Please try again.");
+    } finally {
+        setLoading(false);
+        setIsFetching(false);
+    }
+};
 
     const handleSearch = async () => {
         if (!searchQuery || isFetching || !userLocation) return;
@@ -160,9 +215,16 @@ export const useExplore = (mapRef, colors) => {
                 longitudeDelta: 0.01,
             };
             setUserLocation(coords);
-            // Default to Restaurants category
-            const defaultCategory = { id: '51', name: 'Restaurants', icon: 'restaurant', color: '#FB923C', type: 'restaurant', radius: 500 };
-            await fetchNearbyGoogle(loc.coords.latitude, loc.coords.longitude, defaultCategory, 500);
+            
+            // Find the Restaurants category from CATEGORIES array
+            const defaultCategory = CATEGORIES.find(cat => cat.name === 'Restaurants');
+            
+            if (defaultCategory) {
+                await fetchNearbyGoogle(loc.coords.latitude, loc.coords.longitude, defaultCategory, 500);
+            } else {
+                console.error('Restaurants category not found');
+                setLoading(false);
+            }
         } catch (e) {
             console.error(e);
             setLoading(false);
@@ -187,7 +249,7 @@ export const useExplore = (mapRef, colors) => {
         loading, 
         isFetching,
         selectedCategory, 
-        setSelectedCategory, // Make sure this is included!
+        setSelectedCategory,
         selectedPlace, 
         setSelectedPlace, 
         isModalVisible, 
