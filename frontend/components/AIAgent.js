@@ -47,6 +47,7 @@ const AIAgent = () => {
     const [input, setInput] = useState('');
     const [visible, setVisible] = useState(false);
     const [isSending, setIsSending] = useState(false);
+    const [hasLoadedHistory, setHasLoadedHistory] = useState(false); // Track if history has been loaded
     const flatListRef = useRef(null);
     const lastRequestTime = useRef(0);
     const requestQueue = useRef([]);
@@ -133,13 +134,20 @@ const AIAgent = () => {
         })
     ).current;
 
+    // Load messages only once when component mounts or when user logs in
     useEffect(() => {
-        if (visible) {
+        // Load history when component mounts (but not every time modal opens)
+        if (!hasLoadedHistory && user) {
             loadMessages();
             loadEchoStats();
-            requestLocation(); // This should request permissions
-            
-            // Also try to get initial location
+            setHasLoadedHistory(true);
+        }
+    }, [user]); // Re-run if user changes
+
+    // Request location when modal opens, but don't reload history
+    useEffect(() => {
+        if (visible) {
+            requestLocation();
             getInitialLocation();
         }
     }, [visible]);
@@ -179,6 +187,12 @@ const AIAgent = () => {
     };
 
     const loadMessages = async () => {
+        // Only load if we don't already have history
+        if (history && history.length > 0) {
+            console.log("History already loaded, skipping fetch");
+            return;
+        }
+        
         dispatch(setChatLoading(true));
         try {
             const res = await fetchChatHistory();
@@ -208,6 +222,8 @@ const AIAgent = () => {
                         try {
                             await clearChatHistory();
                             dispatch(clearHistory());
+                            // Reset the loaded flag so it can reload if needed
+                            setHasLoadedHistory(false);
                         } catch (err) {
                             console.error("Clear History Error:", err);
                         }

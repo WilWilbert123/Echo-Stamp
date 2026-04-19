@@ -31,7 +31,7 @@ const getUserEchoStats = async (userId) => {
     }
 };
 
-// FALLBACK: Reverse geocoding using OpenStreetMap (free, no API key needed)
+// Reverse geocoding using OpenStreetMap (free, no API key needed)
 const getAddressFromOpenStreetMap = async (latitude, longitude) => {
     try {
         const url = `https://nominatim.openstreetmap.org/reverse`;
@@ -337,7 +337,6 @@ const getWeatherInfo = async (latitude, longitude) => {
 
 // Extract city name from weather query
 const extractCityFromWeatherQuery = (message) => {
-    const lowerMessage = message.toLowerCase();
     const patterns = [
         /weather in (\w+(?:\s+\w+)*)/i,
         /temperature in (\w+(?:\s+\w+)*)/i,
@@ -355,8 +354,102 @@ const extractCityFromWeatherQuery = (message) => {
     return null;
 };
 
-// Function to search nearby places using Google Places API
-const searchNearbyPlacesEnhanced = async (latitude, longitude, categoryType, categoryName) => {
+// PLACE CATEGORIES for nearby searches
+const PLACE_CATEGORIES = {
+    'parking': { type: 'parking', name: 'Parking Lots', keyword: 'parking lot' },
+    'parking lot': { type: 'parking', name: 'Parking Lots', keyword: 'parking lot' },
+    'gas station': { type: 'gas_station', name: 'Gas Stations', keyword: 'gas station' },
+    'city hall': { type: 'city_hall', name: 'City Hall', keyword: 'city hall' },
+    'barangay hall': { type: 'local_government_office', name: 'Barangay Hall', keyword: 'barangay hall' },
+    'barangay': { type: 'local_government_office', name: 'Barangay Hall', keyword: 'barangay hall' },
+    'police': { type: 'police', name: 'Police Stations', keyword: 'police station' },
+    'police station': { type: 'police', name: 'Police Stations', keyword: 'police station' },
+    'fire station': { type: 'fire_station', name: 'Fire Stations', keyword: 'fire station' },
+    'post office': { type: 'post_office', name: 'Post Offices', keyword: 'post office' },
+    'hospital': { type: 'hospital', name: 'Hospitals', keyword: 'hospital' },
+    'clinic': { type: 'doctor', name: 'Clinics', keyword: 'medical clinic' },
+    'pharmacy': { type: 'pharmacy', name: 'Pharmacies', keyword: 'pharmacy' },
+    'drugstore': { type: 'pharmacy', name: 'Pharmacies', keyword: 'pharmacy' },
+    'dentist': { type: 'dentist', name: 'Dentists', keyword: 'dentist' },
+    'school': { type: 'school', name: 'Schools', keyword: 'school' },
+    'university': { type: 'university', name: 'Universities', keyword: 'university' },
+    'college': { type: 'university', name: 'Universities', keyword: 'college' },
+    'library': { type: 'library', name: 'Libraries', keyword: 'library' },
+    'mall': { type: 'shopping_mall', name: 'Malls', keyword: 'shopping mall' },
+    'shopping mall': { type: 'shopping_mall', name: 'Malls', keyword: 'shopping mall' },
+    'supermarket': { type: 'supermarket', name: 'Supermarkets', keyword: 'supermarket' },
+    'grocery': { type: 'supermarket', name: 'Supermarkets', keyword: 'grocery store' },
+    'convenience store': { type: 'convenience_store', name: 'Convenience Stores', keyword: 'convenience store' },
+    'bakery': { type: 'bakery', name: 'Bakeries', keyword: 'bakery' },
+    'bookstore': { type: 'book_store', name: 'Bookstores', keyword: 'bookstore' },
+    'restaurant': { type: 'restaurant', name: 'Restaurants', keyword: 'restaurant' },
+    'restaurants': { type: 'restaurant', name: 'Restaurants', keyword: 'restaurant' },
+    'food': { type: 'restaurant', name: 'Restaurants', keyword: 'restaurant' },
+    'fast food': { type: 'meal_takeaway', name: 'Fast Food', keyword: 'fast food' },
+    'fastfood': { type: 'meal_takeaway', name: 'Fast Food', keyword: 'fast food' },
+    'cafe': { type: 'cafe', name: 'Cafés', keyword: 'cafe' },
+    'cafes': { type: 'cafe', name: 'Cafés', keyword: 'cafe' },
+    'coffee': { type: 'cafe', name: 'Cafés', keyword: 'coffee shop' },
+    'coffee shop': { type: 'cafe', name: 'Cafés', keyword: 'coffee shop' },
+    'bar': { type: 'bar', name: 'Bars/Pubs', keyword: 'bar' },
+    'pub': { type: 'bar', name: 'Bars/Pubs', keyword: 'pub' },
+    'hotel': { type: 'lodging', name: 'Hotels', keyword: 'hotel' },
+    'hotels': { type: 'lodging', name: 'Hotels', keyword: 'hotel' },
+    'bank': { type: 'bank', name: 'Banks', keyword: 'bank' },
+    'atm': { type: 'atm', name: 'ATMs', keyword: 'atm' },
+    'movie theater': { type: 'movie_theater', name: 'Movie Theaters', keyword: 'movie theater' },
+    'cinema': { type: 'movie_theater', name: 'Movie Theaters', keyword: 'cinema' },
+    'park': { type: 'park', name: 'Parks', keyword: 'park' },
+    'museum': { type: 'museum', name: 'Museums', keyword: 'museum' },
+    'art gallery': { type: 'art_gallery', name: 'Art Galleries', keyword: 'art gallery' },
+    'gym': { type: 'gym', name: 'Gyms', keyword: 'gym' },
+    'fitness': { type: 'gym', name: 'Gyms', keyword: 'fitness center' },
+    'spa': { type: 'spa', name: 'Spas', keyword: 'spa' },
+    'salon': { type: 'hair_care', name: 'Salons', keyword: 'hair salon' },
+    'hair salon': { type: 'hair_care', name: 'Salons', keyword: 'hair salon' },
+    'barbershop': { type: 'barber_shop', name: 'Barbershops', keyword: 'barbershop' },
+    'church': { type: 'church', name: 'Churches', keyword: 'church' },
+    'mosque': { type: 'mosque', name: 'Mosques', keyword: 'mosque' },
+    'temple': { type: 'hindu_temple', name: 'Temples', keyword: 'temple' },
+    'laundry': { type: 'laundry', name: 'Laundromats', keyword: 'laundry' },
+    'laundromat': { type: 'laundry', name: 'Laundromats', keyword: 'laundromat' },
+    'dry cleaner': { type: 'dry_cleaner', name: 'Dry Cleaners', keyword: 'dry cleaner' },
+    'car wash': { type: 'car_wash', name: 'Car Washes', keyword: 'car wash' },
+    'auto repair': { type: 'car_repair', name: 'Auto Repair', keyword: 'auto repair shop' },
+    'mechanic': { type: 'car_repair', name: 'Auto Repair', keyword: 'mechanic' }
+};
+
+// Check if message is asking for nearby places
+const isNearbyQuery = (message) => {
+    const lowerMessage = message.toLowerCase();
+    const nearbyKeywords = ['near me', 'nearby', 'around me', 'close to me', 'closest', 'near here', 'find', 'looking for', 'where can i find'];
+    
+    const hasNearbyKeyword = nearbyKeywords.some(keyword => lowerMessage.includes(keyword));
+    
+    let hasPlaceType = false;
+    for (const keyword of Object.keys(PLACE_CATEGORIES)) {
+        if (lowerMessage.includes(keyword)) {
+            hasPlaceType = true;
+            break;
+        }
+    }
+    
+    return (hasNearbyKeyword && hasPlaceType);
+};
+
+const extractPlaceCategory = (message) => {
+    const lowerMessage = message.toLowerCase();
+    const sortedKeywords = Object.keys(PLACE_CATEGORIES).sort((a, b) => b.length - a.length);
+    
+    for (const keyword of sortedKeywords) {
+        if (lowerMessage.includes(keyword)) {
+            return PLACE_CATEGORIES[keyword];
+        }
+    }
+    return null;
+};
+
+const searchNearbyPlacesEnhanced = async (latitude, longitude, category) => {
     try {
         const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
         
@@ -365,22 +458,33 @@ const searchNearbyPlacesEnhanced = async (latitude, longitude, categoryType, cat
             return null;
         }
 
-        const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json`;
-        const params = {
-            location: `${latitude},${longitude}`,
-            radius: 5000,
-            type: categoryType,
-            key: GOOGLE_API_KEY
-        };
-
-        const response = await axios.get(url, { params, timeout: 8000 });
+        const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=5000&type=${category.type}&key=${GOOGLE_API_KEY}`;
+        const response = await axios.get(url, { timeout: 8000 });
         
         if (response.data.status === 'OK' && response.data.results.length > 0) {
             let results = response.data.results;
-            if (categoryType === 'cafe') {
+            
+            // Additional filtering for specific categories
+            if (category.type === 'cafe') {
                 results = results.filter(r => 
                     !r.name.toLowerCase().includes('hotel') && 
                     !r.name.toLowerCase().includes('inn')
+                );
+            }
+            
+            if (category.name === 'Barbershops') {
+                results = results.filter(r => 
+                    r.name.toLowerCase().includes('barber') || 
+                    (r.types && r.types.includes('barber_shop'))
+                );
+            }
+            
+            if (category.name === 'Fast Food') {
+                results = results.filter(r => 
+                    r.name.toLowerCase().includes('mcdo') ||
+                    r.name.toLowerCase().includes('jollibee') ||
+                    r.name.toLowerCase().includes('kfc') ||
+                    r.name.toLowerCase().includes('burger')
                 );
             }
             
@@ -389,7 +493,6 @@ const searchNearbyPlacesEnhanced = async (latitude, longitude, categoryType, cat
                 address: place.vicinity,
                 rating: place.rating,
                 totalRatings: place.user_ratings_total,
-                vicinity: place.vicinity,
                 openNow: place.opening_hours?.open_now,
                 priceLevel: place.price_level,
                 lat: place.geometry.location.lat,
@@ -404,10 +507,9 @@ const searchNearbyPlacesEnhanced = async (latitude, longitude, categoryType, cat
     }
 };
 
-// Enhanced format places response
 const formatNearbyPlacesResponse = (places, categoryName) => {
     if (!places || places.length === 0) {
-        return `I couldn't find any ${categoryName} near your location. Try a different search or check your location settings. 🔍`;
+        return `I couldn't find any ${categoryName.toLowerCase()} near your location. Try a different search or check your connection. 🔍`;
     }
     
     let response = `📍 **Nearby ${categoryName}** (found ${places.length} places)\n\n`;
@@ -428,50 +530,8 @@ const formatNearbyPlacesResponse = (places, categoryName) => {
         response += '\n';
     });
     
-    response += `💡 *Would you like directions or more details about any of these places?*`;
+    response += `💡 *Would you like directions to any of these places? Just ask!*`;
     return response;
-};
-
-// Check if message is location-related (SINGLE DEFINITION)
-const isLocationQuery = (message) => {
-    const locationKeywords = [
-        'near me', 'nearby', 'around me', 'close to me', 'closest',
-        'where can i find', 'find a', 'looking for', 'suggest a',
-        'recommend a', 'cafe', 'restaurant', 'food', 'hotel', 'coffee',
-        'bar', 'park', 'museum', 'shopping', 'mall', 'hospital', 
-        'pharmacy', 'atm', 'bank', 'gas station', 'grocery', 'supermarket'
-    ];
-    
-    const lowerMessage = message.toLowerCase();
-    return locationKeywords.some(keyword => lowerMessage.includes(keyword));
-};
-
-// Extract specific place type from query
-const extractPlaceTypeFromQuery = (message) => {
-    const lowerMessage = message.toLowerCase();
-    
-    const placeTypes = {
-        'cafe': ['cafe', 'coffee', 'coffee shop'],
-        'restaurant': ['restaurant', 'food', 'eat', 'dining'],
-        'hotel': ['hotel', 'lodging', 'accommodation', 'inn'],
-        'park': ['park', 'nature', 'garden'],
-        'museum': ['museum', 'gallery', 'exhibit'],
-        'shopping_mall': ['mall', 'shopping', 'store', 'shop'],
-        'bar': ['bar', 'pub', 'nightlife', 'club'],
-        'grocery_or_supermarket': ['grocery', 'supermarket', 'market'],
-        'pharmacy': ['pharmacy', 'drugstore', 'medicine'],
-        'hospital': ['hospital', 'clinic', 'medical'],
-        'atm': ['atm', 'cash machine'],
-        'bank': ['bank']
-    };
-    
-    for (const [type, keywords] of Object.entries(placeTypes)) {
-        if (keywords.some(keyword => lowerMessage.includes(keyword))) {
-            return type;
-        }
-    }
-    
-    return null;
 };
 
 // Check if asking for current location
@@ -492,68 +552,138 @@ const isAskingForWeather = (message) => {
     const lowerMessage = message.toLowerCase();
     
     const weatherPatterns = [
-        /\bweather\b(?!\s+(?:in|for)\s+\w+)/,
-        /\bcurrent weather\b/,
-        /\btemperature\b(?!\s+(?:in|for)\s+\w+)/,
-        /\bforecast\b(?!\s+(?:in|for)\s+\w+)/,
+        /\bweather\b/,
+        /\btemperature\b/,
+        /\bforecast\b/,
+        /\bhot\b(?!el)/,
+        /\bcold\b/,
+        /\brain\b/,
         /what('s| is) the weather/,
-        /how is the weather/,
-        /is it (hot|cold|rainy)/,
-        /what('s| is) the temperature/
+        /how is the weather/
     ];
     
     return weatherPatterns.some(pattern => pattern.test(lowerMessage));
 };
 
-// Intelligent fallback response based on conversation context
-const getFallbackResponse = async (message, echoStats, location, conversationHistory = []) => {
-    const lowerMessage = message.toLowerCase().trim();
+// Check if it's a general knowledge question
+const isGeneralKnowledgeQuery = (message) => {
+    const lowerMessage = message.toLowerCase();
     
-    // PRIORITY 1: Check for nearby places query
-    if (isLocationQuery(message)) {
-        if (location && location.latitude && location.longitude) {
-            let placeType = extractPlaceTypeFromQuery(message);
-            let categoryName = 'places';
+    // Don't treat as general knowledge if it's about location, weather, or nearby places
+    if (isNearbyQuery(message) || isAskingForLocation(message) || isAskingForWeather(message)) {
+        return false;
+    }
+    
+    const knowledgePatterns = [
+        /what is/i, /who is/i, /who created/i, /who made/i, /when was/i, /how to/i,
+        /ingredient/i, /recipe/i, /history of/i, /meaning of/i, /definition of/i,
+        /tell me about/i, /explain/i, /what are/i, /how does/i, /why is/i,
+        /can you tell me/i, /do you know/i, /what's the/i
+    ];
+    
+    return knowledgePatterns.some(pattern => pattern.test(lowerMessage));
+};
+
+// Get answer from Gemini for general questions (WITH MODEL STACK)
+const getGeminiResponse = async (message, echoStats, location) => {
+    const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
+    if (!GEMINI_API_KEY) {
+        console.warn("Gemini API key missing");
+        return null;
+    }
+
+    const systemPrompt = `You are Echo AI, a warm, helpful, and knowledgeable assistant. You can answer any question - from cooking recipes to tech facts, history, science, and more. Be conversational, friendly, and accurate. Keep responses concise but informative (2-4 sentences for simple questions, longer for complex ones).
+
+Current context:
+- User has ${echoStats.total} journal entries (${echoStats.mood} moods, ${echoStats.gratitude} gratitudes, ${echoStats.memory} memories)
+${location ? `- User location: ${location.latitude}, ${location.longitude}` : '- Location not shared'}
+
+Remember:
+1. Answer general questions naturally and accurately
+2. If asked about Filipino food (like adobo, sinigang), share authentic recipes
+3. For tech questions (PS5, iPhone, etc.), provide accurate facts
+4. Keep responses warm and engaging with emojis occasionally
+5. Don't pretend to know things you don't - say "I'm not sure" if needed
+6. Be concise - don't write extremely long responses
+7. You are a smart AI - answer any question the user asks!`;
+
+    // Model stack for fallback (from fastest/cheapest to most capable)
+    const modelStack = [
+        "gemini-2.0-flash-lite",
+        "gemini-2.5-flash-lite", 
+        "gemini-2.0-flash",
+        "gemini-2.5-flash",
+        "gemini-2.5-pro"
+    ];
+
+    for (const modelName of modelStack) {
+        try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
             
-            const typeNames = {
-                'cafe': 'cafés',
-                'restaurant': 'restaurants',
-                'hotel': 'hotels',
-                'park': 'parks',
-                'museum': 'museums',
-                'shopping_mall': 'shopping malls',
-                'bar': 'bars',
-                'grocery_or_supermarket': 'grocery stores',
-                'pharmacy': 'pharmacies',
-                'hospital': 'hospitals',
-                'atm': 'ATMs',
-                'bank': 'banks'
+            const payload = {
+                contents: [
+                    { role: "user", parts: [{ text: systemPrompt }] },
+                    { role: "model", parts: [{ text: "I understand! I'm Echo AI, ready to answer any question - from recipes to tech facts, history, science, and more. Ask me anything! ✨" }] },
+                    { role: "user", parts: [{ text: message }] }
+                ],
+                generationConfig: {
+                    maxOutputTokens: 800,
+                    temperature: 0.7,
+                    topP: 0.9,
+                }
             };
+
+            const response = await axios.post(url, payload, { timeout: 15000 });
+            const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
             
-            if (placeType && typeNames[placeType]) {
-                categoryName = typeNames[placeType];
-            } else {
-                placeType = 'restaurant';
-                categoryName = 'restaurants';
+            if (text && text.length > 0) {
+                console.log(`✅ Gemini response successful with model: ${modelName}`);
+                return text;
             }
+        } catch (error) {
+            const status = error.response?.status;
+            const errorMsg = error.response?.data?.error?.message || error.message;
+            console.warn(`⚠️ Model ${modelName} failed (${status}): ${errorMsg}`);
             
-            const places = await searchNearbyPlacesEnhanced(location.latitude, location.longitude, placeType, categoryName);
-            
-            if (places && places.length > 0) {
-                return formatNearbyPlacesResponse(places, categoryName);
+            // Continue to next model on rate limit or server errors
+            if (status === 429 || status === 500 || status === 503 || !status || error.code === 'ECONNABORTED') {
+                continue;
             } else {
-                return `I couldn't find any ${categoryName} near your location. Try a different search or check your connection. 🔍`;
+                // For other errors (like 401, 403), break out of the loop
+                break;
             }
-        } else {
-            return "I need your location to find places near you. Please enable location services and try again. 📍";
         }
     }
     
-    // PRIORITY 2: Check for "where am I" query
+    console.error("All Gemini models failed");
+    return null;
+};
+
+// Enhanced fallback response
+const getFallbackResponse = async (message, echoStats, location) => {
+    const lowerMessage = message.toLowerCase().trim();
+    
+    // Nearby places
+    if (isNearbyQuery(message)) {
+        if (location && location.latitude && location.longitude) {
+            const category = extractPlaceCategory(message);
+            if (category) {
+                const places = await searchNearbyPlacesEnhanced(location.latitude, location.longitude, category);
+                if (places && places.length > 0) {
+                    return formatNearbyPlacesResponse(places, category.name);
+                } else {
+                    return `I couldn't find any ${category.name.toLowerCase()} near your location. Try a different search or check your connection. 🔍`;
+                }
+            }
+            return "What type of place are you looking for? (restaurant, hospital, bank, barbershop, etc.) 📍";
+        }
+        return "I need your location to find places near you. Please enable location services and try again. 📍";
+    }
+    
+    // Where am I
     if (isAskingForLocation(message)) {
         if (location && location.latitude && location.longitude) {
             const addressInfo = await getAddressFromCoordinates(location.latitude, location.longitude);
-            
             if (addressInfo && (addressInfo.filipinoFormat || addressInfo.philippineAddress)) {
                 let response = `📍 **Your Current Location:**\n\n`;
                 
@@ -565,94 +695,75 @@ const getFallbackResponse = async (message, echoStats, location, conversationHis
                     response += `${addressInfo.fullAddress}\n\n`;
                 }
                 
-                if (addressInfo.street) {
-                    response += `🏠 Street: ${addressInfo.street}\n`;
-                }
-                if (addressInfo.barangay) {
-                    response += `📍 Barangay: ${addressInfo.barangay}\n`;
-                }
-                if (addressInfo.city) {
-                    response += `🏙️ City/Municipality: ${addressInfo.city}\n`;
-                }
-                if (addressInfo.province) {
-                    response += `🏞️ Province: ${addressInfo.province}\n`;
-                }
-                if (addressInfo.country) {
-                    response += `🌏 Country: ${addressInfo.country}\n`;
-                }
-                if (addressInfo.postalCode) {
-                    response += `📮 Postal Code: ${addressInfo.postalCode}\n`;
-                }
+                if (addressInfo.street) response += `🏠 Street: ${addressInfo.street}\n`;
+                if (addressInfo.barangay) response += `📍 Barangay: ${addressInfo.barangay}\n`;
+                if (addressInfo.city) response += `🏙️ City/Municipality: ${addressInfo.city}\n`;
+                if (addressInfo.province) response += `🏞️ Province: ${addressInfo.province}\n`;
+                if (addressInfo.country) response += `🌏 Country: ${addressInfo.country}\n`;
                 
                 response += `\nI hope this helps you navigate! 🗺️`;
                 return response;
-            } else {
-                return `📍 I can see you're at coordinates (${location.latitude}, ${location.longitude}), but I'm having trouble getting the street address. Try enabling high accuracy location or moving to an area with better coverage. 🗺️`;
             }
-        } else {
-            return "I need your location to tell you where you are. Please enable location services and try again. 📍";
+            return `📍 Your current coordinates are: ${location.latitude}, ${location.longitude}`;
         }
+        return "I need your location to tell you where you are. Please enable location services and try again. 📍";
     }
     
-    // PRIORITY 3: Check for weather query
+    // Weather
     if (isAskingForWeather(message)) {
         const specificCity = extractCityFromWeatherQuery(message);
         
         if (specificCity) {
             const weather = await getWeatherByCity(specificCity);
             if (weather) {
-                return `🌤️ Weather Update for ${weather.city}, ${weather.country}:\n\n🌡️ Temperature: ${weather.temp}°C (feels like ${weather.feelsLike}°C)\n☁️ Condition: ${weather.description}\n💧 Humidity: ${weather.humidity}%\n💨 Wind Speed: ${weather.windSpeed} m/s\n\nStay safe and have a great day! ✨`;
-            } else {
-                return `I couldn't find weather information for "${specificCity}". Please check the city name and try again. 🌤️`;
+                return `🌤️ **Weather in ${weather.city}, ${weather.country}**\n\n🌡️ Temperature: ${weather.temp}°C (feels like ${weather.feelsLike}°C)\n☁️ Condition: ${weather.description}\n💧 Humidity: ${weather.humidity}%\n💨 Wind Speed: ${weather.windSpeed} m/s\n\nStay safe and have a great day! ✨`;
             }
+            return `I couldn't find weather information for "${specificCity}". Please check the city name and try again. 🌤️`;
         }
         
         if (location && location.latitude && location.longitude) {
             const weather = await getWeatherInfo(location.latitude, location.longitude);
             if (weather) {
-                return `🌤️ Weather Update for ${weather.city}, ${weather.country}:\n\n🌡️ Temperature: ${weather.temp}°C (feels like ${weather.feelsLike}°C)\n☁️ Condition: ${weather.description}\n💧 Humidity: ${weather.humidity}%\n💨 Wind Speed: ${weather.windSpeed} m/s\n\nStay safe and have a great day! ✨`;
-            } else {
-                return "I couldn't fetch the weather right now. Please try again later. 🌤️";
+                return `🌤️ **Weather in ${weather.city}, ${weather.country}**\n\n🌡️ Temperature: ${weather.temp}°C (feels like ${weather.feelsLike}°C)\n☁️ Condition: ${weather.description}\n💧 Humidity: ${weather.humidity}%\n💨 Wind Speed: ${weather.windSpeed} m/s\n\nStay safe and have a great day! ✨`;
             }
-        } else {
-            return "I'd love to tell you the weather! 🌤️\n\nTo get your local weather, please:\n1️⃣ Enable location permissions\n2️⃣ Try asking for a specific city like 'weather in Manila'\n\nWhich city would you like the weather for?";
+            return "I couldn't fetch the weather right now. Please try again later. 🌤️";
         }
+        return "I'd love to tell you the weather! 🌤️\n\nEnable location or ask for a specific city like 'weather in Manila'.";
     }
     
-    // Greeting responses
+    // Greetings
     if (lowerMessage.match(/^(hi|hello|hey|greetings|good morning|good afternoon|good evening)/)) {
         const greetings = [
-            "Hello! I'm Echo, your personal journal assistant. How can I help you today? ✨",
-            "Hi there! I'm Echo. Ready to explore your journal or answer any questions? 💫",
-            "Hey! Great to see you. I'm Echo - ask me about your echoes, journal entries, or just chat with me! 🌟",
-            "Hello! I'm Echo. What would you like to know about your journal today? 📝"
+            "Hello! I'm Echo, your AI assistant. I can answer any question - from recipes to tech facts, or help with your journal. What would you like to know? ✨",
+            "Hi there! I'm Echo. Ask me anything about the world, your journal, or find places near you! 💫",
+            "Hey! Great to see you. I'm Echo - I can help with general knowledge, weather, nearby places, or your journal stats! 🌟"
         ];
         return greetings[Math.floor(Math.random() * greetings.length)];
     }
     
-    // How are you responses
+    // How are you
     if (lowerMessage.match(/how are you|how's it going|how do you do/)) {
         const responses = [
             "I'm doing wonderful, thank you for asking! How are you feeling today? 😊",
-            "I'm great! Ready to help you reflect on your journal. How can I assist you? 💭",
-            "I'm fantastic! What's on your mind today? ✨"
+            "I'm great! Ready to help you with anything - from cooking recipes to finding nearby places! 💭",
+            "I'm fantastic! What can I help you with today? ✨"
         ];
         return responses[Math.floor(Math.random() * responses.length)];
     }
     
-    // Thank you responses
+    // Thank you
     if (lowerMessage.match(/thank|thanks|appreciate/)) {
         const responses = [
             "You're very welcome! I'm always here to help. 💕",
-            "My pleasure! Anything else you'd like to know about your journal? 📖",
-            "Happy to help! Keep up the great journaling! 🌟"
+            "My pleasure! Anything else you'd like to know? 📖",
+            "Happy to help! Keep exploring and asking questions! 🌟"
         ];
         return responses[Math.floor(Math.random() * responses.length)];
     }
     
-    // Help requests
+    // Help
     if (lowerMessage.match(/help|what can you do|capabilities|features/)) {
-        return "I can help you with:\n\n📊 **Journal Stats**: Count your echoes by type (mood, gratitude, memory)\n📍 **Your Location**: Tell you where you are right now (e.g., 'Monbon, Irosin, Sorsogon')\n📍 **Nearby Places**: Find cafes, restaurants, hotels, and more near you\n🌤️ **Weather**: Check current weather conditions (e.g., 'weather in Manila' or 'weather today')\n💬 **Friendly Chat**: Just talk to me about anything!\n\nWhat would you like help with? 🌟";
+        return "I can help you with:\n\n📊 **Journal Stats** - Count your echoes by type (mood, gratitude, memory)\n📍 **Your Location** - Tell you where you are right now\n📍 **Nearby Places** - Find cafes, restaurants, hospitals, banks, barbershops, and more near you\n🌤️ **Weather** - Check current weather conditions for any city\n💡 **General Knowledge** - Answer any question (recipes, tech facts, history, science, etc.)\n💬 **Friendly Chat** - Just talk to me about anything!\n\nWhat would you like help with? 🌟";
     }
     
     // Echo counting questions
@@ -672,15 +783,16 @@ const getFallbackResponse = async (message, echoStats, location, conversationHis
     
     // Default friendly responses
     const defaultResponses = [
-        `I'm Echo, your journal assistant! You have ${echoStats.total} echoes in your journal. Want me to help you track your moods, gratitude, or memories? 💫`,
-        `How can I assist you with your journal today? You can ask me about your echo statistics or just have a friendly chat! 📝`,
-        `I'm here to support your journaling journey. You've written ${echoStats.total} echoes so far. What would you like to explore? 🌟`,
-        `What's on your mind? I can help you reflect on your journal entries or answer questions about your emotional journey. 💭`
+        `I'm Echo, your AI assistant! You have ${echoStats.total} journal entries. Ask me anything - recipes, tech facts, weather, nearby places, or help with your journal! 💫`,
+        `How can I assist you today? I can answer general knowledge questions, find nearby places, check weather, or help with your journal stats! 📝`,
+        `I'm here to help! You've written ${echoStats.total} echoes so far. Want to know something interesting or find a place near you? 🌟`
     ];
     
     return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
 };
-
+ 
+  
+// MAIN EXPORT FUNCTION
 exports.askAiAssistant = async (req, res) => {
     try {
         const { message, location } = req.body;
@@ -702,137 +814,141 @@ exports.askAiAssistant = async (req, res) => {
         }
 
         const userId = req.user._id;
-        const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
-
         const echoStats = await getUserEchoStats(userId);
 
-        let userChat = await Chat.findOne({ userId });
-        let rawHistory = userChat ? userChat.messages.map(msg => ({
-            role: msg.role === 'model' ? 'model' : 'user',
-            parts: [{ text: msg.parts[0].text }]
-        })) : [];
+        // PRIORITY 0: Check CUSTOM KNOWLEDGE first (app creator, developer info, etc.)
+      // PRIORITY 0: Check CUSTOM KNOWLEDGE first (app creator, developer info, etc.)
+const customResponse = getCustomKnowledgeResponse(message, echoStats);
+if (customResponse) {
+    console.log("🎯 Custom knowledge response detected!");
+    
+    // Save to chat history
+    let userChat = await Chat.findOne({ userId });
+    const newUserMsg = { role: "user", parts: [{ text: message }] };
+    const newBotMsg = { role: "model", parts: [{ text: customResponse }] };
+    
+    if (userChat) {
+        userChat.messages.push(newUserMsg, newBotMsg);
+        if (userChat.messages.length > 50) userChat.messages = userChat.messages.slice(-50);
+        await userChat.save();
+    } else {
+        await Chat.create({ userId, messages: [newUserMsg, newBotMsg] });
+    }
+    
+    return res.json({ text: customResponse, stats: echoStats, model_info: "custom-knowledge" });
+}
 
-        let filteredHistory = [];
-        rawHistory.forEach((msg, index) => {
-            if (index === 0 || msg.role !== rawHistory[index - 1].role) {
-                filteredHistory.push(msg);
-            }
-        });
-
-        if (filteredHistory.length > 0 && filteredHistory[0].role === 'model') {
-            filteredHistory.shift();
-        }
-
-        const modelStack = [
-            "gemini-2.5-flash-lite",
-            "gemini-2.5-flash",
-            "gemini-2.0-flash-lite",
-            "gemini-2.0-flash",
-            "gemini-2.5-pro"
-        ];
-
-        let botResponseText = null;
-        let finalModelUsed = "";
-
-        const systemPrompt = `You are Echo AI, a warm and empathetic journal assistant for 'Echo Stamp'. 
-
-REAL-TIME USER STATISTICS:
-- Total Echoes: ${echoStats.total}
-- Mood Echoes: ${echoStats.mood}
-- Gratitude Echoes: ${echoStats.gratitude}
-- Memory Echoes: ${echoStats.memory}
-
-LOCATION CAPABILITIES:
-${location ? `- User location available: ${location.latitude}, ${location.longitude}
-- Can answer questions about nearby places (cafes, restaurants, hotels, etc.)
-- Can provide weather information for current location or specific cities
-- Can tell users their current address in Philippine format (Barangay, City/Municipality, Province)
-- Example address format: "Monbon, Irosin, Sorsogon" or "Gabao, Irosin, Sorsogon"` : '- Location not available - ask user to enable location for nearby searches'}
-
-IMPORTANT RULES:
-1. Be conversational and friendly - respond naturally like a caring friend
-2. If user asks "where am I", use the location data to provide their address in "Barangay, City, Province" format
-3. If user asks about nearby places (cafe, restaurant, hotel, etc.), use the location data
-4. For weather queries:
-   - If user asks "weather in [city]", provide weather for that specific city
-   - If user asks "weather today" or "current weather", use current location
-5. When users ask about their echoes or journal entries, use the exact numbers above
-6. Keep responses concise and helpful
-7. Never discuss hacking or inappropriate topics
-
-Remember: You can help with journal stats, current location (in Philippine format like "Monbon, Irosin, Sorsogon"), nearby places, weather for any city, and friendly conversation!`;
-
-        for (const modelName of modelStack) {
-            try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
-
-                const conversationContents = [
-                    { 
-                        role: "user", 
-                        parts: [{ text: systemPrompt }] 
-                    },
-                    { 
-                        role: "model", 
-                        parts: [{ text: "Understood! I'm Echo AI, your friendly assistant. I can help with journal stats, current location (in Philippine format), nearby places, weather for any city, and more!" }] 
-                    }
-                ];
+// Add this helper function at the top of your file or inside getCustomKnowledgeResponse
+function getCustomKnowledgeResponse(message, echoStats) {
+    const lowerMsg = message.toLowerCase();
+    
+    // Creator / Developer info
+ if (lowerMsg.includes("who created") || 
+    lowerMsg.includes("who made") || 
+    lowerMsg.includes("creator") || 
+    lowerMsg.includes("developer") ||
+    lowerMsg.includes("built this") ||
+    lowerMsg.includes("build this app") ||
+    lowerMsg.includes("who develop") ||
+    lowerMsg.includes("who build") ||
+    lowerMsg.includes("app creator") ||
+    lowerMsg.includes("app developer") ||
+    lowerMsg.includes("made this") ||
+    lowerMsg.includes("created this") ||
+    lowerMsg.includes("programmer") ||
+    lowerMsg.includes("who coded") ||
+    lowerMsg.includes("behind this app") ||
+    lowerMsg.includes("owner of this app")) {
+    
+    return `✨ **About the Creator** ✨\n\n` +
+           `This application was developed by **John Wilbert Gamis**, a dedicated solo developer from **Monbon, Irosin, Sorsogon**.\n\n` +
+           `🏗️ **Development Journey**\n` +
+           `John built this entire application from scratch, demonstrating exceptional skill and dedication as an independent developer. His vision and technical expertise have brought this project to life, handling everything from architecture and design to implementation and deployment.\n\n` +
+           `💡 **Why This Matters**\n` +
+           `As a solo developer, John takes pride in every line of code, ensuring quality, performance, and a seamless user experience. This app represents countless hours of problem-solving, learning, and passion for technology.\n\n` +
+           `🤝 **Support & Feedback**\n` +
+           `Have questions or suggestions? Your feedback helps John continue improving this platform. Every interaction supports independent development!`;
+}
+    
+    
+    return null;  
+}
+        // PRIORITY 1: Check for general knowledge queries - use Gemini with model stack
+        if (isGeneralKnowledgeQuery(message)) {
+            console.log("💡 General knowledge query detected, using Gemini with model stack...");
+            const geminiResponse = await getGeminiResponse(message, echoStats, location);
+            
+            if (geminiResponse) {
+                // Save to chat history
+                let userChat = await Chat.findOne({ userId });
+                const newUserMsg = { role: "user", parts: [{ text: message }] };
+                const newBotMsg = { role: "model", parts: [{ text: geminiResponse }] };
                 
-                const recentHistory = filteredHistory.slice(-6);
-                conversationContents.push(...recentHistory);
-                conversationContents.push({ 
-                    role: "user", 
-                    parts: [{ text: message }] 
-                });
-
-                const payload = {
-                    contents: conversationContents,
-                    generationConfig: {
-                        maxOutputTokens: 500,
-                        temperature: 0.8,
-                        topP: 0.9,
-                        topK: 40,
-                    }
-                };
-
-                const apiRes = await axios.post(url, payload, { timeout: 15000 });
-                
-                botResponseText = apiRes.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-                if (botResponseText && botResponseText.length > 0) {
-                    finalModelUsed = modelName;
-                    console.log(`✅ Success with model: ${modelName}`);
-                    break;
-                }
-
-            } catch (err) {
-                const status = err.response?.status;
-                const errorMsg = err.response?.data?.error?.message || err.message;
-                console.warn(`⚠️ Model ${modelName} failed (${status}): ${errorMsg}`);
-
-                if (status === 429 || status === 500 || status === 503 || !status || err.code === 'ECONNABORTED') {
-                    continue;
+                if (userChat) {
+                    userChat.messages.push(newUserMsg, newBotMsg);
+                    if (userChat.messages.length > 50) userChat.messages = userChat.messages.slice(-50);
+                    await userChat.save();
                 } else {
-                    if (status !== 401 && status !== 403) {
-                        break;
-                    }
-                    continue;
+                    await Chat.create({ userId, messages: [newUserMsg, newBotMsg] });
                 }
+                
+                return res.json({ text: geminiResponse, stats: echoStats, model_info: "gemini-general" });
             }
         }
-
-        if (!botResponseText) {
-            console.log("⚠️ All AI models failed, using intelligent fallback response");
-            botResponseText = await getFallbackResponse(message, echoStats, location, filteredHistory);
-            finalModelUsed = "fallback";
+        
+        // PRIORITY 2: For location-specific queries, use fallback first (faster response)
+        if (isNearbyQuery(message) || isAskingForLocation(message) || isAskingForWeather(message)) {
+            console.log("📍 Location/Weather query detected, using fast fallback...");
+            const fallbackResponse = await getFallbackResponse(message, echoStats, location);
+            
+            if (fallbackResponse && !fallbackResponse.includes("I'm Echo")) {
+                // Save to chat history
+                let userChat = await Chat.findOne({ userId });
+                const newUserMsg = { role: "user", parts: [{ text: message }] };
+                const newBotMsg = { role: "model", parts: [{ text: fallbackResponse }] };
+                
+                if (userChat) {
+                    userChat.messages.push(newUserMsg, newBotMsg);
+                    if (userChat.messages.length > 50) userChat.messages = userChat.messages.slice(-50);
+                    await userChat.save();
+                } else {
+                    await Chat.create({ userId, messages: [newUserMsg, newBotMsg] });
+                }
+                
+                return res.json({ text: fallbackResponse, stats: echoStats, model_info: "fallback" });
+            }
         }
-
-        if (botResponseText && botResponseText.length > 800) {
-            botResponseText = botResponseText.substring(0, 800) + "...";
+        
+        // PRIORITY 3: For everything else (casual chat, other questions), use Gemini with model stack
+        console.log("💬 Using Gemini with model stack for general response...");
+        const geminiResponse = await getGeminiResponse(message, echoStats, location);
+        
+        if (geminiResponse) {
+            // Save to chat history
+            let userChat = await Chat.findOne({ userId });
+            const newUserMsg = { role: "user", parts: [{ text: message }] };
+            const newBotMsg = { role: "model", parts: [{ text: geminiResponse }] };
+            
+            if (userChat) {
+                userChat.messages.push(newUserMsg, newBotMsg);
+                if (userChat.messages.length > 50) userChat.messages = userChat.messages.slice(-50);
+                await userChat.save();
+            } else {
+                await Chat.create({ userId, messages: [newUserMsg, newBotMsg] });
+            }
+            
+            return res.json({ text: geminiResponse, stats: echoStats, model_info: "gemini" });
         }
-
+        
+        // ULTIMATE FALLBACK: If everything fails
+        console.log("⚠️ All AI methods failed, using ultimate fallback");
+        const finalFallback = await getFallbackResponse(message, echoStats, location);
+        
+        // Save to chat history
+        let userChat = await Chat.findOne({ userId });
         const newUserMsg = { role: "user", parts: [{ text: message }] };
-        const newBotMsg = { role: "model", parts: [{ text: botResponseText }] };
-
+        const newBotMsg = { role: "model", parts: [{ text: finalFallback }] };
+        
         if (userChat) {
             userChat.messages.push(newUserMsg, newBotMsg);
             if (userChat.messages.length > 50) userChat.messages = userChat.messages.slice(-50);
@@ -840,12 +956,8 @@ Remember: You can help with journal stats, current location (in Philippine forma
         } else {
             await Chat.create({ userId, messages: [newUserMsg, newBotMsg] });
         }
-
-        res.json({ 
-            text: botResponseText,
-            stats: echoStats,
-            model_info: finalModelUsed 
-        });
+        
+        return res.json({ text: finalFallback, stats: echoStats, model_info: "fallback-final" });
 
     } catch (error) {
         console.error("❌ CRITICAL ERROR:", error.message);
@@ -854,10 +966,21 @@ Remember: You can help with journal stats, current location (in Philippine forma
             const userId = req.user?._id;
             if (userId) {
                 const echoStats = await getUserEchoStats(userId);
-                return res.json({ 
-                    text: await getFallbackResponse(req.body?.message || "help", echoStats, req.body?.location),
-                    fallback: true
-                });
+                const fallbackText = "I'm having trouble connecting right now. Please try again in a moment. 🙏";
+                
+                // Save fallback message to history
+                let userChat = await Chat.findOne({ userId });
+                const newUserMsg = { role: "user", parts: [{ text: req.body?.message || "help" }] };
+                const newBotMsg = { role: "model", parts: [{ text: fallbackText }] };
+                
+                if (userChat) {
+                    userChat.messages.push(newUserMsg, newBotMsg);
+                    await userChat.save();
+                } else {
+                    await Chat.create({ userId, messages: [newUserMsg, newBotMsg] });
+                }
+                
+                return res.json({ text: fallbackText, fallback: true });
             }
         } catch (fallbackError) {
             console.error("Fallback also failed:", fallbackError);
