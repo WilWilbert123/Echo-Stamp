@@ -1,7 +1,7 @@
+import { Image } from 'react-native';
 import thisisit from "../../../../../config/config";
-
 export const GOOGLE_API_KEY = thisisit;
-
+const noImagePlaceholder = require('../../../../../../assets/images/echologowbg.png');
 // Add radius options for nearby search
 export const RADIUS_OPTIONS = [
     { id: 'ultra_close', name: 'Ultra Close', meters: 50, label: '50m' },
@@ -248,7 +248,7 @@ export const DARK_MAP_STYLE = [
     { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#0e1626" }] },
     { "featureType": "water", "elementType": "labels.text.fill", "stylers": [{ "color": "#4e6d70" }] }
 ];
-
+const noImageUri = Image.resolveAssetSource(noImagePlaceholder).uri;
 export const formatGoogleResults = (results, color, icon) => {
     return results.map(item => ({
         id: item.place_id,
@@ -259,7 +259,7 @@ export const formatGoogleResults = (results, color, icon) => {
         rating: item.rating || 0,
         image: item.photos
             ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${item.photos[0].photo_reference}&key=${GOOGLE_API_KEY}`
-            : `https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800`,
+            : noImageUri,
         categoryIcon: icon,
         categoryColor: color,
     }));
