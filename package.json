@@ -10,7 +10,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test": "jest",
-    "test:watch": "jest --watchAll"
+    "test:watch": "jest --watchAll",
+    "postinstall": "npx jetify"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
@@ -84,8 +85,6 @@
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
-    "react-native-sound": "^0.13.0",
-    "react-native-streetview": "^0.4.4",
     "react-native-svg": "15.12.1",
     "react-native-tab-view": "^4.2.2",
     "react-native-web": "~0.21.0",
