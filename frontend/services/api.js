@@ -158,7 +158,7 @@ export const markNotificationsRead = () => API.patch('/notifications/read');
 export const markNotificationsUnread = () => API.patch('/notifications/unread');
 export const clearNotifications = () => API.delete('/notifications');
 export const removeNotification = (id) => API.delete(`/notifications/${id}`);
-
+export const markNotificationRead = (notificationId) => API.patch(`/notifications/${notificationId}/read`);
 export const Config = { 
     MAPS_SDK_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_SDK_KEY, 
     PLACES_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY,
