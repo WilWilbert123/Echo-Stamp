@@ -64,7 +64,7 @@ const Header = ({ scrollTo, isDark, toggleTheme }) => {
 
         {/* Play Store CTA */}
         <a 
-          href="https://play.google.com/store" 
+          href="https://play.google.com/store/apps/details?id=com.wilbert03.EchoStamp" 
           target="_blank" 
           rel="noreferrer" 
           className="glass-nav__cta"
