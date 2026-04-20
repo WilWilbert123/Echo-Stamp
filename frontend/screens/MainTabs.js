@@ -1,3 +1,4 @@
+// frontend/src/navigation/MainTabs.js (updated)
 import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useNavigation } from '@react-navigation/native';
@@ -6,6 +7,7 @@ import React, { useEffect } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import AIAgent from '../components/AIAgent';
+import NotificationPopup from '../components/NotificationPopup'; // Import this
 import { useTheme } from '../context/ThemeContext';
 import { getGroupsList } from '../redux/groupSlice';
 import { getConversationsList } from '../redux/messageSlice';
@@ -88,7 +90,7 @@ const MainTabs = () => {
     });
 
     return () => { subscription.remove(); responseSubscription.remove(); };
-  }, []);
+  }, [navigation]);
 
   return (
     <View style={styles.container}>
@@ -170,7 +172,7 @@ const MainTabs = () => {
         />
       </Tab.Navigator>
       
-      
+      <NotificationPopup />  
       <AIAgent />
     </View>
   );
