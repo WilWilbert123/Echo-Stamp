@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
   cancelNavCard: { flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 15, backgroundColor: 'rgba(0,0,0,0.6)' },
   shareFab: { position: 'absolute', left: 20, width: 52, height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center', zIndex: 11, elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 4 },
   liveMarker: { width: 30, height: 30, borderRadius: 25, borderWidth: 3, borderColor: '#10B981', overflow: 'hidden', backgroundColor: '#fff' },  
-  liveAvatar: { width: '100%', height: '100%', borderRadius: 25 }, // Apply borderRadius directly to the Image
+  liveAvatar: { width: '100%', height: '100%', borderRadius: 25 },
   liveMarkerContainer: { alignItems: 'center', justifyContent: 'center' },
   userListContainer: { height: 350, marginVertical: 15 },
   userItem: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 15, marginBottom: 8, borderWidth: 1 },
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
   userSelectBadge: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
   modalSearchInput: { height: 50, borderRadius: 15, paddingHorizontal: 15, marginBottom: 10, borderWidth: 1 },
   
-  // New styles for travel mode and estimated time
+  // Styles for travel mode and estimated time
   travelModeContainer: { position: 'absolute', width: '100%', alignItems: 'center', zIndex: 10, paddingHorizontal: 20, paddingBottom: 80 },
   travelModeCard: { padding: 10, borderRadius: 25, borderWidth: 1, flexDirection: 'column', alignItems: 'center' },
   travelModeButtons: { flexDirection: 'row', justifyContent: 'space-around', width: '100%', marginBottom: 10 },
@@ -83,9 +83,10 @@ const styles = StyleSheet.create({
   travelModeButtonText: { marginLeft: 4, fontWeight: '600', fontSize: 12 },
   estimatedTimeText: { fontSize: 16, fontWeight: '700', textAlign: 'center', marginBottom: 5 },
 
-  shareModalFooter: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }, // Existing, ensure no conflict
-  shareSubmitBtn: { flex: 1, height: 50, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginLeft: 10 }, // Existing, ensure no conflict
-  shareCancelBtn: { flex: 0.4, height: 50, justifyContent: 'center', alignItems: 'center' }, // Existing, ensure no conflict
+  shareModalFooter: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
+  shareSubmitBtn: { flex: 1, height: 50, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginLeft: 10 },
+  shareCancelBtn: { flex: 0.4, height: 50, justifyContent: 'center', alignItems: 'center' },
+  
   stampingOverlay: {
     position: 'absolute',
     left: 20,
@@ -101,6 +102,81 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 6,
   },
+
+  // Persistent Marker Styles with Lottie
+  persistentPinContainer: {
+    alignItems: 'center',
+  },
+  persistentLottieContainer: {
+    width: 50,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 25,
+    backgroundColor: 'transparent',
+  },
+  persistentPinTail: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderTopWidth: 12,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    marginTop: -5,
+  },
+  persistentLabel: {
+    position: 'absolute',
+    top: -35,
+    left: 25,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 1001,
+  },
+  persistentLabelText: {
+    fontSize: 12,
+    fontWeight: '600',
+    maxWidth: 150,
+    marginRight: 8,
+  },
+  persistentLabelClose: {
+    marginLeft: 4,
+  },
+
+  // Close button for search card
+  closeSearchCard: {
+    position: 'absolute',
+    top: -15,
+    right: -15,
+    borderRadius: 30,
+    zIndex: 10,
+    padding: 10,
+     
+  },
+  startNavBtn: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingVertical: 10,
+  paddingHorizontal: 20,
+  borderRadius: 25,
+  width: '100%',
+},
+startNavBtnText: {
+  marginLeft: 8,
+  fontWeight: '600',
+  fontSize: 14,
+},
+
+   
 });
 
 export default styles;
