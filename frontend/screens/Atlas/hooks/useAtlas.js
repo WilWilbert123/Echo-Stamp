@@ -16,6 +16,7 @@ import {
 import { getActiveShares, startSharing, stopSharing } from '../../../redux/shareLocationSlice';
 import { fetchAllUsers, fetchMyOutgoingShare, updateLiveLocation } from '../../../services/api';
 import { uploadImageToCloudinary, uploadWithConcurrency } from '../../../services/cloudinary';
+
 const { width } = Dimensions.get('window');
 const GOOGLE_MAPS_APIKEY = thisisit;
 
@@ -53,13 +54,19 @@ export const useAtlas = () => {
   const [userLocation, setUserLocation] = useState(null);
   const [destination, setDestination] = useState(null);
   const [searchResult, setSearchResult] = useState(null);
-  const [navigationOrigin, setNavigationOrigin] = useState(null); // Stable origin for directions
+  const [navigationOrigin, setNavigationOrigin] = useState(null);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
-  const [alternativeRoutes, setAlternativeRoutes] = useState([]); // New state for alternative routes
-  const [travelMode, setTravelMode] = useState('driving'); // New state for travel mode
-  const [estimatedTime, setEstimatedTime] = useState(null); // New state for estimated time
+  const [alternativeRoutes, setAlternativeRoutes] = useState([]);
+  const [travelMode, setTravelMode] = useState('driving');
+  const [estimatedTime, setEstimatedTime] = useState(null);
   const [arrowHeading, setArrowHeading] = useState(0);
   const [hasCenteredInitial, setHasCenteredInitial] = useState(false);
+  
+  // Animation and Persistent Marker States
+  const [showPinDropAnimation, setShowPinDropAnimation] = useState(false);
+  const [pinDropCoordinates, setPinDropCoordinates] = useState(null);
+  const [persistentMarker, setPersistentMarker] = useState(null);
+  const [showPersistentMarker, setShowPersistentMarker] = useState(false);
 
   // Form State
   const [title, setTitle] = useState('');
@@ -71,7 +78,29 @@ export const useAtlas = () => {
     return (list || []).filter(j => j.location && typeof j.location.lat === 'number');
   }, [list]);
 
-  // Throttled Navigation Origin Logic: Only update route if user moves > 30 meters
+  // Function to show both temporary animation and persistent marker
+  const triggerPinDropAnimation = (coords) => {
+    // Set persistent marker (this stays on map)
+    setPersistentMarker(coords);
+    setShowPersistentMarker(true);
+    
+    // Show temporary animation (this will auto-hide)
+    setPinDropCoordinates(coords);
+    setShowPinDropAnimation(true);
+    
+    // Auto-hide animation after 1.5 seconds, but keep persistent marker
+    setTimeout(() => {
+      setShowPinDropAnimation(false);
+    }, 1500);
+  };
+
+  // Function to clear persistent marker
+  const clearPersistentMarker = () => {
+    setShowPersistentMarker(false);
+    setPersistentMarker(null);
+  };
+
+  // Throttled Navigation Origin Logic
   useEffect(() => {
     if (showDirections && userLocation) {
       if (!navigationOrigin) {
@@ -81,7 +110,7 @@ export const useAtlas = () => {
       
       const latDiff = Math.abs(userLocation.latitude - navigationOrigin.latitude);
       const lngDiff = Math.abs(userLocation.longitude - navigationOrigin.longitude);
-      if (latDiff > 0.0003 || lngDiff > 0.0003) { // Approx 30 meters
+      if (latDiff > 0.0003 || lngDiff > 0.0003) {
         setNavigationOrigin(userLocation);
       }
     }
@@ -114,6 +143,9 @@ export const useAtlas = () => {
         location: { lat: latitude, lng: longitude }
       });
 
+      // Trigger pin drop animation and persistent marker
+      triggerPinDropAnimation({ latitude, longitude });
+
       setTimeout(() => {
         mapRef.current?.animateToRegion(zoomRegion, 1500);
         if (autoNavigate) setShowDirections(true);
@@ -138,6 +170,9 @@ export const useAtlas = () => {
         coords,
         image: image || `https://maps.googleapis.com/maps/api/streetview?size=600x300&location=${coords.latitude},${coords.longitude}&key=${GOOGLE_MAPS_APIKEY}`
       });
+
+      // Trigger pin drop animation and persistent marker
+      triggerPinDropAnimation(coords);
 
       setTimeout(() => {
         mapRef.current?.animateToRegion({
@@ -176,7 +211,7 @@ export const useAtlas = () => {
       }, 1000);
       setHasCenteredInitial(true);
     }
-  }, [userLocation, hasCenteredInitial, mapRef.current]);
+  }, [userLocation, hasCenteredInitial]);
 
   // Initial Fetch
   useEffect(() => {
@@ -188,7 +223,7 @@ export const useAtlas = () => {
   useEffect(() => {
     const interval = setInterval(async () => {
       dispatch(getActiveShares());
-    }, 10000); // Check every 10 seconds
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -202,11 +237,8 @@ export const useAtlas = () => {
   const openShareModal = async () => {
     setShareModalVisible(true);
     try {
-      // Load all users for the list
       const usersRes = await fetchAllUsers();
       setAllUsers(usersRes.data);
-
-      // Load who we are CURRENTLY sharing with to set toggles correctly
       const statusRes = await fetchMyOutgoingShare();
       setSelectedUserIds(statusRes.data || []);
     } catch (e) {
@@ -259,12 +291,18 @@ export const useAtlas = () => {
           ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${place.photos[0].photo_reference}&key=${GOOGLE_MAPS_APIKEY}`
           : null;
 
+        const coords = { latitude: lat, longitude: lng };
+        
         setSearchResult({
           name: place.name,
           address: place.formatted_address,
-          coords: { latitude: lat, longitude: lng },
+          coords: coords,
           image: imageUrl
         });
+
+        // Clear previous marker and show new one
+        clearPersistentMarker();
+        triggerPinDropAnimation(coords);
 
         mapRef.current?.animateToRegion({
           latitude: lat,
@@ -343,7 +381,6 @@ export const useAtlas = () => {
         return;
       }
 
-      // Ensure microphone permissions are granted via Expo
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert("Permission Denied", "Microphone access is required for voice search.");
@@ -353,7 +390,7 @@ export const useAtlas = () => {
       if (isListening) {
         await Voice.stop();
       } else {
-        setSearchQuery(''); // Clear previous search
+        setSearchQuery('');
         await Voice.start('en-US');
       }
     } catch (e) {
@@ -443,15 +480,17 @@ export const useAtlas = () => {
     setShowDirections(false);
     setRouteCoordinates([]);
     setDestination(null);
-    setAlternativeRoutes([]); // Clear alternative routes
-    setEstimatedTime(null); // Clear estimated time
-    setTravelMode('driving'); // Reset travel mode to default
+    setAlternativeRoutes([]);
+    setEstimatedTime(null);
+    setTravelMode('driving');
   };
 
   const startNavigation = (coords) => {
     setDestination(coords);
-    setNavigationOrigin(userLocation); // Initialize origin immediately to prevent "Line Gone" delay
+    setNavigationOrigin(userLocation);
     setShowDirections(true);
+    // Show marker at destination when navigating
+    triggerPinDropAnimation(coords);
   };
 
   return {
@@ -464,11 +503,20 @@ export const useAtlas = () => {
     isSearching, loading, userLocation, setUserLocation, showDirections, 
     setShowDirections, showStreetView, setShowStreetView, destination,
     setDestination, searchResult, setSearchResult, routeCoordinates, 
-    setRouteCoordinates, alternativeRoutes, setAlternativeRoutes, travelMode, setTravelMode, estimatedTime, setEstimatedTime, arrowHeading, setArrowHeading, title, setTitle,
+    setRouteCoordinates, alternativeRoutes, setAlternativeRoutes, travelMode, setTravelMode, 
+    estimatedTime, setEstimatedTime, arrowHeading, setArrowHeading, title, setTitle,
     description, setDescription, mediaList, setMediaList, markers,
     shareModalVisible, setShareModalVisible, allUsers, selectedUserIds,
     userSearchQuery, setUserSearchQuery, activeShares, startNavigation,
-    isListening, toggleListening,
+    isListening,
+    // Animation and Persistent Marker States - ADD THESE!
+    showPinDropAnimation, 
+    setShowPinDropAnimation, // IMPORTANT: Add this setter
+    pinDropCoordinates, 
+    persistentMarker, 
+    showPersistentMarker,
+    triggerPinDropAnimation, 
+    clearPersistentMarker,
     // Methods
     handleSearch, pickMedia, handleSave, handleDeleteJournal,
     handleRemoveSingleSavedMedia, cancelNavigation, openShareModal,
@@ -477,4 +525,3 @@ export const useAtlas = () => {
     GOOGLE_MAPS_APIKEY, width
   };
 };
- 

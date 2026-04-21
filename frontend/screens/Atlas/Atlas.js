@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import LottieView from 'lottie-react-native';
 import React, { useEffect, useRef } from 'react';
 import { Image, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -9,7 +10,6 @@ import { WebView } from 'react-native-webview';
 
 import GlassCard from '../../components/GlassCard';
 import { useTheme } from '../../context/ThemeContext';
-
 
 import styles, { darkMapStyle } from '../Atlas/Atlas.styles';
 
@@ -43,6 +43,7 @@ const Atlas = () => {
 
   const atlas = useAtlas();
   const hasCenteredRoute = useRef(false);
+  const hasCenteredSearchRoute = useRef(false);
 
   // Reset the "fit route" flag when navigation is cancelled
   useEffect(() => {
@@ -51,16 +52,23 @@ const Atlas = () => {
     }
   }, [atlas.showDirections]);
 
+  // Reset search route flag when search result changes
+  useEffect(() => {
+    if (!atlas.searchResult) {
+      hasCenteredSearchRoute.current = false;
+    }
+  }, [atlas.searchResult]);
+
   // Immersive 3D Navigation Camera Logic
   useEffect(() => {
     if (atlas.showDirections && atlas.userLocation && atlas.mapRef.current) {
       atlas.mapRef.current.animateCamera({
         center: atlas.userLocation,
-        pitch: 60, // Tilted forward to look down the road for a "straight-ahead" view
-        heading: atlas.arrowHeading, // Align map heading with device compass
-        altitude: 200, // Lower altitude for a more immersive perspective
-        zoom: 18, // Adjusted zoom level to ensure traffic lines (green/red) remain visible
-      }, { duration: 500 }); // Faster duration to keep the camera locked to your direction
+        pitch: 60,
+        heading: atlas.arrowHeading,
+        altitude: 200,
+        zoom: 18,
+      }, { duration: 500 });
     }
   }, [atlas.userLocation, atlas.arrowHeading, atlas.showDirections]);
 
@@ -71,6 +79,23 @@ const Atlas = () => {
     atlas.setUserLocation,
     atlas.setArrowHeading
   );
+
+  // Clear persistent marker and search result
+  const handleClearPersistentMarker = () => {
+    atlas.clearPersistentMarker();
+    if (atlas.searchResult) {
+      atlas.setSearchResult(null);
+    }
+  };
+
+  // Handle show route from search result
+  const handleShowRouteFromSearch = () => {
+    if (atlas.searchResult && atlas.userLocation) {
+      atlas.setDestination(atlas.searchResult.coords);
+      atlas.setShowDirections(true);
+      atlas.triggerPinDropAnimation(atlas.searchResult.coords);
+    }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
@@ -106,7 +131,6 @@ const Atlas = () => {
           setSearchQuery={atlas.setSearchQuery}
           handleSearch={atlas.handleSearch}
           isListening={atlas.isListening}
-          toggleListening={atlas.toggleListening}
         />
       )}
 
@@ -122,6 +146,17 @@ const Atlas = () => {
         />
       </TouchableOpacity>
 
+      {/* Clear Marker FAB - shows only when persistent marker exists */}
+      {atlas.showPersistentMarker && !atlas.showDirections && (
+        <TouchableOpacity
+          style={[styles.clearMarkerFab, { top: insets.top + 150, right: 20, backgroundColor: colors.background[1] }]}
+          onPress={handleClearPersistentMarker}
+        >
+          <Ionicons name="trash-outline" size={20} color={colors.primary} />
+          <Text style={{ color: colors.textMain, marginLeft: 8, fontSize: 12 }}>Clear Marker</Text>
+        </TouchableOpacity>
+      )}
+
       <MapView
         ref={atlas.mapRef}
         provider={PROVIDER_GOOGLE}
@@ -136,48 +171,92 @@ const Atlas = () => {
           atlas.setTempCoords(e.nativeEvent.coordinate);
           atlas.setModalVisible(true);
         }}
-        // Properly applying the dark theme JSON here
         customMapStyle={isDark ? darkMapStyle : []}
         userInterfaceStyle={isDark ? 'dark' : 'light'}
-        showsBuildings={true} // Enable 3D buildings
-        showsTraffic={true} // Explicitly keeping traffic layer enabled
+        showsBuildings={true}
+        showsTraffic={true}
         showsIndoors={false}
         showsIndoorLevelPicker={false}
-        showsUserLocation={false} // Hide the native blue dot to prevent overlapping
-        showsMyLocationButton={false} // We can use a custom one
+        showsUserLocation={false}
+        showsMyLocationButton={false}
       >
+        {/* Temporary Drop Animation (shows for 1.5 seconds then auto-hides) */}
+        {atlas.showPinDropAnimation && atlas.pinDropCoordinates && (
+          <Marker 
+            coordinate={atlas.pinDropCoordinates}
+            anchor={{ x: 0.5, y: 0.5 }}
+            tracksViewChanges={true}
+            zIndex={1001}
+          >
+            <LottieView
+              source={require('../../assets/drop.json')}
+              style={{ width: 60, height: 60 }}
+              autoPlay={true}
+              loop={false}
+              speed={1.2}
+              onAnimationFinish={() => {
+                atlas.setShowPinDropAnimation(false);
+              }}
+            />
+          </Marker>
+        )}
+
+        {/* Persistent Marker with Lottie Animation (stays until cleared) */}
+        {atlas.showPersistentMarker && atlas.persistentMarker && (
+          <Marker 
+            coordinate={atlas.persistentMarker}
+            anchor={{ x: 0.5, y: 0.5 }}
+            tracksViewChanges={true}
+            zIndex={1000}
+          >
+            <View style={styles.persistentPinContainer}>
+              <LottieView
+                source={require('../../assets/drop.json')}
+                style={{ width: 40, height: 40 }}
+                autoPlay={true}
+                loop={true}
+                speed={0.8}
+              />
+              <View style={[styles.persistentPinTail, { borderTopColor: colors.primary }]} />
+              {/* Label bubble */}
+              {atlas.searchResult && (
+                <View style={[styles.persistentLabel, { backgroundColor: colors.background[1] }]}>
+                  <Text style={[styles.persistentLabelText, { color: colors.textMain }]} numberOfLines={1}>
+                    {atlas.searchResult.name}
+                  </Text>
+                  <TouchableOpacity onPress={handleClearPersistentMarker} style={styles.persistentLabelClose}>
+                    <Ionicons name="close-circle" size={16} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </Marker>
+        )}
+
+        {/* Route from user to destination when showDirections is true - THICKER LINE */}
         {atlas.showDirections && atlas.userLocation && atlas.destination && (
           <>
             <MapViewDirections
               origin={atlas.userLocation}
               destination={atlas.destination}
               apikey={atlas.GOOGLE_MAPS_APIKEY}
-              strokeWidth={4}
-              strokeColor={colors.primary} // Restored to solid color to fix the "not color" (faded) appearance
+              strokeWidth={8}
+              strokeColor={colors.primary}
+              strokeColors={[colors.primary, '#34A853', '#4285F4']}
               precision="high"
-              mode={atlas.travelMode === 'bicycling' ? 'driving' : atlas.travelMode} // Map 'bicycling' to 'driving' for API
-
+              mode={atlas.travelMode === 'bicycling' ? 'driving' : atlas.travelMode}
               alternatives={true}
               onReady={(result) => {
                 if (result.routes && result.routes.length > 0) {
-                  // Set the primary route coordinates
                   atlas.setRouteCoordinates(result.routes[0].coordinates);
-                  // Set alternative routes (excluding the first one)
                   atlas.setAlternativeRoutes(result.routes.slice(1));
-                  // Set estimated time for the primary route
                   atlas.setEstimatedTime(result.routes[0].duration || result.duration);
                 } else if (result.coordinates) {
-                  // Fallback for responses without a routes array
                   atlas.setRouteCoordinates(result.coordinates);
                   atlas.setEstimatedTime(result.duration);
                   atlas.setAlternativeRoutes([]);
                 }
 
-                if (result.duration) {
-                  console.log("Estimated duration:", result.duration, "minutes");
-                }
-
-                // Only fit to coordinates ONCE to avoid "zooming from top" refresh loop
                 if (!hasCenteredRoute.current) {
                   atlas.mapRef.current?.fitToCoordinates(result.coordinates, {
                     edgePadding: { top: 100, right: 50, bottom: 300, left: 50 },
@@ -187,22 +266,62 @@ const Atlas = () => {
                 }
               }}
             />
-            {/* Render alternative routes with lighter color */}
             {atlas.alternativeRoutes.map((route, index) => (
-              <MapViewDirections key={`alt-route-${index}`} origin={atlas.userLocation} destination={atlas.destination}
-                apikey={atlas.GOOGLE_MAPS_APIKEY} strokeWidth={3} strokeColor={`${colors.primary}80`} coordinates={route.coordinates} mode={atlas.travelMode} />
+              <MapViewDirections 
+                key={`alt-route-${index}`} 
+                origin={atlas.userLocation} 
+                destination={atlas.destination}
+                apikey={atlas.GOOGLE_MAPS_APIKEY} 
+                strokeWidth={6}
+                strokeColor={`${colors.primary}CC`}
+                coordinates={route.coordinates} 
+                mode={atlas.travelMode === 'bicycling' ? 'driving' : atlas.travelMode}
+              />
             ))}
           </>
+        )}
+
+        {/* Route from search result - THICKER AND DARKER LINE */}
+        {!atlas.showDirections && atlas.searchResult && atlas.userLocation && (
+          <MapViewDirections
+            origin={atlas.userLocation}
+            destination={atlas.searchResult.coords}
+            apikey={atlas.GOOGLE_MAPS_APIKEY}
+            strokeWidth={6}
+            strokeColor={colors.primary}
+            strokeColors={[colors.primary, '#34A853']}
+            precision="high"
+            mode={atlas.travelMode === 'bicycling' ? 'driving' : atlas.travelMode}
+            onReady={(result) => {
+              if (!hasCenteredSearchRoute.current && result.coordinates) {
+                // Fit the map to show both user location and search result
+                const coordinates = [
+                  atlas.userLocation,
+                  atlas.searchResult.coords
+                ];
+                atlas.mapRef.current?.fitToCoordinates(coordinates, {
+                  edgePadding: { top: 100, right: 50, bottom: 300, left: 50 },
+                  animated: true,
+                });
+                hasCenteredSearchRoute.current = true;
+                
+                // Set estimated time for the route
+                if (result.duration) {
+                  atlas.setEstimatedTime(result.duration);
+                }
+              }
+            }}
+          />
         )}
 
         {atlas.userLocation && (
           <Marker
             coordinate={atlas.userLocation}
             anchor={{ x: 0.5, y: 0.5 }}
-            flat={true} // Makes the marker tilt with the map
+            flat={true}
             rotation={atlas.arrowHeading}
             tracksViewChanges={true}
-            zIndex={999} // Ensure the marker is always on top
+            zIndex={999}
           >
             <Image
               source={require('../../assets/navigation.png')}
@@ -212,12 +331,8 @@ const Atlas = () => {
                 resizeMode: 'contain'
               }}
             />
-
           </Marker>
-
         )}
-
-
 
         {/* Render Friends' Live Locations */}
         {atlas.activeShares.map((share) => {
@@ -267,12 +382,11 @@ const Atlas = () => {
               <Text style={{ color: '#ff4444', fontWeight: '700', marginLeft: 5 }}>Stop</Text>
             </GlassCard>
           </TouchableOpacity>
-          {/* Estimated time moved to travelModeCard */}
         </View>
       )}
 
       {/* Travel Mode Selection and Estimated Time */}
-      {atlas.showDirections && (
+      {(atlas.showDirections || (atlas.searchResult && atlas.userLocation && !atlas.showDirections)) && (
         <View style={[styles.travelModeContainer, { bottom: insets.bottom + 10 }]}>
           <GlassCard style={[styles.travelModeCard, { borderColor: colors.glassBorder }]}>
             {atlas.estimatedTime !== null && atlas.estimatedTime !== undefined && (
@@ -287,7 +401,12 @@ const Atlas = () => {
                 <TouchableOpacity
                   key={mode.key}
                   style={[styles.travelModeButton, atlas.travelMode === mode.key && { backgroundColor: colors.primary }]}
-                  onPress={() => atlas.setTravelMode(mode.key)}
+                  onPress={() => {
+                    atlas.setTravelMode(mode.key);
+                    if (!atlas.showDirections && atlas.searchResult) {
+                      hasCenteredSearchRoute.current = false;
+                    }
+                  }}
                 >
                   <Ionicons 
                     name={mode.icon} 
@@ -300,6 +419,17 @@ const Atlas = () => {
                 </TouchableOpacity>
               ))}
             </View>
+            
+            {/* Start Navigation button */}
+            {!atlas.showDirections && atlas.searchResult && atlas.userLocation && (
+              <TouchableOpacity
+                onPress={handleShowRouteFromSearch}
+                style={[styles.startNavBtn, { backgroundColor: colors.primary, marginTop: 10 }]}
+              >
+                <Ionicons name="navigate" size={18} color="#fff" />
+                <Text style={[styles.startNavBtnText, { color: '#fff' }]}>Start Navigation</Text>
+              </TouchableOpacity>
+            )}
           </GlassCard>
         </View>
       )}
@@ -308,6 +438,18 @@ const Atlas = () => {
       {atlas.searchResult && !atlas.showDirections && (
         <View style={styles.searchCardContainer}>
           <GlassCard style={[styles.searchResultCard, { backgroundColor: colors.background[1], borderColor: colors.glassBorder }]}>
+            {/* Close button for search card */}
+            <TouchableOpacity 
+              style={styles.closeSearchCard} 
+              onPress={() => {
+                atlas.setSearchResult(null);
+                atlas.clearPersistentMarker();
+                atlas.setEstimatedTime(null);
+              }}
+            >
+              <Ionicons name="close-circle" size={28} color={colors.textSecondary} />
+            </TouchableOpacity>
+            
             <View style={{ alignItems: 'center' }}>
               {atlas.searchResult.image ? (
                 <Image source={{ uri: atlas.searchResult.image }} style={styles.searchResultImg} />
@@ -320,21 +462,37 @@ const Atlas = () => {
                 <Text style={[styles.searchResultTitle, { color: colors.textMain }]} numberOfLines={1}>{atlas.searchResult.name}</Text>
                 <Text style={{ color: colors.textSecondary, fontSize: 12, width: 300 }} numberOfLines={1}>{atlas.searchResult.address}</Text>
               </View>
-              <TouchableOpacity style={{ position: 'absolute', right: -20, bottom: 235 }} onPress={() => atlas.setSearchResult(null)}>
-                <Ionicons name="close-circle" size={30} color={atlas.colors?.textSecondary || '#888'} />
-              </TouchableOpacity>
             </View>
 
             <View style={styles.searchCardButtons}>
-              <TouchableOpacity onPress={() => { atlas.setSelectedJournal({ location: { lat: atlas.searchResult.coords.latitude, lng: atlas.searchResult.coords.longitude } }); atlas.setShowStreetView(true); }} style={[styles.actionBtn, { backgroundColor: '#4285F4', flex: 0.31 }]}>
-                <Ionicons name="eye" size={18} color="#fff" /><Text style={styles.actionBtnText}>View</Text>
+              <TouchableOpacity 
+                onPress={() => { 
+                  atlas.setSelectedJournal({ location: { lat: atlas.searchResult.coords.latitude, lng: atlas.searchResult.coords.longitude } }); 
+                  atlas.setShowStreetView(true); 
+                }} 
+                style={[styles.actionBtn, { backgroundColor: '#4285F4', flex: 0.31 }]}
+              >
+                <Ionicons name="eye" size={18} color="#fff" />
+                <Text style={styles.actionBtnText}>View</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => { atlas.setDestination(atlas.searchResult.coords); atlas.setShowDirections(true); }} style={[styles.actionBtn, { backgroundColor: '#34A853', flex: 0.31 }]}>
+              
+              <TouchableOpacity 
+                onPress={handleShowRouteFromSearch}
+                style={[styles.actionBtn, { backgroundColor: '#34A853', flex: 0.31 }]}
+              >
                 <Ionicons name="navigate" size={18} color="#fff" />
-                <Text style={styles.actionBtnText}>Navigate</Text>
+                <Text style={styles.actionBtnText}>Go</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => { atlas.setTempCoords(atlas.searchResult.coords); atlas.setModalVisible(true); }} style={[styles.actionBtn, { backgroundColor: colors.primary, flex: 0.31 }]}>
-                <Ionicons name="add" size={18} color="#fff" /><Text style={styles.actionBtnText}>Pin</Text>
+              
+              <TouchableOpacity 
+                onPress={() => { 
+                  atlas.setTempCoords(atlas.searchResult.coords); 
+                  atlas.setModalVisible(true); 
+                }} 
+                style={[styles.actionBtn, { backgroundColor: colors.primary, flex: 0.31 }]}
+              >
+                <Ionicons name="add" size={18} color="#fff" />
+                <Text style={styles.actionBtnText}>Pin</Text>
               </TouchableOpacity>
             </View>
           </GlassCard>
