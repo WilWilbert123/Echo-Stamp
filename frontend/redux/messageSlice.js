@@ -87,6 +87,35 @@ export const markAsReadAction = createAsyncThunk(
     }
 );
 
+// Add these thunks to your messageSlice.js
+
+export const addReactionAction = createAsyncThunk(
+    'messages/addReaction',
+    async ({ messageId, emoji }, thunkAPI) => {
+        try {
+            const response = await messageService.addMessageReaction(messageId, emoji);
+            return { messageId, ...response.data };
+        } catch (error) {
+            return thunkAPI.rejectWithValue(error.response?.data);
+        }
+    }
+);
+
+// Add this thunk to your messageSlice.js
+export const removeReactionAction = createAsyncThunk(
+    'messages/removeReaction',
+    async (messageId, thunkAPI) => {
+        try {
+            const response = await messageService.removeMessageReaction(messageId);
+            return { messageId, ...response.data };
+        } catch (error) {
+            return thunkAPI.rejectWithValue(error.response?.data);
+        }
+    }
+);
+
+
+
 const messageSlice = createSlice({
     name: 'messages',
     initialState: {
@@ -152,9 +181,29 @@ const messageSlice = createSlice({
             // Delete Entire Conversation
             .addCase(deleteConversationAction.fulfilled, (state, action) => {
                 state.conversations = state.conversations.filter(c => c._id !== action.payload);
-            });
+            })
+
+
+            .addCase(addReactionAction.fulfilled, (state, action) => {
+                const { messageId, reactions } = action.payload;
+                const message = state.activeConversation.find(m => m._id === messageId);
+                if (message) {
+                    message.reactions = reactions;
+                }
+            })
+            .addCase(removeReactionAction.fulfilled, (state, action) => {
+                const { messageId, reactions } = action.payload;
+                const message = state.activeConversation.find(m => m._id === messageId);
+                if (message) {
+                    message.reactions = reactions;
+                }
+            })
     },
 });
+
+
+
+
 
 export const { clearChat, addLocalMessage } = messageSlice.actions;
 export default messageSlice.reducer;

@@ -261,3 +261,90 @@ exports.editGroupMessage = async (req, res) => {
         res.status(500).json({ message: 'Error editing group message' });
     }
 };
+
+
+// Add reaction to group message
+exports.addGroupMessageReaction = async (req, res) => {
+    try {
+        const { groupId, messageId } = req.params;
+        const { emoji } = req.body;
+        const userId = req.user._id;
+
+        if (!emoji) {
+            return res.status(400).json({ message: "Emoji is required" });
+        }
+
+        const group = await Group.findOne({ _id: groupId, participants: userId });
+        if (!group) {
+            return res.status(404).json({ message: "Group not found" });
+        }
+
+        const message = group.messages.id(messageId);
+        if (!message) {
+            return res.status(404).json({ message: "Message not found" });
+        }
+
+        // Check if user already reacted
+        const existingReactionIndex = message.reactions.findIndex(
+            r => r.userId.toString() === userId.toString()
+        );
+
+        if (existingReactionIndex !== -1) {
+            // Update existing reaction
+            message.reactions[existingReactionIndex].emoji = emoji;
+            message.reactions[existingReactionIndex].createdAt = new Date();
+        } else {
+            // Add new reaction
+            message.reactions.push({
+                userId,
+                emoji,
+                createdAt: new Date()
+            });
+        }
+
+        await group.save();
+
+        res.status(200).json({
+            messageId: message._id,
+            reactions: message.reactions,
+            reactionCount: message.reactions.length
+        });
+    } catch (error) {
+        console.error("ADD_GROUP_REACTION_ERROR:", error);
+        res.status(500).json({ message: 'Error adding reaction', error: error.message });
+    }
+};
+
+// Remove reaction from group message
+exports.removeGroupMessageReaction = async (req, res) => {
+    try {
+        const { groupId, messageId } = req.params;
+        const userId = req.user._id;
+
+        const group = await Group.findOne({ _id: groupId, participants: userId });
+        if (!group) {
+            return res.status(404).json({ message: "Group not found" });
+        }
+
+        const message = group.messages.id(messageId);
+        if (!message) {
+            return res.status(404).json({ message: "Message not found" });
+        }
+
+        // Remove user's reaction
+        message.reactions = message.reactions.filter(
+            r => r.userId.toString() !== userId.toString()
+        );
+
+        await group.save();
+
+        res.status(200).json({
+            messageId: message._id,
+            reactions: message.reactions,
+            reactionCount: message.reactions.length
+        });
+    } catch (error) {
+        console.error("REMOVE_GROUP_REACTION_ERROR:", error);
+        res.status(500).json({ message: 'Error removing reaction', error: error.message });
+    }
+};

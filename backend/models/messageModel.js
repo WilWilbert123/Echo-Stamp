@@ -1,3 +1,4 @@
+// models/messageModel.js - Add reactions field to message schema
 const mongoose = require('mongoose');
 
 const conversationSchema = new mongoose.Schema({
@@ -23,6 +24,11 @@ const conversationSchema = new mongoose.Schema({
         duration: { type: Number },
         isRead: { type: Boolean, default: false },
         isEdited: { type: Boolean, default: false },
+        reactions: [{
+            userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+            emoji: { type: String, required: true },
+            createdAt: { type: Date, default: Date.now }
+        }],
         createdAt: { type: Date, default: Date.now }
     }]
 }, { timestamps: true });

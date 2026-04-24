@@ -44,6 +44,31 @@ export const markGroupReadAction = createAsyncThunk(
     }
 );
 
+// Add Group Reaction Actions
+export const addGroupReactionAction = createAsyncThunk(
+    'groups/addReaction',
+    async ({ groupId, messageId, emoji }, thunkAPI) => {
+        try {
+            const response = await api.addGroupMessageReaction(groupId, messageId, emoji);
+            return { groupId, messageId, ...response.data };
+        } catch (error) {
+            return thunkAPI.rejectWithValue(error.response?.data);
+        }
+    }
+);
+
+export const removeGroupReactionAction = createAsyncThunk(
+    'groups/removeReaction',
+    async ({ groupId, messageId }, thunkAPI) => {
+        try {
+            const response = await api.removeGroupMessageReaction(groupId, messageId);
+            return { groupId, messageId, ...response.data };
+        } catch (error) {
+            return thunkAPI.rejectWithValue(error.response?.data);
+        }
+    }
+);
+
 const groupSlice = createSlice({
     name: 'groups',
     initialState: {
@@ -63,9 +88,16 @@ const groupSlice = createSlice({
     },
     extraReducers: (builder) => {
         builder
+            .addCase(getGroupsList.pending, (state) => {
+                state.loading = true;
+            })
             .addCase(getGroupsList.fulfilled, (state, action) => {
+                state.loading = false;
                 // Enforce unreadCount 0 for the group we are currently looking at
                 state.groups = action.payload.map(g => g._id === state.activeGroupId ? { ...g, unreadCount: 0 } : g);
+            })
+            .addCase(getGroupsList.rejected, (state) => {
+                state.loading = false;
             })
             .addCase(getGroupHistory.pending, (state) => {
                 state.loading = true;
@@ -74,8 +106,18 @@ const groupSlice = createSlice({
                 state.loading = false;
                 state.activeGroupMessages = action.payload;
             })
+            .addCase(getGroupHistory.rejected, (state) => {
+                state.loading = false;
+            })
+            .addCase(sendGroupMessageAction.pending, (state) => {
+                state.loading = true;
+            })
             .addCase(sendGroupMessageAction.fulfilled, (state, action) => {
+                state.loading = false;
                 state.activeGroupMessages.push(action.payload);
+            })
+            .addCase(sendGroupMessageAction.rejected, (state) => {
+                state.loading = false;
             })
             .addCase(createGroupAction.fulfilled, (state, action) => {
                 state.groups.unshift(action.payload);
@@ -97,6 +139,21 @@ const groupSlice = createSlice({
             })
             .addCase(deleteGroupAction.fulfilled, (state, action) => {
                 state.groups = state.groups.filter(g => g._id !== action.payload);
+            })
+            // Add Reaction Cases
+            .addCase(addGroupReactionAction.fulfilled, (state, action) => {
+                const { messageId, reactions } = action.payload;
+                const message = state.activeGroupMessages.find(m => m._id === messageId);
+                if (message) {
+                    message.reactions = reactions;
+                }
+            })
+            .addCase(removeGroupReactionAction.fulfilled, (state, action) => {
+                const { messageId, reactions } = action.payload;
+                const message = state.activeGroupMessages.find(m => m._id === messageId);
+                if (message) {
+                    message.reactions = reactions;
+                }
             });
     }
 });

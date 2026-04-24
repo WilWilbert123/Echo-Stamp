@@ -281,3 +281,119 @@ exports.deleteConversation = async (req, res) => {
         res.status(500).json({ message: 'Error deleting conversation' });
     }
 };
+
+ 
+ 
+exports.addReaction = async (req, res) => {
+    try {
+        const { messageId } = req.params;
+        const { emoji } = req.body;
+        const userId = req.user._id;
+
+        if (!emoji) {
+            return res.status(400).json({ message: "Emoji is required" });
+        }
+
+        // Find conversation containing the message
+        const conversation = await Message.findOne({ "messages._id": messageId });
+        if (!conversation) {
+            return res.status(404).json({ message: "Message not found" });
+        }
+
+        const message = conversation.messages.id(messageId);
+        if (!message) {
+            return res.status(404).json({ message: "Message not found" });
+        }
+
+        // Check if user already reacted to this message
+        const existingReactionIndex = message.reactions.findIndex(
+            r => r.userId.toString() === userId.toString()
+        );
+
+        if (existingReactionIndex !== -1) {
+            // Update existing reaction
+            message.reactions[existingReactionIndex].emoji = emoji;
+            message.reactions[existingReactionIndex].createdAt = new Date();
+        } else {
+            // Add new reaction
+            message.reactions.push({
+                userId,
+                emoji,
+                createdAt: new Date()
+            });
+        }
+
+        await conversation.save();
+
+        // Return the updated message with reactions
+        res.status(200).json({
+            messageId: message._id,
+            reactions: message.reactions,
+            reactionCount: message.reactions.length
+        });
+    } catch (error) {
+        console.error("ADD_REACTION_ERROR:", error);
+        res.status(500).json({ message: 'Error adding reaction', error: error.message });
+    }
+};
+
+// Remove reaction from a message
+exports.removeReaction = async (req, res) => {
+    try {
+        const { messageId } = req.params;
+        const userId = req.user._id;
+
+        const conversation = await Message.findOne({ "messages._id": messageId });
+        if (!conversation) {
+            return res.status(404).json({ message: "Message not found" });
+        }
+
+        const message = conversation.messages.id(messageId);
+        if (!message) {
+            return res.status(404).json({ message: "Message not found" });
+        }
+
+        // Remove user's reaction
+        message.reactions = message.reactions.filter(
+            r => r.userId.toString() !== userId.toString()
+        );
+
+        await conversation.save();
+
+        res.status(200).json({
+            messageId: message._id,
+            reactions: message.reactions,
+            reactionCount: message.reactions.length
+        });
+    } catch (error) {
+        console.error("REMOVE_REACTION_ERROR:", error);
+        res.status(500).json({ message: 'Error removing reaction', error: error.message });
+    }
+};
+
+// Get reactions for a message
+exports.getReactions = async (req, res) => {
+    try {
+        const { messageId } = req.params;
+
+        const conversation = await Message.findOne({ "messages._id": messageId })
+            .populate('messages.reactions.userId', 'firstName lastName username profilePicture');
+
+        if (!conversation) {
+            return res.status(404).json({ message: "Message not found" });
+        }
+
+        const message = conversation.messages.id(messageId);
+        if (!message) {
+            return res.status(404).json({ message: "Message not found" });
+        }
+
+        res.status(200).json({
+            reactions: message.reactions,
+            reactionCount: message.reactions.length
+        });
+    } catch (error) {
+        console.error("GET_REACTIONS_ERROR:", error);
+        res.status(500).json({ message: 'Error fetching reactions', error: error.message });
+    }
+};
