@@ -8,6 +8,7 @@ import {
     Animated,
     Dimensions,
     FlatList,
+    Keyboard,
     KeyboardAvoidingView,
     Modal,
     PanResponder,
@@ -48,6 +49,7 @@ const AIAgent = () => {
     const [visible, setVisible] = useState(false);
     const [isSending, setIsSending] = useState(false);
     const [hasLoadedHistory, setHasLoadedHistory] = useState(false); // Track if history has been loaded
+    const [keyboardVisible, setKeyboardVisible] = useState(false);
     const flatListRef = useRef(null);
     const lastRequestTime = useRef(0);
     const requestQueue = useRef([]);
@@ -128,11 +130,40 @@ const AIAgent = () => {
                 // Only snap to edge if user didn't drag (for tap)
                 // Don't auto-snap to edge when dragging - let it stay where user left it
                 if (!moved.current) {
-                    setVisible(true);
+                    // Dismiss keyboard first if it's visible
+                    if (Keyboard.isVisible()) {
+                        Keyboard.dismiss();
+                        // Small delay to ensure keyboard is dismissed before opening modal
+                        setTimeout(() => {
+                            setVisible(true);
+                        }, 100);
+                    } else {
+                        setVisible(true);
+                    }
                 }
             },
         })
     ).current;
+
+    // Add keyboard listeners
+    useEffect(() => {
+        const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+            setKeyboardVisible(true);
+            // Scroll to bottom when keyboard appears
+            setTimeout(() => {
+                flatListRef.current?.scrollToEnd({ animated: true });
+            }, 100);
+        });
+        
+        const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+            setKeyboardVisible(false);
+        });
+
+        return () => {
+            keyboardDidShowListener.remove();
+            keyboardDidHideListener.remove();
+        };
+    }, []);
 
     // Load messages only once when component mounts or when user logs in
     useEffect(() => {
@@ -409,6 +440,7 @@ const AIAgent = () => {
         },
         header: {
             padding: 20,
+            paddingTop:50,
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -494,7 +526,15 @@ const AIAgent = () => {
             </Animated.View>
 
             {/* Chat Modal */}
-            <Modal visible={visible} animationType="slide" transparent>
+            <Modal 
+                visible={visible} 
+                animationType="slide" 
+                transparent
+                presentationStyle="overFullScreen"
+                statusBarTranslucent
+                hardwareAccelerated
+                onRequestClose={() => setVisible(false)}
+            >
                 <BlurView intensity={100} tint={isDark ? "dark" : "light"} style={{ flex: 1 }}>
                     <SafeAreaView style={dynamicStyles.container}>
                         <View style={dynamicStyles.header}>
@@ -514,6 +554,8 @@ const AIAgent = () => {
                             renderItem={renderMessage}
                             onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
                             contentContainerStyle={{ padding: 15, paddingBottom: 30 }}
+                            keyboardDismissMode="interactive"
+                            keyboardShouldPersistTaps="handled"
                         />
 
                         {(loading || isSending) && (
@@ -526,8 +568,9 @@ const AIAgent = () => {
                         )}
 
                         <KeyboardAvoidingView
-                            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+                            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+                            style={{ backgroundColor: 'transparent' }}
                         >
                             <View style={dynamicStyles.inputArea}>
                                 <TextInput

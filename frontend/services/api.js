@@ -1,40 +1,40 @@
 import axios from 'axios';
 const API = axios.create({
-   //baseURL: 'http://192.168.0.223:10000/api', 
-   baseURL: 'https://echo-stamp.onrender.com/api',
+    //baseURL: 'http://192.168.0.223:10000/api',
+    baseURL: 'https://echo-stamp.onrender.com/api',
     timeout: 60000,
 });
- 
+
 // Track retry counts per endpoint
 const retryCounts = new Map();
 
 // Response interceptor with exponential backoff
 API.interceptors.response.use(
-  (response) => {
-    const key = response.config.url;
-    retryCounts.delete(key);
-    return response;
-  },
-  async (error) => {
-    const originalRequest = error.config;
-    const url = originalRequest.url;
-    
-    let retryCount = retryCounts.get(url) || 0;
-    
-    if (error.response?.status === 429 && retryCount < 3) {
-      retryCount++;
-      retryCounts.set(url, retryCount);
-      
-      const delay = Math.min(3000 * Math.pow(2, retryCount - 1), 15000);
-      console.log(`Rate limited. Retry ${retryCount}/${3} after ${delay}ms`);
-      
-      await new Promise(resolve => setTimeout(resolve, delay));
-      return API(originalRequest);
+    (response) => {
+        const key = response.config.url;
+        retryCounts.delete(key);
+        return response;
+    },
+    async (error) => {
+        const originalRequest = error.config;
+        const url = originalRequest.url;
+
+        let retryCount = retryCounts.get(url) || 0;
+
+        if (error.response?.status === 429 && retryCount < 3) {
+            retryCount++;
+            retryCounts.set(url, retryCount);
+
+            const delay = Math.min(3000 * Math.pow(2, retryCount - 1), 15000);
+            console.log(`Rate limited. Retry ${retryCount}/${3} after ${delay}ms`);
+
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return API(originalRequest);
+        }
+
+        retryCounts.delete(url);
+        return Promise.reject(error);
     }
-    
-    retryCounts.delete(url);
-    return Promise.reject(error);
-  }
 );
 
 API.interceptors.request.use(
@@ -42,7 +42,7 @@ API.interceptors.request.use(
         try {
             const { store } = await import('../redux/store');
             const state = store.getState();
-            const token = state.auth?.token; 
+            const token = state.auth?.token;
 
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`;
@@ -93,7 +93,7 @@ export const updateReply = (id, commentId, replyId, text) => API.patch(`/journal
 
 export const requestOtp = (userData) => API.post('/users/request-otp', userData);
 export const verifyOtp = (data) => API.post('/users/verify-otp', data);
- 
+
 export const forgotPassword = (email) => API.post('/users/forgot-password', { email });
 export const resetPassword = (data) => API.post('/users/reset-password', data);
 
@@ -101,12 +101,12 @@ export const updateSecurity = (data) => API.post('/users/update-security', data)
 export const verify2faLogin = (data) => API.post('/users/login-2fa-verify', data);
 
 export const fullDeleteAccount = () => API.delete('/users/full-delete');
- 
+
 /* --- AI Chat Assistant --- */
-export const askAiAssistant = (message, coords = null) => 
-    API.post('/chat/ai-assistant', { 
-        message, 
-        location: coords  
+export const askAiAssistant = (message, coords = null) =>
+    API.post('/chat/ai-assistant', {
+        message,
+        location: coords
     });
 
 export const fetchChatHistory = () => API.get('/chat/history');
@@ -121,8 +121,8 @@ export const getAllEvents = () => API.get('/events');
 export const updatePrivacy = (data) => API.patch('/users/update-privacy', data);
 export const updateProfile = (data) => API.patch('/users/update-profile', data);
 
-export const fetchGlobalFeed = (userId) => {  
-    const url = userId ? `/journals/global?userId=${userId}` : '/journals/global'; 
+export const fetchGlobalFeed = (userId) => {
+    const url = userId ? `/journals/global?userId=${userId}` : '/journals/global';
     return API.get(url);
 };
 
@@ -159,8 +159,26 @@ export const markNotificationsUnread = () => API.patch('/notifications/unread');
 export const clearNotifications = () => API.delete('/notifications');
 export const removeNotification = (id) => API.delete(`/notifications/${id}`);
 export const markNotificationRead = (notificationId) => API.patch(`/notifications/${notificationId}/read`);
-export const Config = { 
-    MAPS_SDK_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_SDK_KEY, 
+
+
+export const addMessageReaction = (messageId, emoji) =>
+    API.post(`/messages/reactions/${messageId}`, { emoji });
+
+export const removeMessageReaction = (messageId) => 
+    API.delete(`/messages/reactions/${messageId}`);
+export const getMessageReactions = (messageId) =>
+    API.get(`/messages/reactions/${messageId}`);
+
+ 
+export const addGroupMessageReaction = (groupId, messageId, emoji) =>
+    API.post(`/groups/${groupId}/message/${messageId}/reaction`, { emoji });
+
+export const removeGroupMessageReaction = (groupId, messageId) =>
+    API.delete(`/groups/${groupId}/message/${messageId}/reaction`);
+
+
+export const Config = {
+    MAPS_SDK_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_SDK_KEY,
     PLACES_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY,
 };
 
