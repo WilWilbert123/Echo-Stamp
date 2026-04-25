@@ -1,4 +1,3 @@
-import { BlurView } from 'expo-blur';
 import * as Location from 'expo-location';
 import LottieView from "lottie-react-native";
 import React, { useEffect, useRef, useState } from 'react';
@@ -48,9 +47,9 @@ const AIAgent = () => {
     const [input, setInput] = useState('');
     const [visible, setVisible] = useState(false);
     const [isSending, setIsSending] = useState(false);
-    const [hasLoadedHistory, setHasLoadedHistory] = useState(false); // Track if history has been loaded
-    const [keyboardVisible, setKeyboardVisible] = useState(false);
+    const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
     const flatListRef = useRef(null);
+    const inputRef = useRef(null);
     const lastRequestTime = useRef(0);
     const requestQueue = useRef([]);
     const isProcessingQueue = useRef(false);
@@ -58,15 +57,11 @@ const AIAgent = () => {
     // Draggable button setup
     const BUTTON_SIZE = 60;
     const EDGE_PADDING = 10;
-    
-    // Store the current position for constraint calculations
     const currentPosition = useRef({ x: width - BUTTON_SIZE - 20, y: height - 200 });
-    
     const pan = useRef(new Animated.ValueXY({ 
         x: currentPosition.current.x, 
         y: currentPosition.current.y 
     })).current;
-    
     const moved = useRef(false);
 
     const panResponder = useRef(
@@ -74,33 +69,24 @@ const AIAgent = () => {
             onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: () => true,
             onPanResponderTerminationRequest: () => false,
-
             onPanResponderGrant: () => {
                 moved.current = false;
-                // Stop any ongoing animations
                 pan.stopAnimation();
-                // Set offset to current position
                 pan.setOffset({
                     x: pan.x._value,
                     y: pan.y._value,
                 });
                 pan.setValue({ x: 0, y: 0 });
             },
-
             onPanResponderMove: (e, gestureState) => {
-                // Check if moved significantly
                 if (Math.abs(gestureState.dx) > 3 || Math.abs(gestureState.dy) > 3) {
                     moved.current = true;
                 }
-
-                // Calculate new position with constraints
                 let newX = gestureState.dx;
                 let newY = gestureState.dy;
-                
                 const currentX = pan.x._offset;
                 const currentY = pan.y._offset;
                 
-                // Apply edge constraints during drag
                 if (currentX + newX < EDGE_PADDING) {
                     newX = EDGE_PADDING - currentX;
                 } else if (currentX + newX > width - BUTTON_SIZE - EDGE_PADDING) {
@@ -109,31 +95,22 @@ const AIAgent = () => {
                 
                 if (currentY + newY < EDGE_PADDING) {
                     newY = EDGE_PADDING - currentY;
-                } else if (currentY + newY > height - BUTTON_SIZE - EDGE_PADDING - 50) { // -50 for bottom safe area
+                } else if (currentY + newY > height - BUTTON_SIZE - EDGE_PADDING - 50) {
                     newY = height - BUTTON_SIZE - EDGE_PADDING - 50 - currentY;
                 }
                 
                 pan.x.setValue(newX);
                 pan.y.setValue(newY);
             },
-
             onPanResponderRelease: () => {
-                // Flatten the offset
                 pan.flattenOffset();
-                
-                // Update current position reference
                 currentPosition.current = {
                     x: pan.x._value,
                     y: pan.y._value
                 };
-                
-                // Only snap to edge if user didn't drag (for tap)
-                // Don't auto-snap to edge when dragging - let it stay where user left it
                 if (!moved.current) {
-                    // Dismiss keyboard first if it's visible
                     if (Keyboard.isVisible()) {
                         Keyboard.dismiss();
-                        // Small delay to ensure keyboard is dismissed before opening modal
                         setTimeout(() => {
                             setVisible(true);
                         }, 100);
@@ -145,41 +122,21 @@ const AIAgent = () => {
         })
     ).current;
 
-    // Add keyboard listeners
     useEffect(() => {
-        const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
-            setKeyboardVisible(true);
-            // Scroll to bottom when keyboard appears
-            setTimeout(() => {
-                flatListRef.current?.scrollToEnd({ animated: true });
-            }, 100);
-        });
-        
-        const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
-            setKeyboardVisible(false);
-        });
-
-        return () => {
-            keyboardDidShowListener.remove();
-            keyboardDidHideListener.remove();
-        };
-    }, []);
-
-    // Load messages only once when component mounts or when user logs in
-    useEffect(() => {
-        // Load history when component mounts (but not every time modal opens)
         if (!hasLoadedHistory && user) {
             loadMessages();
             loadEchoStats();
             setHasLoadedHistory(true);
         }
-    }, [user]); // Re-run if user changes
+    }, [user]);
 
-    // Request location when modal opens, but don't reload history
     useEffect(() => {
         if (visible) {
             requestLocation();
             getInitialLocation();
+            setTimeout(() => {
+                inputRef.current?.focus();
+            }, 500);
         }
     }, [visible]);
 
@@ -218,7 +175,6 @@ const AIAgent = () => {
     };
 
     const loadMessages = async () => {
-        // Only load if we don't already have history
         if (history && history.length > 0) {
             console.log("History already loaded, skipping fetch");
             return;
@@ -253,7 +209,6 @@ const AIAgent = () => {
                         try {
                             await clearChatHistory();
                             dispatch(clearHistory());
-                            // Reset the loaded flag so it can reload if needed
                             setHasLoadedHistory(false);
                         } catch (err) {
                             console.error("Clear History Error:", err);
@@ -264,7 +219,6 @@ const AIAgent = () => {
         );
     };
 
-    // Handle nearby place queries locally
     const handleNearbyQuery = async (userText, locationData) => {
         if (!locationData || !locationData.latitude || !locationData.longitude) {
             return "I need your location to find nearby places. Please enable location services and try again. 📍";
@@ -284,17 +238,14 @@ const AIAgent = () => {
 
     const processQueue = async () => {
         if (isProcessingQueue.current || requestQueue.current.length === 0) return;
-
         isProcessingQueue.current = true;
 
         while (requestQueue.current.length > 0) {
             const { userText, resolve, reject } = requestQueue.current[0];
-
             const now = Date.now();
             const timeSinceLastRequest = now - lastRequestTime.current;
             if (timeSinceLastRequest < 3000) {
                 const waitTime = 3000 - timeSinceLastRequest;
-                console.log(`Waiting ${waitTime}ms before next request...`);
                 await new Promise(r => setTimeout(r, waitTime));
             }
 
@@ -308,7 +259,6 @@ const AIAgent = () => {
                 requestQueue.current.shift();
             }
         }
-
         isProcessingQueue.current = false;
     };
 
@@ -324,30 +274,22 @@ const AIAgent = () => {
                     latitude: loc.coords.latitude,
                     longitude: loc.coords.longitude
                 };
-                console.log("📍 Location obtained:", locationData);
                 
-                // CHECK FOR NEARBY QUERIES FIRST (BEFORE CALLING BACKEND)
                 if (isNearbyQuery(userText)) {
-                    console.log("📍 Nearby query detected, handling locally...");
                     const nearbyResponse = await handleNearbyQuery(userText, locationData);
                     if (nearbyResponse) {
-                        // Return a mock response structure
                         return { data: { text: nearbyResponse } };
                     }
                 }
             } else {
-                console.log("❌ Location permission not granted");
-                
-                // Check if it's a nearby query but no location
                 if (isNearbyQuery(userText)) {
                     return { data: { text: "I need your location to find nearby places. Please enable location services and try again. 📍" } };
                 }
             }
         } catch (locErr) {
-            console.error("❌ Could not get location for AI:", locErr);
+            console.error("Could not get location for AI:", locErr);
         }
 
-        // If not a nearby query or location failed, call the backend
         const response = await askAiAssistant(userText, locationData);
         return response;
     };
@@ -371,7 +313,6 @@ const AIAgent = () => {
 
         try {
             const response = await queueMessage(userText);
-
             dispatch(addMessage({
                 role: 'model',
                 parts: [{ text: response.data.text }]
@@ -380,12 +321,9 @@ const AIAgent = () => {
             if (response.data.stats) {
                 dispatch(setEchoStats(response.data.stats));
             }
-
         } catch (error) {
             console.error("AI Assistant Error:", error);
-
             let errorMessage = "Sorry, I'm having trouble connecting. Please try again in a moment.";
-
             if (error.response?.status === 429) {
                 errorMessage = "The AI is very busy right now. Please wait a few seconds and try again.";
             } else if (error.code === 'ECONNABORTED') {
@@ -393,7 +331,6 @@ const AIAgent = () => {
             } else if (error.message === 'Network Error') {
                 errorMessage = "Network error. Please check your internet connection.";
             }
-
             dispatch(addMessage({
                 role: 'model',
                 parts: [{ text: errorMessage }]
@@ -401,7 +338,6 @@ const AIAgent = () => {
         } finally {
             dispatch(setChatLoading(false));
             setIsSending(false);
-
             setTimeout(() => {
                 flatListRef.current?.scrollToEnd({ animated: true });
             }, 100);
@@ -411,7 +347,6 @@ const AIAgent = () => {
     const renderMessage = ({ item }) => {
         const isUser = item.role === 'user';
         const text = item.parts?.[0]?.text || "";
-
         if (!text && !isUser) return null;
 
         return (
@@ -432,15 +367,14 @@ const AIAgent = () => {
         );
     };
 
-    // Create dynamic styles based on theme
     const dynamicStyles = {
         container: {
             flex: 1,
-            backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)'
+            backgroundColor: isDark ? '#0F172A' : '#FFFFFF'
         },
         header: {
             padding: 20,
-            paddingTop:50,
+            paddingTop: Platform.OS === 'ios' ? 50 : 20,
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -462,7 +396,8 @@ const AIAgent = () => {
             color: colors.textSecondary
         },
         inputArea: {
-            padding: 12,
+            padding:12,
+             paddingBottom: Platform.OS === 'ios' ? 50 : 50,
             flexDirection: 'row',
             backgroundColor: colors.glass,
             alignItems: 'center',
@@ -500,22 +435,14 @@ const AIAgent = () => {
 
     return (
         <>
-            {/* Draggable Floating Button with Lottie Animation */}
             <Animated.View
                 style={[
                     styles.floatingButton,
-                    {
-                        transform: pan.getTranslateTransform(),
-                    },
+                    { transform: pan.getTranslateTransform() },
                 ]}
                 {...panResponder.panHandlers}
             >
-                <View style={[
-                    styles.innerButton,
-                    {
-                        
-                    }
-                ]}>
+                <View style={styles.innerButton}>
                     <LottieView
                         source={require("../assets/Airobot.json")}
                         autoPlay
@@ -525,37 +452,38 @@ const AIAgent = () => {
                 </View>
             </Animated.View>
 
-            {/* Chat Modal */}
+            {/* FIXED MODAL - This will work in production */}
             <Modal 
                 visible={visible} 
                 animationType="slide" 
-                transparent
-                presentationStyle="overFullScreen"
-                statusBarTranslucent
-                hardwareAccelerated
                 onRequestClose={() => setVisible(false)}
             >
-                <BlurView intensity={100} tint={isDark ? "dark" : "light"} style={{ flex: 1 }}>
-                    <SafeAreaView style={dynamicStyles.container}>
-                        <View style={dynamicStyles.header}>
-                            <TouchableOpacity onPress={handleClearHistory}>
-                                <Text style={dynamicStyles.clearBtn}>Clear</Text>
-                            </TouchableOpacity>
-                            <Text style={dynamicStyles.headerTitle}>Echo AI</Text>
-                            <TouchableOpacity onPress={() => setVisible(false)}>
-                                <Text style={dynamicStyles.closeBtn}>✕</Text>
-                            </TouchableOpacity>
-                        </View>
+                <SafeAreaView style={dynamicStyles.container}>
+                    <View style={dynamicStyles.header}>
+                        <TouchableOpacity onPress={handleClearHistory}>
+                            <Text style={dynamicStyles.clearBtn}>Clear</Text>
+                        </TouchableOpacity>
+                        <Text style={dynamicStyles.headerTitle}>Echo AI</Text>
+                        <TouchableOpacity onPress={() => setVisible(false)}>
+                            <Text style={dynamicStyles.closeBtn}>✕</Text>
+                        </TouchableOpacity>
+                    </View>
 
+                    <KeyboardAvoidingView 
+                        style={{ flex: 1 }}
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+                    >
                         <FlatList
                             ref={flatListRef}
                             data={history}
                             keyExtractor={(_, index) => index.toString()}
                             renderItem={renderMessage}
                             onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
-                            contentContainerStyle={{ padding: 15, paddingBottom: 30 }}
+                            contentContainerStyle={{ padding: 15, paddingBottom: 20 }}
                             keyboardDismissMode="interactive"
                             keyboardShouldPersistTaps="handled"
+                            showsVerticalScrollIndicator={false}
                         />
 
                         {(loading || isSending) && (
@@ -567,41 +495,36 @@ const AIAgent = () => {
                             </View>
                         )}
 
-                        <KeyboardAvoidingView
-                            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-                            style={{ backgroundColor: 'transparent' }}
-                        >
-                            <View style={dynamicStyles.inputArea}>
-                                <TextInput
-                                    style={dynamicStyles.input}
-                                    value={input}
-                                    onChangeText={setInput}
-                                    placeholder="Ask me anything..."
-                                    placeholderTextColor={colors.textSecondary}
-                                    multiline
-                                    maxLength={500}
-                                    editable={!isSending}
+                        <View style={dynamicStyles.inputArea}>
+                            <TextInput
+                                ref={inputRef}
+                                style={dynamicStyles.input}
+                                value={input}
+                                onChangeText={setInput}
+                                placeholder="Ask me anything..."
+                                placeholderTextColor={colors.textSecondary}
+                                multiline
+                                maxLength={500}
+                                editable={!isSending}
+                            />
+                            <TouchableOpacity
+                                onPress={handleSend}
+                                activeOpacity={0.8}
+                                style={[
+                                    dynamicStyles.sendBtn,
+                                    (!input.trim() || loading || isSending) && dynamicStyles.sendBtnDisabled
+                                ]}
+                                disabled={!input.trim() || loading || isSending}
+                            >
+                                <MaterialCommunityIcons
+                                    name="send"
+                                    size={22}
+                                    color="#fff"
                                 />
-                                <TouchableOpacity
-                                    onPress={handleSend}
-                                    activeOpacity={0.8}
-                                    style={[
-                                        dynamicStyles.sendBtn,
-                                        (!input.trim() || loading || isSending) && dynamicStyles.sendBtnDisabled
-                                    ]}
-                                    disabled={!input.trim() || loading || isSending}
-                                >
-                                    <MaterialCommunityIcons
-                                        name="send"
-                                        size={22}
-                                        color="#fff"
-                                    />
-                                </TouchableOpacity>
-                            </View>
-                        </KeyboardAvoidingView>
-                    </SafeAreaView>
-                </BlurView>
+                            </TouchableOpacity>
+                        </View>
+                    </KeyboardAvoidingView>
+                </SafeAreaView>
             </Modal>
         </>
     );
@@ -623,7 +546,6 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 4.65,
-        
         overflow: 'hidden',
     },
     msgRow: { marginVertical: 6, flexDirection: 'row' },
