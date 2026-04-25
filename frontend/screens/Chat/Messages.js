@@ -31,7 +31,7 @@ import BrandedHeader from '../../components/BrandedHeader';
 import EmojiReactionPicker from '../../components/EmojiReactionPicker';
 import { useTheme } from '../../context/ThemeContext';
 import {
-    addGroupReactionAction, clearGroupChat, createGroupAction, deleteGroupAction, editGroupMessageAction, getGroupHistory, getGroupsList, markGroupReadAction,
+    addGroupReactionAction, clearGroupChat, createGroupAction, deleteGroupAction, deleteGroupMessageAction, editGroupMessageAction, getGroupHistory, getGroupsList, markGroupReadAction,
     removeGroupReactionAction,
     sendGroupMessageAction, setActiveGroupId
 } from '../../redux/groupSlice';
@@ -39,6 +39,7 @@ import {
     addReactionAction,
     clearChat,
     deleteConversationAction,
+    deleteMessageAction,
     editMessageAction,
     getChatHistory,
     getConversationsList,
@@ -71,8 +72,6 @@ const MessageVideoPlayer = ({ uri, onDownload }) => {
         </View>
     );
 };
-
- 
 
 // Reaction Display Component
 const ReactionDisplay = ({ reactions, currentUserId, colors, isMe, onRemoveReaction }) => {
@@ -234,12 +233,10 @@ const Messages = () => {
     useEffect(() => {
         const parent = navigation.getParent();
         if (selectedUser) {
-            // Hide tab bar when a conversation is open
             parent?.setOptions({
                 tabBarStyle: { display: 'none' }
             });
         } else {
-            // Restore tab bar when back at the list
             parent?.setOptions({
                 tabBarStyle: {
                     backgroundColor: isDark ? '#0a1929' : '#fff',
@@ -255,13 +252,11 @@ const Messages = () => {
 
     // --- 2. Handle User Selection (Start Chat) ---
     const handleSelectUser = (itemOrUser) => {
-        // Dismiss keyboard before switching conversations
         Keyboard.dismiss();
 
         dispatch(clearChat());
         dispatch(clearGroupChat());
 
-        // If it's a conversation item from the FlatList
         if (itemOrUser.isGroup || itemOrUser.user) {
             setSelectedUser(itemOrUser);
             if (itemOrUser.isGroup) {
@@ -273,7 +268,6 @@ const Messages = () => {
                 dispatch(markAsReadAction(itemOrUser.user._id));
             }
         } else {
-            // It's a raw user object (from search or active users)
             setSelectedUser({ user: itemOrUser });
             dispatch(getChatHistory(itemOrUser._id));
             dispatch(markAsReadAction(itemOrUser._id));
@@ -386,23 +380,23 @@ const Messages = () => {
             Alert.alert("Error", "Could not play audio");
         }
     };
-const handleRemoveReaction = async (emoji, messageId) => {
-    try {
-        if (selectedUser?.isGroup) {
-            // Group chat remove reaction
-            await dispatch(removeGroupReactionAction({ 
-                groupId: selectedUser._id, 
-                messageId 
-            })).unwrap();
-        } else {
-            // Private chat remove reaction
-            await dispatch(removeReactionAction(messageId)).unwrap();
+
+    const handleRemoveReaction = async (emoji, messageId) => {
+        try {
+            if (selectedUser?.isGroup) {
+                await dispatch(removeGroupReactionAction({ 
+                    groupId: selectedUser._id, 
+                    messageId 
+                })).unwrap();
+            } else {
+                await dispatch(removeReactionAction(messageId)).unwrap();
+            }
+        } catch (error) {
+            console.error("Failed to remove reaction:", error);
+            Alert.alert("Error", "Failed to remove reaction");
         }
-    } catch (error) {
-        console.error("Failed to remove reaction:", error);
-        Alert.alert("Error", "Failed to remove reaction");
-    }
-};
+    };
+
     // --- 4. Auto-scroll Logic ---
     useEffect(() => {
         const chatData = selectedUser?.isGroup ? activeGroupMessages : activeConversation;
@@ -522,7 +516,6 @@ const handleRemoveReaction = async (emoji, messageId) => {
         setAttachedMedia([]);
         setMessage('');
 
-        // Keep keyboard open after sending
         setTimeout(() => {
             inputRef.current?.focus();
         }, 100);
@@ -559,26 +552,72 @@ const handleRemoveReaction = async (emoji, messageId) => {
 
     // --- Reaction Handlers ---
     const handleReaction = async (emoji, messageId) => {
-    try {
-        if (selectedUser?.isGroup) {
-            // Group chat reaction
-            await dispatch(addGroupReactionAction({ 
-                groupId: selectedUser._id, 
-                messageId, 
-                emoji 
-            })).unwrap();
-        } else {
-            // Private chat reaction
-            await dispatch(addReactionAction({ messageId, emoji })).unwrap();
+        try {
+            if (selectedUser?.isGroup) {
+                await dispatch(addGroupReactionAction({ 
+                    groupId: selectedUser._id, 
+                    messageId, 
+                    emoji 
+                })).unwrap();
+            } else {
+                await dispatch(addReactionAction({ messageId, emoji })).unwrap();
+            }
+        } catch (error) {
+            console.error("Failed to add reaction:", error);
+            Alert.alert("Error", "Failed to add reaction");
         }
-    } catch (error) {
-        console.error("Failed to add reaction:", error);
-        Alert.alert("Error", "Failed to add reaction");
-    }
-};
+    };
 
-    const handleLongPressMessage = (item, isMe, event) => {
-        // Get touch position for reaction picker
+    // Handle long press for edit/delete menu (only for user's own messages)
+    const handleLongPressMessage = (item, isMe) => {
+        if (!isMe) return;
+        
+        Alert.alert(
+            "Message Options",
+            "Choose an action",
+            [
+                { 
+                    text: "Edit", 
+                    onPress: () => {
+                        setEditingMessage(item);
+                        setMessage(item.content);
+                        inputRef.current?.focus();
+                    }
+                },
+                { 
+                    text: "Delete", 
+                    onPress: () => {
+                        Alert.alert(
+                            "Delete Message",
+                            "Are you sure you want to delete this message?",
+                            [
+                                { text: "Cancel", style: "cancel" },
+                                { 
+                                    text: "Delete", 
+                                    onPress: () => {
+                                        if (selectedUser?.isGroup) {
+                                            dispatch(deleteGroupMessageAction({ 
+                                                groupId: selectedUser._id, 
+                                                messageId: item._id 
+                                            }));
+                                        } else {
+                                            dispatch(deleteMessageAction(item._id));
+                                        }
+                                    },
+                                    style: "destructive"
+                                }
+                            ]
+                        );
+                    },
+                    style: "destructive"
+                },
+                { text: "Cancel", style: "cancel" }
+            ]
+        );
+    };
+
+    // Handle reaction button press
+    const handleReactionButtonPress = (item, event) => {
         const { pageX, pageY } = event.nativeEvent;
         setReactionPosition({ x: pageX, y: pageY });
         setSelectedMessageForReaction(item);
@@ -723,7 +762,7 @@ const handleRemoveReaction = async (emoji, messageId) => {
         if (Platform.OS === 'ios') {
             return keyboardVisible ? keyboardHeight : 30;
         }
-        return keyboardVisible ? keyboardHeight - 250 : 75;
+        return keyboardVisible ? keyboardHeight + 40 : 75;
     };
 
     // --- CHAT WINDOW (DETAIL VIEW) ---
@@ -785,98 +824,146 @@ const handleRemoveReaction = async (emoji, messageId) => {
                             flatListRef.current?.scrollToEnd({ animated: false });
                         }
                     }}
-                    renderItem={({ item }) => {
-                        const senderId = item.sender?._id || item.sender;
-                        const isMe = senderId === (currentUser?._id || currentUser?.id);
+renderItem={({ item }) => {
+    const senderId = item.sender?._id || item.sender;
+    const isMe = senderId === (currentUser?._id || currentUser?.id);
 
-                        return (
+    return (
+        <View>
+            <View style={[
+                styles.messageContainer,
+                { alignItems: isMe ? 'flex-end' : 'flex-start' }
+            ]}>
+                {/* Message Bubble */}
+                <TouchableOpacity
+                    onLongPress={() => handleLongPressMessage(item, isMe)}
+                    delayLongPress={500}
+                    activeOpacity={0.7}
+                    style={[
+                        styles.bubble,
+                        {
+                            backgroundColor: isMe ? colors.primary : (isDark ? '#334155' : '#E2E8F0'),
+                            borderBottomRightRadius: isMe ? 4 : 20,
+                            borderBottomLeftRadius: isMe ? 20 : 4,
+                        }
+                    ]}>
+                    {/* Media Content */}
+                    {item.media && item.media.length > 0 && (
+                        <View style={{ gap: 5, marginBottom: item.content ? 5 : 0 }}>
+                            {item.media.map((m, idx) => (
+                                m.mediaType === 'video' ? (
+                                    <MessageVideoPlayer key={idx} uri={m.url} onDownload={handleDownload} />
+                                ) : (
+                                    <TouchableOpacity
+                                        key={idx}
+                                        onPress={() => { setCurrentImageUri(m.url); setIsImageViewerVisible(true); }}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Image
+                                            source={{ uri: m.url }}
+                                            style={{ width: 220, height: 220, borderRadius: 12 }}
+                                            resizeMode="cover"
+                                        />
+                                    </TouchableOpacity>
+                                )
+                            ))}
+                        </View>
+                    )}
+                    
+                    {/* Voice Message */}
+                    {item.voiceUrl && (
+                        <TouchableOpacity
+                            onPress={() => playVoice(item.voiceUrl, item._id)}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 5 }}
+                        >
+                            <Ionicons name={playingMessageId === item._id ? "pause-circle" : "play-circle"} size={32} color={isMe ? "#FFF" : colors.primary} />
                             <View>
-                                <TouchableOpacity
-                                    onLongPress={(event) => handleLongPressMessage(item, isMe, event)}
-                                    delayLongPress={300}
-                                    activeOpacity={0.7}
-                                    style={[
-                                        styles.messageContainer,
-                                        { alignItems: isMe ? 'flex-end' : 'flex-start' }
-                                    ]}>
-                                    <View style={[
-                                        styles.bubble,
-                                        {
-                                            backgroundColor: isMe ? colors.primary : (isDark ? '#334155' : '#E2E8F0'),
-                                            borderBottomRightRadius: isMe ? 4 : 20,
-                                            borderBottomLeftRadius: isMe ? 20 : 4,
-                                        }
-                                    ]}>
-                                        {item.media && item.media.length > 0 && (
-                                            <View style={{ gap: 5, marginBottom: item.content ? 5 : 0 }}>
-                                                {item.media.map((m, idx) => (
-                                                    m.mediaType === 'video' ? (
-                                                        <MessageVideoPlayer key={idx} uri={m.url} onDownload={handleDownload} />
-                                                    ) : (
-                                                        <TouchableOpacity
-                                                            key={idx}
-                                                            onPress={() => { setCurrentImageUri(m.url); setIsImageViewerVisible(true); }}
-                                                            activeOpacity={0.8}
-                                                        >
-                                                            <Image
-                                                                source={{ uri: m.url }}
-                                                                style={{ width: 230, height: 250, borderRadius: 12 }}
-                                                                resizeMode="cover"
-                                                            />
-                                                        </TouchableOpacity>
-                                                    )
-                                                ))}
-                                                {item.content && <View style={{ height: 5 }} />}
-                                            </View>
-                                        )}
-                                        {item.voiceUrl && (
-                                            <TouchableOpacity
-                                                onPress={() => playVoice(item.voiceUrl, item._id)}
-                                                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 5 }}
-                                            >
-                                                <Ionicons name={playingMessageId === item._id ? "pause-circle" : "play-circle"} size={32} color={isMe ? "#FFF" : colors.primary} />
-                                                <View>
-                                                    <Text style={{ color: isMe ? '#FFF' : colors.textMain, fontWeight: '600' }}>
-                                                        {playingMessageId === item._id ? "Playing..." : "Voice Message"}
-                                                    </Text>
-                                                    <Text style={{ color: isMe ? 'rgba(255,255,255,0.7)' : colors.textSecondary, fontSize: 11 }}>
-                                                        {playingMessageId === item._id ? formatDuration(playbackTime) : formatDuration(item.duration)}
-                                                    </Text>
-                                                </View>
-                                            </TouchableOpacity>
-                                        )}
-                                        {(!item.voiceUrl || item.isEdited) && item.content && (
-                                            <Text style={{ color: isMe ? '#FFF' : colors.textMain, fontSize: 15, lineHeight: 20, marginTop: item.voiceUrl ? 5 : 0 }}>
-                                                {item.content}
-                                            </Text>
-                                        )}
-                                        <View style={{ flexDirection: 'row', alignSelf: 'flex-end', alignItems: 'center', marginTop: 4 }}>
-                                            {selectedUser.isGroup && !isMe && (
-                                                <Text style={{ fontSize: 9, color: colors.textSecondary, marginRight: 8, fontStyle: 'italic', fontWeight: '600' }}>
-                                                    ~ {item.senderName || item.sender?.firstName || 'User'}
-                                                </Text>
-                                            )}
-                                            {item.isEdited && (
-                                                <Text style={{ fontSize: 9, color: isMe ? 'rgba(255,255,255,0.5)' : colors.textSecondary, marginRight: 4 }}>Edited</Text>
-                                            )}
-                                            <Text style={[styles.bubbleTime, { color: isMe ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>
-                                                {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                </TouchableOpacity>
-
-                                {/* Reaction Display */}
-                                <ReactionDisplay
-                                    reactions={item.reactions}
-                                    currentUserId={currentUser?._id || currentUser?.id}
-                                    colors={colors}
-                                    isMe={isMe}  
-                                    onRemoveReaction={(emoji) => handleRemoveReaction(emoji, item._id)}
-                                />
+                                <Text style={{ color: isMe ? '#FFF' : colors.textMain, fontWeight: '600' }}>
+                                    {playingMessageId === item._id ? "Playing..." : "Voice Message"}
+                                </Text>
+                                <Text style={{ color: isMe ? 'rgba(255,255,255,0.7)' : colors.textSecondary, fontSize: 11 }}>
+                                    {playingMessageId === item._id ? formatDuration(playbackTime) : formatDuration(item.duration)}
+                                </Text>
                             </View>
-                        );
-                    }}
+                        </TouchableOpacity>
+                    )}
+                    
+                    {/* Text Content */}
+                    {(!item.voiceUrl || item.isEdited) && item.content && (
+                        <Text style={{ 
+                            color: isMe ? '#FFF' : colors.textMain, 
+                            fontSize: 15, 
+                            lineHeight: 20,
+                            marginBottom: 8,
+                            textAlign: isMe ? 'right' : 'left'
+                        }}>
+                            {item.content}
+                        </Text>
+                    )}
+                    
+                    {/* Bottom Row: Reaction button position based on who sent the message */}
+                    <View style={[styles.bottomRow, isMe ? styles.bottomRowRight : styles.bottomRowLeft]}>
+                        {/* For Sender's messages (left side): Reaction button on RIGHT, Timestamp on LEFT */}
+                        {!isMe && (
+                            <>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    {selectedUser.isGroup && !isMe && (
+                                        <Text style={{ fontSize: 9, color: colors.textSecondary, fontStyle: 'italic', fontWeight: '600' }}>
+                                            ~ {item.senderName || item.sender?.firstName || 'User'}
+                                        </Text>
+                                    )}
+                                    {item.isEdited && (
+                                        <Text style={{ fontSize: 9, color: isMe ? 'rgba(255,255,255,0.5)' : colors.textSecondary }}>Edited</Text>
+                                    )}
+                                    <Text style={[styles.bubbleTime, { color: isMe ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>
+                                        {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                    </Text>
+                                </View>
+                                <TouchableOpacity
+                                    onPress={(event) => handleReactionButtonPress(item, event)}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    style={styles.reactionButtonInside}
+                                >
+                                    <Ionicons name="add-circle-outline" size={20} color={isMe ? "#FFF" : colors.primary} />
+                                </TouchableOpacity>
+                            </>
+                        )}
+                        
+                        {/* For User's own messages (right side): Reaction button on LEFT, Timestamp on RIGHT */}
+                        {isMe && (
+                            <>
+                                <TouchableOpacity
+                                    onPress={(event) => handleReactionButtonPress(item, event)}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    style={styles.reactionButtonInside}
+                                >
+                                    <Ionicons name="add-circle-outline" size={20} color={isMe ? "#FFF" : colors.primary} />
+                                </TouchableOpacity>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    {item.isEdited && (
+                                        <Text style={{ fontSize: 9, color: isMe ? 'rgba(255,255,255,0.5)' : colors.textSecondary }}>Edited</Text>
+                                    )}
+                                    <Text style={[styles.bubbleTime, { color: isMe ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>
+                                        {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                    </Text>
+                                </View>
+                            </>
+                        )}
+                    </View>
+                </TouchableOpacity>
+            </View>
+
+            {/* Reaction Display Below Message */}
+            <ReactionDisplay
+                reactions={item.reactions}
+                currentUserId={currentUser?._id || currentUser?.id}
+                colors={colors}
+                isMe={isMe}  
+                onRemoveReaction={(emoji) => handleRemoveReaction(emoji, item._id)}
+            />
+        </View>
+    );
+}}
                     ListEmptyComponent={() => (
                         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100 }}>
                             <Ionicons name="chatbubble-outline" size={60} color={colors.textSecondary} />
@@ -901,7 +988,6 @@ const handleRemoveReaction = async (emoji, messageId) => {
                         backgroundColor: colors.background[0],
                         borderTopColor: colors.glassBorder,
                         paddingBottom: getInputWrapperPaddingBottom(),
-
                     }
                 ]}>
                     {!attachedAudio && attachedMedia.length === 0 && (
@@ -1216,15 +1302,14 @@ const styles = StyleSheet.create({
     unreadBadge: { minWidth: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
     unreadText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
     lastMessage: { fontSize: 14, flex: 1 },
-
     fullChatContainer: { flex: 1 },
     chatViewHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingBottom: 15, borderBottomWidth: 1 },
     headerAvatar: { width: 44, height: 44, borderRadius: 22 },
-
     messageContainer: { width: '100%', marginVertical: 4 },
-    bubble: { padding: 14, borderRadius: 20, maxWidth: '80%', elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 1 },
-    bubbleTime: { fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
-
+    bubble: { padding: 12, borderRadius: 20, maxWidth: '80%', elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 1 },
+    bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
+    bubbleTime: { fontSize: 10 },
+    reactionButtonInside: { padding: 2  },
     inputWrapper: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: 12, borderTopWidth: 1 },
     chatInput: { flex: 1, maxHeight: 100, borderRadius: 22, paddingHorizontal: 18, marginHorizontal: 10, fontSize: 16, paddingTop: 10, paddingBottom: 10 },
     iconBtn: { padding: 5 },
@@ -1234,92 +1319,20 @@ const styles = StyleSheet.create({
     imageViewerOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     imageViewerCloseBtn: { position: 'absolute', top: 50, right: 25, zIndex: 100 },
     imageViewerImage: { width: '100%', height: '80%' },
-
-    // Reaction Styles
-    // Reaction Styles - Replace the existing reaction styles with these
-reactionContainer: {
-    marginTop: 1,
-    marginBottom: 2,
-    width: '100%',
-},
-reactionWrapper: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    maxWidth: '80%',
-},
-reactionBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    gap: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-},
-reactionBadgeActive: {
-    backgroundColor: 'rgba(99, 102, 241, 0.15)',
-    borderColor: '#6366f1',
-},
-reactionEmoji: {
-    fontSize: 14,
-},
-reactionCount: {
-    fontSize: 11,
-    fontWeight: '500',
-},
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    },
-    pickerContainer: {
-        zIndex: 1000,
-    },
-    gradientContainer: {
-        borderRadius: 20,
-        padding: 12,
-        position: 'relative',
-    },
-    emojiGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        width: 220,
-        gap: 8,
-    },
-    emojiButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    },
-    emojiButtonSelected: {
-        backgroundColor: 'rgba(99, 102, 241, 0.3)',
-        transform: [{ scale: 1.1 }],
-    },
-    emojiText: {
-        fontSize: 28,
-    },
-    triangle: {
-        position: 'absolute',
-        bottom: -10,
-        alignSelf: 'center',
-        width: 0,
-        height: 0,
-        backgroundColor: 'transparent',
-        borderStyle: 'solid',
-        borderLeftWidth: 10,
-        borderRightWidth: 10,
-        borderTopWidth: 10,
-        borderLeftColor: 'transparent',
-        borderRightColor: 'transparent',
-        borderTopColor: '#1e293b',
-    },
-    
+    reactionContainer: { marginTop: 1, marginBottom: 2, width: '100%' },
+    reactionWrapper: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, maxWidth: '80%' },
+    reactionBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.05)', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3, gap: 4, borderWidth: 1, borderColor: 'rgba(0, 0, 0, 0.1)' },
+    reactionBadgeActive: { backgroundColor: 'rgba(99, 102, 241, 0.15)', borderColor: '#6366f1' },
+    reactionEmoji: { fontSize: 14 },
+    reactionCount: { fontSize: 11, fontWeight: '500' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.3)' },
+    pickerContainer: { zIndex: 1000 },
+    gradientContainer: { borderRadius: 20, padding: 12, position: 'relative' },
+    emojiGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', width: 220, gap: 8 },
+    emojiButton: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.1)' },
+    emojiButtonSelected: { backgroundColor: 'rgba(99, 102, 241, 0.3)', transform: [{ scale: 1.1 }] },
+    emojiText: { fontSize: 28 },
+    triangle: { position: 'absolute', bottom: -10, alignSelf: 'center', width: 0, height: 0, backgroundColor: 'transparent', borderStyle: 'solid', borderLeftWidth: 10, borderRightWidth: 10, borderTopWidth: 10, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: '#1e293b' },
 });
 
 export default Messages;
