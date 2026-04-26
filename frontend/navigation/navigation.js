@@ -10,7 +10,7 @@ import Login from "../screens/Auths/Login";
 import OtpVerification from "../screens/Auths/OtpVerification";
 import ResetPassword from "../screens/Auths/ResetPassword";
 import Signup from "../screens/Auths/Signup";
-import CreateEcho from "../screens/Home/CreateEcho";
+import CreateEchoModal from "../screens/Home/CreateEchoModal";
 import Intro from "../screens/Intro";
 import MainTabs from "../screens/MainTabs";
 import About from "../screens/Profile/About";
@@ -85,7 +85,7 @@ const HomeStackNavigator = () => {
             {isAuthenticated ? (
                 < >
                     <Stack.Screen name="MainTabsRoot" component={MainTabs} />
-                    <Stack.Screen name="Create" component={CreateEcho} options={{ animation: 'slide_from_bottom', presentation: 'modal' }} />
+                    <Stack.Screen name="CreateEchoModal" component={CreateEchoModal} options={{ animation: 'slide_from_bottom', presentation: 'modal' }} />
                     <Stack.Screen name="PrivacySecurity" component={PrivacySecurity} />
 
                     <Stack.Screen name="SecurityOtpVerify" component={OtpVerification} />
