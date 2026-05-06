@@ -135,7 +135,7 @@ const About = ({ navigation }) => {
                     ]}
                 >
                     <Text style={[styles.appName, { color: colors.textMain }]}>Echo Stamp</Text>
-                    <Text style={[styles.versionText, { color: colors.textSecondary }]}>Version 1.3.0</Text>
+                    <Text style={[styles.versionText, { color: colors.textSecondary }]}>Version 1.5.0</Text>
                     <View style={styles.missionDivider} />
                     <Text style={[styles.missionText, { color: colors.textSecondary }]}>
                         Every place has a story. Every story deserves to be stamped in time.

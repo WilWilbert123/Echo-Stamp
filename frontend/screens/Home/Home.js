@@ -10,6 +10,8 @@ import {
   FlatList,
   Image,
   InteractionManager,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -19,6 +21,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
@@ -43,6 +46,29 @@ import { getRelativeTime } from '../EchoStamp/tabs/Feed/utils/feedUtils';
 import CreateEchoModal from '../Home/CreateEchoModal';
 
 const { width, height } = Dimensions.get('window');
+
+// Custom hook to track keyboard height
+const useKeyboard = () => {
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => setKeyboardHeight(e.endCoordinates.height)
+    );
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardHeight(0)
+    );
+
+    return () => {
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
+    };
+  }, []);
+
+  return keyboardHeight;
+};
 
 // Memoized Lazy Lottie Component
 const LazyLottie = React.memo(({ source, isVisible, style }) => {
@@ -198,6 +224,7 @@ const Home = () => {
   const { isDark, colors, toggleTheme } = useTheme();
   const { user } = useSelector((state) => state.auth);
   const { list, status } = useSelector((state) => state.echoes);
+  const keyboardHeight = useKeyboard();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -207,7 +234,7 @@ const Home = () => {
   const [replyText, setReplyText] = useState('');
   const [activeCommentId, setActiveCommentId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [createModalVisible, setCreateModalVisible] = useState(false); // State for create modal
+  const [createModalVisible, setCreateModalVisible] = useState(false);
 
   const activeEcho = useMemo(() => {
     return list.find(e => e._id === selectedEchoId);
@@ -267,6 +294,10 @@ const Home = () => {
         }
       })).unwrap();
       setCommentText('');
+      // Scroll to bottom after adding comment
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     } finally {
       setIsSubmitting(false);
     }
@@ -307,11 +338,10 @@ const Home = () => {
   }, [dispatch]);
 
   const handleCreatePress = useCallback(() => {
-    setCreateModalVisible(true); // Open modal instead of navigating
+    setCreateModalVisible(true);
   }, []);
 
   const handleCreateSuccess = useCallback(() => {
-    // Refresh the feed after creating a new echo
     dispatch(getGlobalEchoesAsync());
   }, [dispatch]);
 
@@ -328,6 +358,8 @@ const Home = () => {
   ), [isDark, colors, user, handleLike, handleComment, handleDelete]);
 
   const keyExtractor = useCallback((item) => item._id, []);
+
+  const flatListRef = React.useRef(null);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background[0] }]}>
@@ -436,80 +468,116 @@ const Home = () => {
           onSuccess={handleCreateSuccess}
         />
 
-        {/* Comment Modal */}
+        {/* Comment Modal - FIXED WITH KEYBOARD HANDLING */}
         <Modal 
           visible={commentModalVisible} 
           animationType="slide" 
           transparent={true}
-          onRequestClose={() => setCommentModalVisible(false)}
+          onRequestClose={() => {
+            Keyboard.dismiss();
+            setCommentModalVisible(false);
+          }}
         >
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalContent, { backgroundColor: colors.background[0], borderColor: colors.glassBorder }]}>
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: colors.textMain }]}>Comments</Text>
-                <TouchableOpacity onPress={() => setCommentModalVisible(false)}>
-                  <Ionicons name="close" size={24} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-
-              <FlatList
-                data={activeEcho?.comments || []}
-                keyExtractor={(item) => item._id}
-                style={{ flex: 1 }}
-                renderItem={({ item }) => (
-                  <View style={styles.commentItem}>
-                    <View style={styles.commentUserRow}>
-                      <Image source={{ uri: item.profilePicture }} style={styles.commentAvatar} />
-                      <View>
-                        <Text style={[styles.commentUsername, { color: colors.textMain }]}>{item.username}</Text>
-                        <Text style={[styles.commentText, { color: colors.textSecondary }]}>{item.text}</Text>
-                      </View>
-                    </View>
-                    
-                    {item.replies?.map((reply, idx) => (
-                      <View key={idx} style={styles.replyItem}>
-                        <Text style={[styles.commentUsername, { color: colors.textMain, fontSize: 12 }]}>{reply.username}</Text>
-                        <Text style={[styles.commentText, { color: colors.textSecondary, fontSize: 13 }]}>{reply.text}</Text>
-                      </View>
-                    ))}
-
-                    {activeCommentId === item._id ? (
-                      <View style={styles.replyInputRow}>
-                        <TextInput
-                          style={[styles.replyInput, { color: colors.textMain, borderColor: colors.glassBorder }]}
-                          placeholder="Write a reply..."
-                          placeholderTextColor={colors.textSecondary}
-                          value={replyText}
-                          onChangeText={setReplyText}
-                          autoFocus
-                        />
-                        <TouchableOpacity onPress={() => handleReply(item._id)}>
-                          <Ionicons name="send" size={20} color={colors.primary} />
-                        </TouchableOpacity>
-                      </View>
-                    ) : (
-                      <TouchableOpacity onPress={() => setActiveCommentId(item._id)}>
-                        <Text style={{ fontSize: 12, color: colors.primary, marginLeft: 50, marginTop: 5 }}>Reply</Text>
-                      </TouchableOpacity>
-                    )}
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalKeyboardView}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+          >
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+              <View style={styles.modalOverlay}>
+                <View style={[
+                  styles.modalContent, 
+                  { 
+                    backgroundColor: colors.background[0], 
+                    borderColor: colors.glassBorder,
+                    height: keyboardHeight > 0 ? height * 0.9 : '80%'
+                  }
+                ]}>
+                  <View style={styles.modalHeader}>
+                    <Text style={[styles.modalTitle, { color: colors.textMain }]}>Comments</Text>
+                    <TouchableOpacity onPress={() => {
+                      Keyboard.dismiss();
+                      setCommentModalVisible(false);
+                    }}>
+                      <Ionicons name="close" size={24} color={colors.textSecondary} />
+                    </TouchableOpacity>
                   </View>
-                )}
-              />
 
-              <View style={[styles.commentInputRow, { borderTopColor: colors.glassBorder }]}>
-                <TextInput
-                  style={[styles.commentInput, { color: colors.textMain, backgroundColor: colors.glass }]}
-                  placeholder="Add a comment..."
-                  placeholderTextColor={colors.textSecondary}
-                  value={commentText}
-                  onChangeText={setCommentText}
-                />
-                <TouchableOpacity onPress={handleAddComment} disabled={isSubmitting}>
-                  <Ionicons name="send" size={24} color={colors.primary} />
-                </TouchableOpacity>
+                  <FlatList
+                    ref={flatListRef}
+                    data={activeEcho?.comments || []}
+                    keyExtractor={(item) => item._id}
+                    style={styles.commentsList}
+                    keyboardDismissMode="interactive"
+                    keyboardShouldPersistTaps="handled"
+                    onContentSizeChange={() => {
+                      if (keyboardHeight > 0) {
+                        flatListRef.current?.scrollToEnd({ animated: true });
+                      }
+                    }}
+                    renderItem={({ item }) => (
+                      <View style={styles.commentItem}>
+                        <View style={styles.commentUserRow}>
+                          <Image source={{ uri: item.profilePicture }} style={styles.commentAvatar} />
+                          <View style={styles.commentContent}>
+                            <Text style={[styles.commentUsername, { color: colors.textMain }]}>{item.username}</Text>
+                            <Text style={[styles.commentText, { color: colors.textSecondary }]}>{item.text}</Text>
+                          </View>
+                        </View>
+                        
+                        {item.replies?.map((reply, idx) => (
+                          <View key={idx} style={styles.replyItem}>
+                            <Text style={[styles.commentUsername, { color: colors.textMain, fontSize: 12 }]}>{reply.username}</Text>
+                            <Text style={[styles.commentText, { color: colors.textSecondary, fontSize: 13 }]}>{reply.text}</Text>
+                          </View>
+                        ))}
+
+                        {activeCommentId === item._id ? (
+                          <View style={styles.replyInputRow}>
+                            <TextInput
+                              style={[styles.replyInput, { color: colors.textMain, borderColor: colors.glassBorder }]}
+                              placeholder="Write a reply..."
+                              placeholderTextColor={colors.textSecondary}
+                              value={replyText}
+                              onChangeText={setReplyText}
+                              autoFocus
+                            />
+                            <TouchableOpacity onPress={() => handleReply(item._id)}>
+                              <Ionicons name="send" size={20} color={colors.primary} />
+                            </TouchableOpacity>
+                          </View>
+                        ) : (
+                          <TouchableOpacity 
+                            onPress={() => setActiveCommentId(item._id)}
+                            style={styles.replyButton}>
+                            <Text style={{ fontSize: 12, color: colors.primary }}>Reply</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
+                    ListFooterComponent={<View style={{ height: 20 }} />}
+                  />
+
+                  <View style={[styles.commentInputRow, { borderTopColor: colors.glassBorder }]}>
+                    <TextInput
+                      style={[styles.commentInput, { color: colors.textMain, backgroundColor: colors.glass }]}
+                      placeholder="Add a comment..."
+                      placeholderTextColor={colors.textSecondary}
+                      value={commentText}
+                      onChangeText={setCommentText}
+                      multiline
+                    />
+                    <TouchableOpacity 
+                      onPress={handleAddComment} 
+                      disabled={isSubmitting}
+                      style={styles.sendButton}>
+                      <Ionicons name="send" size={24} color={colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
-            </View>
-          </View>
+            </TouchableWithoutFeedback>
+          </KeyboardAvoidingView>
         </Modal>
       </View>
     </View>
@@ -562,7 +630,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
-    
   },
   deleteAction: { width: 90, height: '88%', marginBottom: 16 },
   deleteGradient: { flex: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 32, marginLeft: 10 },
@@ -570,20 +637,38 @@ const styles = StyleSheet.create({
   emptyContainer: { alignItems: 'center', marginTop: 80 },
   emptyLottie: { width: 300, height: 300 },
   emptyText: { marginTop: -20, fontSize: 16, fontWeight: '700', opacity: 0.5 },
+  modalKeyboardView: { flex: 1 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { height: '80%', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, borderWidth: 1 },
+  modalContent: { 
+    borderTopLeftRadius: 30, 
+    borderTopRightRadius: 30, 
+    padding: 20, 
+    borderWidth: 1,
+    justifyContent: 'space-between'
+  },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   modalTitle: { fontSize: 20, fontWeight: '800' },
+  commentsList: { flex: 1 },
   commentItem: { marginBottom: 20 },
   commentUserRow: { flexDirection: 'row', gap: 12 },
   commentAvatar: { width: 36, height: 36, borderRadius: 18 },
   commentUsername: { fontWeight: '700', fontSize: 14 },
-  commentText: { fontSize: 14 },
-  commentInputRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 15, borderTopWidth: 1 },
+  commentText: { fontSize: 14, flex: 1 },
+  commentContent: { flex: 1 },
+  commentInputRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 12, 
+    paddingTop: 15, 
+    borderTopWidth: 1,
+    paddingBottom: Platform.OS === 'ios' ? 10 : 5
+  },
   commentInput: { flex: 1, height: 45, borderRadius: 22, paddingHorizontal: 15 },
   replyItem: { marginLeft: 50, marginTop: 10, paddingLeft: 10, borderLeftWidth: 1, borderLeftColor: '#eee' },
   replyInputRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginLeft: 50, marginTop: 10 },
   replyInput: { flex: 1, fontSize: 13, borderBottomWidth: 1, paddingVertical: 4 },
+  replyButton: { marginLeft: 50, marginTop: 5 },
+  sendButton: { padding: 5 },
 });
 
 export default Home;
