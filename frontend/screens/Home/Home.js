@@ -508,6 +508,7 @@ const Home = () => {
                     data={activeEcho?.comments || []}
                     keyExtractor={(item) => item._id}
                     style={styles.commentsList}
+                    showsVerticalScrollIndicator={false}
                     keyboardDismissMode="interactive"
                     keyboardShouldPersistTaps="handled"
                     onContentSizeChange={() => {
