@@ -83,7 +83,7 @@ const Help = ({ navigation }) => {
         { 
             id: 1, 
             question: "How do I create an Echo?", 
-            answer: "Navigate to the Map and tap the '+' button or long-press any location to drop a memory stamp. You can add photos, notes, and tags to make it special.",
+            answer: "Navigate to the atlas map or Feed '+' button or long-press any location to drop a memory stamp. You can add photos, notes, and tags to make it special.",
             icon: "create-outline"
         },
         { 
@@ -101,13 +101,13 @@ const Help = ({ navigation }) => {
         { 
             id: 4, 
             question: "How does the AI Assistant work?", 
-            answer: "The Echo AI helps you find specific memories using natural language. Just ask 'Show me my beach memories' or 'Find stamps from last summer' and it will smartly filter your Echoes.",
+            answer: "The Echo AI helps you find specific memories using natural language. Just ask 'Current Weather ?' or 'Current Location ?' and it will smartly answer.",
             icon: "bulb-outline"
         },
         { 
             id: 5, 
             question: "Can I edit or delete an Echo?", 
-            answer: "Yes! Tap on any Echo in your collection, then use the edit or delete buttons. You can update photos, notes, or remove it entirely.",
+            answer: "Yes! Tap on any Echo in your collection, then use the delete buttons.",
             icon: "create-outline"
         },
         { 
