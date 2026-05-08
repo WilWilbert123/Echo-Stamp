@@ -26,6 +26,7 @@ export const useAtlas = () => {
   const route = useRoute();
   const mapRef = useRef(null);
   const voiceModuleRef = useRef(null);
+  const hasHandledZoom = useRef(false);
 
   // Redux State
   const { list } = useSelector((state) => state.journals);
@@ -80,21 +81,16 @@ export const useAtlas = () => {
 
   // Function to show both temporary animation and persistent marker
   const triggerPinDropAnimation = (coords) => {
-    // Set persistent marker (this stays on map)
     setPersistentMarker(coords);
     setShowPersistentMarker(true);
-    
-    // Show temporary animation (this will auto-hide)
     setPinDropCoordinates(coords);
     setShowPinDropAnimation(true);
     
-    // Auto-hide animation after 1.5 seconds, but keep persistent marker
     setTimeout(() => {
       setShowPinDropAnimation(false);
     }, 1500);
   };
 
-  // Function to clear persistent marker
   const clearPersistentMarker = () => {
     setShowPersistentMarker(false);
     setPersistentMarker(null);
@@ -116,20 +112,26 @@ export const useAtlas = () => {
     }
   }, [userLocation, showDirections]);
 
-  // Handle Incoming Route Params  
+  // Handle Incoming Route Params - MODIFIED: Only zoom, no auto-navigation
   useEffect(() => {
     const params = route.params;
     if (!params) return;
 
-    if (params.zoomTo) {
-      const { latitude, longitude, journalId, title, address, image, autoNavigate } = params.zoomTo;
+    // Handle zoomTo parameter (from Feed navigation)
+    if (params.zoomTo && !hasHandledZoom.current) {
+      const { latitude, longitude, journalId, title, address, image, autoNavigate, autoStreetView } = params.zoomTo;
+      
+      // Mark as handled to prevent duplicate zooms
+      hasHandledZoom.current = true;
+      
       const zoomRegion = {
         latitude,
         longitude,
-        latitudeDelta: 0.005,
-        longitudeDelta: 0.005,
+        latitudeDelta: 0.01,  // Slightly zoomed in but not too much
+        longitudeDelta: 0.01,
       };
 
+      // Set search result to show the pin info
       setSearchResult({
         name: title || "Echo Location",
         address: address || "Pinned Location",
@@ -138,22 +140,31 @@ export const useAtlas = () => {
       });
 
       setDestination({ latitude, longitude });
-      setSelectedJournal({
-        _id: journalId,
-        location: { lat: latitude, lng: longitude }
-      });
+      
+      // Find and set the full journal if available
+      const fullJournal = list.find(j => j._id === journalId);
+      if (fullJournal) {
+        setSelectedJournal(fullJournal);
+      }
 
-      // Trigger pin drop animation and persistent marker
+      // Trigger pin drop animation
       triggerPinDropAnimation({ latitude, longitude });
 
+      // ONLY ZOOM THE MAP - no auto-navigation to directions
       setTimeout(() => {
-        mapRef.current?.animateToRegion(zoomRegion, 1500);
-        if (autoNavigate) setShowDirections(true);
+        mapRef.current?.animateToRegion(zoomRegion, 1000);
       }, 500);
 
+      // Reset the flag after zoom is complete
+      setTimeout(() => {
+        hasHandledZoom.current = false;
+      }, 2000);
+
+      // Clear the params to prevent re-triggering
       navigation.setParams({ zoomTo: undefined });
     }
 
+    // Handle other params (location, searchLocation) - keep as is
     if (params.location || params.searchLocation) {
       const incoming = params.searchLocation || {
         coords: params.location,
@@ -171,7 +182,6 @@ export const useAtlas = () => {
         image: image || `https://maps.googleapis.com/maps/api/streetview?size=600x300&location=${coords.latitude},${coords.longitude}&key=${GOOGLE_MAPS_APIKEY}`
       });
 
-      // Trigger pin drop animation and persistent marker
       triggerPinDropAnimation(coords);
 
       setTimeout(() => {
@@ -199,7 +209,7 @@ export const useAtlas = () => {
         autoShowDirections: undefined
       });
     }
-  }, [route.params]);
+  }, [route.params, list]);
 
   // Auto-center on user location once when first acquired
   useEffect(() => {
@@ -300,7 +310,6 @@ export const useAtlas = () => {
           image: imageUrl
         });
 
-        // Clear previous marker and show new one
         clearPersistentMarker();
         triggerPinDropAnimation(coords);
 
@@ -321,7 +330,6 @@ export const useAtlas = () => {
     }
   };
 
-  // Keep a ref to handleSearch to use in Voice listeners safely
   const handleSearchRef = useRef(handleSearch);
   handleSearchRef.current = handleSearch;
 
@@ -489,14 +497,11 @@ export const useAtlas = () => {
     setDestination(coords);
     setNavigationOrigin(userLocation);
     setShowDirections(true);
-    // Show marker at destination when navigating
     triggerPinDropAnimation(coords);
   };
 
   return {
-    // Refs
     mapRef,
-    // States
     list, user, modalVisible, setModalVisible, viewerVisible, setViewerVisible,
     selectedJournal, setSelectedJournal, tempCoords, setTempCoords,
     activeMediaIndex, setActiveMediaIndex, searchQuery, setSearchQuery,
@@ -509,19 +514,10 @@ export const useAtlas = () => {
     shareModalVisible, setShareModalVisible, allUsers, selectedUserIds,
     userSearchQuery, setUserSearchQuery, activeShares, startNavigation,
     isListening,
-    // Animation and Persistent Marker States - ADD THESE!
-    showPinDropAnimation, 
-    setShowPinDropAnimation, // IMPORTANT: Add this setter
-    pinDropCoordinates, 
-    persistentMarker, 
-    showPersistentMarker,
-    triggerPinDropAnimation, 
-    clearPersistentMarker,
-    // Methods
+    showPinDropAnimation, setShowPinDropAnimation, pinDropCoordinates, 
+    persistentMarker, showPersistentMarker, triggerPinDropAnimation, clearPersistentMarker,
     handleSearch, pickMedia, handleSave, handleDeleteJournal,
-    handleRemoveSingleSavedMedia, cancelNavigation, openShareModal,
-    toggleUserSelection,
-    // Constants/Config
+    handleRemoveSingleSavedMedia, cancelNavigation, openShareModal, toggleUserSelection,
     GOOGLE_MAPS_APIKEY, width
   };
 };

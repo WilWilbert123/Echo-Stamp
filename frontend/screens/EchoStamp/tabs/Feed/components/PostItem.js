@@ -29,15 +29,17 @@ const PostItem = memo(({ item, colors, onOpenGallery, onOpenComments, isVisible 
     };
 
     const handleViewEcho = () => {
+        // Navigate to Atlas with zoomTo but WITHOUT autoNavigate
+        // This will just show the pin/marker on the map without auto-zooming or navigating
         navigation.navigate('Atlas', {
             zoomTo: {
-                latitude: item.location.lat,
-                longitude: item.location.lng,
+                latitude: Number(item.location.lat),
+                longitude: Number(item.location.lng),
                 journalId: item._id,
                 title: item.title,
                 address: item.location.address || "Pinned Location",
                 image: item.media?.[0] || null,
-                autoNavigate: true,
+                autoNavigate: false,  // IMPORTANT: Set to false
                 autoStreetView: false
             }
         });
