@@ -24,7 +24,6 @@ export const EMOTION_ASSETS = {
   Thinking: require('../assets/Thinking.json'),
   Skating: require('../assets/Orangeskating.json'),
   Walking: require('../assets/WalkingOrange.json'),
-  // New Assets from Screenshot
   Dragonflying: require('../assets/Dragonflying.json'),
   WaveyBirdie: require('../assets/WaveyBirdie.json'),
   Dogparty: require('../assets/dogparty.json'),
@@ -43,7 +42,6 @@ export const EMOTION_ASSETS = {
   AngryEmoji: require('../assets/Angryemoji.json'),
   CatMarkLoading: require('../assets/catMarkloading.json'),
   CatInBox: require('../assets/CatinBox.json'),
-  // New animations from image list
   Reindeer: require('../assets/Reindeer.json'),
   NosignalTV: require('../assets/NosignalTV.json'),
   OnTheWay: require('../assets/OnTheWay.json'),
@@ -73,6 +71,16 @@ export const EMOTION_ASSETS = {
   HappyBirthday: require('../assets/HappyBirthday.json'),
   SpookySpider: require('../assets/SpookySpider.json'),
   WelcomeAnimation: require('../assets/WelcomeAnimation.json'),
+
+  // --- New Weather Assets ---
+  WeatherWindy: require('../assets/Weatherwindy.json'),
+  WeatherSnow: require('../assets/Weathersnow.json'),
+  Sunny: require('../assets/sunny.json'),
+  WeatherCloudy: require('../assets/Weathercloudy.json'),
+  WeatherNight: require('../assets/Weathernight.json'),
+  WeatherShower: require('../assets/Weathershower.json'),
+  WeatherStorm: require('../assets/Weatherstorm.json'),
+  RainyIcon: require('../assets/rainyicon.json'),
 };
 
 export const EMOTION_CONFIG = [
@@ -99,7 +107,6 @@ export const EMOTION_CONFIG = [
   { label: 'Thinking', value: 'Thinking', assetKey: 'Thinking' },
   { label: 'Skating', value: 'Skating', assetKey: 'Skating' },
   { label: 'Walking', value: 'Walking', assetKey: 'Walking' },
-  // New Configs
   { label: 'Dragon', value: 'Dragonflying', assetKey: 'Dragonflying' },
   { label: 'Birdie', value: 'WaveyBirdie', assetKey: 'WaveyBirdie' },
   { label: 'Dog Party', value: 'Dogparty', assetKey: 'Dogparty' },
@@ -118,7 +125,6 @@ export const EMOTION_CONFIG = [
   { label: 'Angry', value: 'AngryEmoji', assetKey: 'AngryEmoji' },
   { label: 'Cat Loading', value: 'CatMarkLoading', assetKey: 'CatMarkLoading' },
   { label: 'Cat in Box', value: 'CatInBox', assetKey: 'CatInBox' },
-  // New Configs from image list
   { label: 'Reindeer', value: 'Reindeer', assetKey: 'Reindeer' },
   { label: 'No Signal TV', value: 'NosignalTV', assetKey: 'NosignalTV' },
   { label: 'On The Way', value: 'OnTheWay', assetKey: 'OnTheWay' },
@@ -140,7 +146,6 @@ export const EMOTION_CONFIG = [
   { label: 'Thumbs Up Birdie', value: 'Thumbsupbirdie', assetKey: 'Thumbsupbirdie' },
   { label: 'Love', value: 'Love', assetKey: 'Love' },
   { label: 'The Zombie In Me', value: 'Thezombieinme', assetKey: 'Thezombieinme' },
- 
   { label: 'Credit Card', value: 'CreditCard', assetKey: 'CreditCard' },
   { label: 'Ghosting', value: 'Ghosting', assetKey: 'Ghosting' },
   { label: 'Merry Christmas', value: 'MerryChristmas', assetKey: 'MerryChristmas' },
@@ -148,4 +153,14 @@ export const EMOTION_CONFIG = [
   { label: 'Happy Birthday', value: 'HappyBirthday', assetKey: 'HappyBirthday' },
   { label: 'Spooky Spider', value: 'SpookySpider', assetKey: 'SpookySpider' },
   { label: 'Hello ', value: 'WelcomeAnimation', assetKey: 'WelcomeAnimation' },
+
+  // --- New Weather Configs ---
+  { label: 'Windy', value: 'Windy', assetKey: 'WeatherWindy' },
+  { label: 'Snow', value: 'Snow', assetKey: 'WeatherSnow' },
+  { label: 'Sunny', value: 'Sunny', assetKey: 'Sunny' },
+  { label: 'Cloudy', value: 'Cloudy', assetKey: 'WeatherCloudy' },
+  { label: 'Night', value: 'Night', assetKey: 'WeatherNight' },
+  { label: 'Shower', value: 'Shower', assetKey: 'WeatherShower' },
+  { label: 'Storm', value: 'Storm', assetKey: 'WeatherStorm' },
+  { label: 'Rainy', value: 'Rainy', assetKey: 'RainyIcon' },
 ];

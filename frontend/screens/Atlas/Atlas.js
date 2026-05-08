@@ -13,6 +13,8 @@ import { useTheme } from '../../context/ThemeContext';
 
 import styles, { darkMapStyle } from '../Atlas/Atlas.styles';
 
+import Satellite from '../../components/Satellite';
+import Weather from '../../components/Weather';
 import AtlasMarker from './components/AtlasMarker';
 import { MediaViewerModal, PinMemoryModal, ShareLocationModal } from './components/AtlasModals';
 import AtlasSearchBar from './components/AtlasSearchBar';
@@ -25,11 +27,12 @@ const Atlas = () => {
   const { colors, isDark } = useTheme();
   const route = useRoute();
   const navigation = useNavigation();
-  
+
   // State for route coordinates to use with Polyline (no blinking!)
   const [routePoints, setRoutePoints] = useState([]);
   const [isRouteLoaded, setIsRouteLoaded] = useState(false);
-
+  const [mapType, setMapType] = useState('standard');
+  
   const travelModes = [
     { key: 'driving', icon: 'car', label: 'Car' },
     { key: 'walking', icon: 'walk', label: 'Walk' },
@@ -59,7 +62,7 @@ const Atlas = () => {
       isNavigatingFromSearch.current = false;
       hasManualZoomed.current = false;
       routeCalculated.current = false;
-      setRoutePoints([]); // Clear route points
+      setRoutePoints([]);
       setIsRouteLoaded(false);
     }
   }, [atlas.showDirections]);
@@ -108,13 +111,13 @@ const Atlas = () => {
       isNavigatingFromSearch.current = true;
       hasManualZoomed.current = false;
       routeCalculated.current = false;
-      setRoutePoints([]); // Clear previous route
+      setRoutePoints([]);
       setIsRouteLoaded(false);
-      
+
       atlas.setDestination(atlas.searchResult.coords);
       atlas.setShowDirections(true);
       atlas.triggerPinDropAnimation(atlas.searchResult.coords);
-      
+
       setTimeout(() => {
         if (atlas.mapRef.current && atlas.userLocation && atlas.searchResult && !hasManualZoomed.current) {
           const coordinates = [atlas.userLocation, atlas.searchResult.coords];
@@ -143,12 +146,12 @@ const Atlas = () => {
       {/* Stamping Instruction Overlay */}
       {route.params?.mode === 'stamping' && !atlas.modalVisible && !atlas.searchResult && (
         <View style={[
-            styles.stampingOverlay, 
-            { bottom: insets.bottom + 100, backgroundColor: colors.primary }
+          styles.stampingOverlay,
+          { bottom: insets.bottom + 100, backgroundColor: colors.primary }
         ]}>
           <View style={{ flex: 1, paddingRight: 10 }}>
             <Text style={{ color: 'white', fontWeight: '800', fontSize: 14 }}>
-               Search a location and click the PIN button or long-press the map.
+              Search a location and click the PIN button or long-press the map.
             </Text>
           </View>
           <TouchableOpacity onPress={() => navigation.setParams({ mode: null })}>
@@ -169,7 +172,9 @@ const Atlas = () => {
         />
       )}
 
-      {/* Share Location FAB */}
+      {/* ========== FLOATING ACTION BUTTONS (Left Side) ========== */}
+
+      {/* 1. Share Location FAB - Top */}
       <TouchableOpacity
         style={[styles.shareFab, { top: insets.top + 90, backgroundColor: colors.background[1], borderColor: colors.glassBorder, borderWidth: 1 }]}
         onPress={atlas.openShareModal}
@@ -181,21 +186,22 @@ const Atlas = () => {
         />
       </TouchableOpacity>
 
-      {/* Clear Marker FAB */}
-      {atlas.showPersistentMarker && !atlas.showDirections && (
-        <TouchableOpacity
-          style={[styles.clearMarkerFab, { top: insets.top + 150, right: 20, backgroundColor: colors.background[1] }]}
-          onPress={handleClearPersistentMarker}
-        >
-          <Ionicons name="trash-outline" size={20} color={colors.primary} />
-          <Text style={{ color: colors.textMain, marginLeft: 8, fontSize: 12 }}>Clear Marker</Text>
-        </TouchableOpacity>
-      )}
+      {/* 2. Weather FAB - Below Share Location */}
+      <Weather userLocation={atlas.userLocation} colors={colors} />
 
+      {/* 3. Satellite FAB - Below Weather */}
+      <Satellite 
+        mapRef={atlas.mapRef} 
+        colors={colors} 
+        onMapTypeChange={setMapType} 
+      />
+
+      {/* Map View */}
       <MapView
         ref={atlas.mapRef}
         provider={PROVIDER_GOOGLE}
         style={styles.map}
+        mapType={mapType}
         initialRegion={{
           latitude: 14.5995,
           longitude: 120.9842,
@@ -217,7 +223,7 @@ const Atlas = () => {
       >
         {/* Temporary Drop Animation */}
         {atlas.showPinDropAnimation && atlas.pinDropCoordinates && (
-          <Marker 
+          <Marker
             coordinate={atlas.pinDropCoordinates}
             anchor={{ x: 0.5, y: 0.5 }}
             tracksViewChanges={true}
@@ -238,7 +244,7 @@ const Atlas = () => {
 
         {/* Persistent Marker */}
         {atlas.showPersistentMarker && atlas.persistentMarker && (
-          <Marker 
+          <Marker
             coordinate={atlas.persistentMarker}
             anchor={{ x: 0.5, y: 0.5 }}
             tracksViewChanges={true}
@@ -267,13 +273,6 @@ const Atlas = () => {
           </Marker>
         )}
 
-        {/* 
-          ========================================
-          FIXED: Use Polyline instead of MapViewDirections for main route
-          This eliminates blinking completely!
-          ========================================
-        */}
-        
         {/* Main Navigation Route - Using Polyline (NO BLINKING!) */}
         {atlas.showDirections && atlas.routeCoordinates && atlas.routeCoordinates.length > 0 && (
           <Polyline
@@ -286,19 +285,19 @@ const Atlas = () => {
             zIndex={10}
           />
         )}
-        
+
         {/* MapViewDirections ONLY for fetching/updating route (hidden) */}
         {atlas.showDirections && atlas.userLocation && atlas.destination && (
           <MapViewDirections
             origin={atlas.userLocation}
             destination={atlas.destination}
             apikey={atlas.GOOGLE_MAPS_APIKEY}
-            strokeWidth={0} // Hidden! Just for fetching data
+            strokeWidth={0}
             mode={atlas.travelMode === 'bicycling' ? 'driving' : atlas.travelMode}
             onReady={(result) => {
               if (!routeCalculated.current) {
                 routeCalculated.current = true;
-                
+
                 let coordinates = [];
                 if (result.routes && result.routes.length > 0) {
                   coordinates = result.routes[0].coordinates;
@@ -309,13 +308,11 @@ const Atlas = () => {
                   atlas.setEstimatedTime(result.duration);
                   atlas.setAlternativeRoutes([]);
                 }
-                
-                // Update route coordinates for Polyline
+
                 if (coordinates.length > 0) {
                   atlas.setRouteCoordinates(coordinates);
                 }
 
-                // Only auto-zoom if needed
                 if (!hasCenteredRoute.current && !isNavigatingFromSearch.current && !hasManualZoomed.current) {
                   atlas.mapRef.current?.fitToCoordinates(coordinates, {
                     edgePadding: { top: 100, right: 50, bottom: 300, left: 50 },
@@ -323,7 +320,7 @@ const Atlas = () => {
                   });
                   hasCenteredRoute.current = true;
                 }
-                
+
                 setTimeout(() => {
                   routeCalculated.current = false;
                 }, 500);
@@ -331,17 +328,17 @@ const Atlas = () => {
             }}
           />
         )}
-        
-        {/* Alternative routes - using MapViewDirections (optional, less critical) */}
+
+        {/* Alternative routes */}
         {atlas.alternativeRoutes.map((route, index) => (
-          <MapViewDirections 
-            key={`alt-route-${index}`} 
-            origin={atlas.userLocation} 
+          <MapViewDirections
+            key={`alt-route-${index}`}
+            origin={atlas.userLocation}
             destination={atlas.destination}
-            apikey={atlas.GOOGLE_MAPS_APIKEY} 
+            apikey={atlas.GOOGLE_MAPS_APIKEY}
             strokeWidth={4}
             strokeColor={`${colors.primary}80`}
-            coordinates={route.coordinates} 
+            coordinates={route.coordinates}
             mode={atlas.travelMode === 'bicycling' ? 'driving' : atlas.travelMode}
           />
         ))}
@@ -459,7 +456,6 @@ const Atlas = () => {
                   style={[styles.travelModeButton, atlas.travelMode === mode.key && { backgroundColor: colors.primary }]}
                   onPress={() => {
                     atlas.setTravelMode(mode.key);
-                    // Clear route coordinates to force recalculation
                     atlas.setRouteCoordinates([]);
                     routeCalculated.current = false;
                     if (!atlas.showDirections && atlas.searchResult) {
@@ -467,10 +463,10 @@ const Atlas = () => {
                     }
                   }}
                 >
-                  <Ionicons 
-                    name={mode.icon} 
-                    size={20} 
-                    color={atlas.travelMode === mode.key ? '#FFF' : (isDark ? '#FFFFFF' : '#000000')} 
+                  <Ionicons
+                    name={mode.icon}
+                    size={20}
+                    color={atlas.travelMode === mode.key ? '#FFF' : (isDark ? '#FFFFFF' : '#000000')}
                   />
                   <Text style={[styles.travelModeButtonText, { color: atlas.travelMode === mode.key ? '#FFF' : (isDark ? '#FFFFFF' : '#000000') }]}>
                     {mode.label}
@@ -478,7 +474,7 @@ const Atlas = () => {
                 </TouchableOpacity>
               ))}
             </View>
-            
+
             {/* Start Navigation button */}
             {!atlas.showDirections && atlas.searchResult && atlas.userLocation && (
               <TouchableOpacity
@@ -497,8 +493,8 @@ const Atlas = () => {
       {atlas.searchResult && !atlas.showDirections && (
         <View style={styles.searchCardContainer}>
           <GlassCard style={[styles.searchResultCard, { backgroundColor: colors.background[1], borderColor: colors.glassBorder }]}>
-            <TouchableOpacity 
-              style={styles.closeSearchCard} 
+            <TouchableOpacity
+              style={styles.closeSearchCard}
               onPress={() => {
                 atlas.setSearchResult(null);
                 atlas.clearPersistentMarker();
@@ -507,7 +503,7 @@ const Atlas = () => {
             >
               <Ionicons name="close-circle" size={28} color={colors.textSecondary} />
             </TouchableOpacity>
-            
+
             <View style={{ alignItems: 'center' }}>
               {atlas.searchResult.image ? (
                 <Image source={{ uri: atlas.searchResult.image }} style={styles.searchResultImg} />
@@ -523,30 +519,30 @@ const Atlas = () => {
             </View>
 
             <View style={styles.searchCardButtons}>
-              <TouchableOpacity 
-                onPress={() => { 
-                  atlas.setSelectedJournal({ location: { lat: atlas.searchResult.coords.latitude, lng: atlas.searchResult.coords.longitude } }); 
-                  atlas.setShowStreetView(true); 
-                }} 
+              <TouchableOpacity
+                onPress={() => {
+                  atlas.setSelectedJournal({ location: { lat: atlas.searchResult.coords.latitude, lng: atlas.searchResult.coords.longitude } });
+                  atlas.setShowStreetView(true);
+                }}
                 style={[styles.actionBtn, { backgroundColor: '#4285F4', flex: 0.31 }]}
               >
                 <Ionicons name="eye" size={18} color="#fff" />
                 <Text style={styles.actionBtnText}>View</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 onPress={handleShowRouteFromSearch}
                 style={[styles.actionBtn, { backgroundColor: '#34A853', flex: 0.31 }]}
               >
                 <Ionicons name="navigate" size={18} color="#fff" />
                 <Text style={styles.actionBtnText}>Go</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                onPress={() => { 
-                  atlas.setTempCoords(atlas.searchResult.coords); 
-                  atlas.setModalVisible(true); 
-                }} 
+
+              <TouchableOpacity
+                onPress={() => {
+                  atlas.setTempCoords(atlas.searchResult.coords);
+                  atlas.setModalVisible(true);
+                }}
                 style={[styles.actionBtn, { backgroundColor: colors.primary, flex: 0.31 }]}
               >
                 <Ionicons name="add" size={18} color="#fff" />
