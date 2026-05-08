@@ -175,7 +175,21 @@ startNavBtnText: {
   fontWeight: '600',
   fontSize: 14,
 },
-
+clearMarkerFab: { 
+  position: 'absolute', 
+  right: 20, 
+  paddingHorizontal: 12, 
+  paddingVertical: 8, 
+  borderRadius: 20, 
+  flexDirection: 'row', 
+  alignItems: 'center', 
+  zIndex: 11, 
+  elevation: 5, 
+  shadowColor: '#000', 
+  shadowOffset: { width: 0, height: 2 }, 
+  shadowOpacity: 0.25, 
+  shadowRadius: 3.84 
+},
    
 });
 
