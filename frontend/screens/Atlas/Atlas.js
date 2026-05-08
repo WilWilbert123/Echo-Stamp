@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import LottieView from 'lottie-react-native';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Image, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -25,6 +25,10 @@ const Atlas = () => {
   const { colors, isDark } = useTheme();
   const route = useRoute();
   const navigation = useNavigation();
+  
+  // State for route coordinates to use with Polyline (no blinking!)
+  const [routePoints, setRoutePoints] = useState([]);
+  const [isRouteLoaded, setIsRouteLoaded] = useState(false);
 
   const travelModes = [
     { key: 'driving', icon: 'car', label: 'Car' },
@@ -44,11 +48,19 @@ const Atlas = () => {
   const atlas = useAtlas();
   const hasCenteredRoute = useRef(false);
   const hasCenteredSearchRoute = useRef(false);
+  const isNavigatingFromSearch = useRef(false);
+  const hasManualZoomed = useRef(false);
+  const routeCalculated = useRef(false);
 
-  // Reset the "fit route" flag when navigation is cancelled
+  // Reset flags when navigation is cancelled
   useEffect(() => {
     if (!atlas.showDirections) {
       hasCenteredRoute.current = false;
+      isNavigatingFromSearch.current = false;
+      hasManualZoomed.current = false;
+      routeCalculated.current = false;
+      setRoutePoints([]); // Clear route points
+      setIsRouteLoaded(false);
     }
   }, [atlas.showDirections]);
 
@@ -56,6 +68,8 @@ const Atlas = () => {
   useEffect(() => {
     if (!atlas.searchResult) {
       hasCenteredSearchRoute.current = false;
+      isNavigatingFromSearch.current = false;
+      hasManualZoomed.current = false;
     }
   }, [atlas.searchResult]);
 
@@ -91,9 +105,30 @@ const Atlas = () => {
   // Handle show route from search result
   const handleShowRouteFromSearch = () => {
     if (atlas.searchResult && atlas.userLocation) {
+      isNavigatingFromSearch.current = true;
+      hasManualZoomed.current = false;
+      routeCalculated.current = false;
+      setRoutePoints([]); // Clear previous route
+      setIsRouteLoaded(false);
+      
       atlas.setDestination(atlas.searchResult.coords);
       atlas.setShowDirections(true);
       atlas.triggerPinDropAnimation(atlas.searchResult.coords);
+      
+      setTimeout(() => {
+        if (atlas.mapRef.current && atlas.userLocation && atlas.searchResult && !hasManualZoomed.current) {
+          const coordinates = [atlas.userLocation, atlas.searchResult.coords];
+          atlas.mapRef.current.fitToCoordinates(coordinates, {
+            edgePadding: { top: 100, right: 50, bottom: 300, left: 50 },
+            animated: true,
+          });
+          hasCenteredRoute.current = true;
+          hasManualZoomed.current = true;
+        }
+        setTimeout(() => {
+          isNavigatingFromSearch.current = false;
+        }, 1000);
+      }, 150);
     }
   };
 
@@ -146,7 +181,7 @@ const Atlas = () => {
         />
       </TouchableOpacity>
 
-      {/* Clear Marker FAB - shows only when persistent marker exists */}
+      {/* Clear Marker FAB */}
       {atlas.showPersistentMarker && !atlas.showDirections && (
         <TouchableOpacity
           style={[styles.clearMarkerFab, { top: insets.top + 150, right: 20, backgroundColor: colors.background[1] }]}
@@ -180,7 +215,7 @@ const Atlas = () => {
         showsUserLocation={false}
         showsMyLocationButton={false}
       >
-        {/* Temporary Drop Animation (shows for 1.5 seconds then auto-hides) */}
+        {/* Temporary Drop Animation */}
         {atlas.showPinDropAnimation && atlas.pinDropCoordinates && (
           <Marker 
             coordinate={atlas.pinDropCoordinates}
@@ -201,7 +236,7 @@ const Atlas = () => {
           </Marker>
         )}
 
-        {/* Persistent Marker with Lottie Animation (stays until cleared) */}
+        {/* Persistent Marker */}
         {atlas.showPersistentMarker && atlas.persistentMarker && (
           <Marker 
             coordinate={atlas.persistentMarker}
@@ -218,7 +253,6 @@ const Atlas = () => {
                 speed={0.8}
               />
               <View style={[styles.persistentPinTail, { borderTopColor: colors.primary }]} />
-              {/* Label bubble */}
               {atlas.searchResult && (
                 <View style={[styles.persistentLabel, { backgroundColor: colors.background[1] }]}>
                   <Text style={[styles.persistentLabelText, { color: colors.textMain }]} numberOfLines={1}>
@@ -233,55 +267,86 @@ const Atlas = () => {
           </Marker>
         )}
 
-        {/* Route from user to destination when showDirections is true - THICKER LINE */}
+        {/* 
+          ========================================
+          FIXED: Use Polyline instead of MapViewDirections for main route
+          This eliminates blinking completely!
+          ========================================
+        */}
+        
+        {/* Main Navigation Route - Using Polyline (NO BLINKING!) */}
+        {atlas.showDirections && atlas.routeCoordinates && atlas.routeCoordinates.length > 0 && (
+          <Polyline
+            coordinates={atlas.routeCoordinates}
+            strokeWidth={8}
+            strokeColor={colors.primary}
+            strokeColors={[colors.primary, '#34A853', '#4285F4']}
+            lineCap="round"
+            lineJoin="round"
+            zIndex={10}
+          />
+        )}
+        
+        {/* MapViewDirections ONLY for fetching/updating route (hidden) */}
         {atlas.showDirections && atlas.userLocation && atlas.destination && (
-          <>
-            <MapViewDirections
-              origin={atlas.userLocation}
-              destination={atlas.destination}
-              apikey={atlas.GOOGLE_MAPS_APIKEY}
-              strokeWidth={8}
-              strokeColor={colors.primary}
-              strokeColors={[colors.primary, '#34A853', '#4285F4']}
-              precision="high"
-              mode={atlas.travelMode === 'bicycling' ? 'driving' : atlas.travelMode}
-              alternatives={true}
-              onReady={(result) => {
+          <MapViewDirections
+            origin={atlas.userLocation}
+            destination={atlas.destination}
+            apikey={atlas.GOOGLE_MAPS_APIKEY}
+            strokeWidth={0} // Hidden! Just for fetching data
+            mode={atlas.travelMode === 'bicycling' ? 'driving' : atlas.travelMode}
+            onReady={(result) => {
+              if (!routeCalculated.current) {
+                routeCalculated.current = true;
+                
+                let coordinates = [];
                 if (result.routes && result.routes.length > 0) {
-                  atlas.setRouteCoordinates(result.routes[0].coordinates);
+                  coordinates = result.routes[0].coordinates;
                   atlas.setAlternativeRoutes(result.routes.slice(1));
                   atlas.setEstimatedTime(result.routes[0].duration || result.duration);
                 } else if (result.coordinates) {
-                  atlas.setRouteCoordinates(result.coordinates);
+                  coordinates = result.coordinates;
                   atlas.setEstimatedTime(result.duration);
                   atlas.setAlternativeRoutes([]);
                 }
+                
+                // Update route coordinates for Polyline
+                if (coordinates.length > 0) {
+                  atlas.setRouteCoordinates(coordinates);
+                }
 
-                if (!hasCenteredRoute.current) {
-                  atlas.mapRef.current?.fitToCoordinates(result.coordinates, {
+                // Only auto-zoom if needed
+                if (!hasCenteredRoute.current && !isNavigatingFromSearch.current && !hasManualZoomed.current) {
+                  atlas.mapRef.current?.fitToCoordinates(coordinates, {
                     edgePadding: { top: 100, right: 50, bottom: 300, left: 50 },
                     animated: true,
                   });
                   hasCenteredRoute.current = true;
                 }
-              }}
-            />
-            {atlas.alternativeRoutes.map((route, index) => (
-              <MapViewDirections 
-                key={`alt-route-${index}`} 
-                origin={atlas.userLocation} 
-                destination={atlas.destination}
-                apikey={atlas.GOOGLE_MAPS_APIKEY} 
-                strokeWidth={6}
-                strokeColor={`${colors.primary}CC`}
-                coordinates={route.coordinates} 
-                mode={atlas.travelMode === 'bicycling' ? 'driving' : atlas.travelMode}
-              />
-            ))}
-          </>
+                
+                setTimeout(() => {
+                  routeCalculated.current = false;
+                }, 500);
+              }
+            }}
+          />
         )}
+        
+        {/* Alternative routes - using MapViewDirections (optional, less critical) */}
+        {atlas.alternativeRoutes.map((route, index) => (
+          <MapViewDirections 
+            key={`alt-route-${index}`} 
+            origin={atlas.userLocation} 
+            destination={atlas.destination}
+            apikey={atlas.GOOGLE_MAPS_APIKEY} 
+            strokeWidth={4}
+            strokeColor={`${colors.primary}80`}
+            coordinates={route.coordinates} 
+            mode={atlas.travelMode === 'bicycling' ? 'driving' : atlas.travelMode}
+          />
+        ))}
 
-        {/* Route from search result - THICKER AND DARKER LINE */}
+        {/* Route from search result (preview mode) */}
         {!atlas.showDirections && atlas.searchResult && atlas.userLocation && (
           <MapViewDirections
             origin={atlas.userLocation}
@@ -294,26 +359,16 @@ const Atlas = () => {
             mode={atlas.travelMode === 'bicycling' ? 'driving' : atlas.travelMode}
             onReady={(result) => {
               if (!hasCenteredSearchRoute.current && result.coordinates) {
-                // Fit the map to show both user location and search result
-                const coordinates = [
-                  atlas.userLocation,
-                  atlas.searchResult.coords
-                ];
-                atlas.mapRef.current?.fitToCoordinates(coordinates, {
-                  edgePadding: { top: 100, right: 50, bottom: 300, left: 50 },
-                  animated: true,
-                });
-                hasCenteredSearchRoute.current = true;
-                
-                // Set estimated time for the route
                 if (result.duration) {
                   atlas.setEstimatedTime(result.duration);
                 }
+                hasCenteredSearchRoute.current = true;
               }
             }}
           />
         )}
 
+        {/* User Location Marker */}
         {atlas.userLocation && (
           <Marker
             coordinate={atlas.userLocation}
@@ -334,7 +389,7 @@ const Atlas = () => {
           </Marker>
         )}
 
-        {/* Render Friends' Live Locations */}
+        {/* Friends' Live Locations */}
         {atlas.activeShares.map((share) => {
           const friend = share.sharer;
           if (!friend.lastKnownLocation) return null;
@@ -357,6 +412,7 @@ const Atlas = () => {
           );
         })}
 
+        {/* Journal Markers */}
         {atlas.markers.map((journal) => (
           <AtlasMarker
             key={journal._id}
@@ -403,6 +459,9 @@ const Atlas = () => {
                   style={[styles.travelModeButton, atlas.travelMode === mode.key && { backgroundColor: colors.primary }]}
                   onPress={() => {
                     atlas.setTravelMode(mode.key);
+                    // Clear route coordinates to force recalculation
+                    atlas.setRouteCoordinates([]);
+                    routeCalculated.current = false;
                     if (!atlas.showDirections && atlas.searchResult) {
                       hasCenteredSearchRoute.current = false;
                     }
@@ -438,7 +497,6 @@ const Atlas = () => {
       {atlas.searchResult && !atlas.showDirections && (
         <View style={styles.searchCardContainer}>
           <GlassCard style={[styles.searchResultCard, { backgroundColor: colors.background[1], borderColor: colors.glassBorder }]}>
-            {/* Close button for search card */}
             <TouchableOpacity 
               style={styles.closeSearchCard} 
               onPress={() => {
