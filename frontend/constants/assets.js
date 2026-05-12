@@ -81,6 +81,10 @@ export const EMOTION_ASSETS = {
   WeatherShower: require('../assets/Weathershower.json'),
   WeatherStorm: require('../assets/Weatherstorm.json'),
   RainyIcon: require('../assets/rainyicon.json'),
+
+    Fish: require('../assets/Fish.json'),
+  LurkingCat: require('../assets/LurkingCat.json'),
+  RedDiamond: require('../assets/RedDiamond.json'),
 };
 
 export const EMOTION_CONFIG = [
@@ -163,4 +167,8 @@ export const EMOTION_CONFIG = [
   { label: 'Shower', value: 'Shower', assetKey: 'WeatherShower' },
   { label: 'Storm', value: 'Storm', assetKey: 'WeatherStorm' },
   { label: 'Rainy', value: 'Rainy', assetKey: 'RainyIcon' },
+
+   { label: 'Fish', value: 'Fish', assetKey: 'Fish' },
+  { label: 'Lurking Cat', value: 'LurkingCat', assetKey: 'LurkingCat' },
+  { label: 'Red Diamond', value: 'RedDiamond', assetKey: 'RedDiamond' },
 ];
