@@ -28,18 +28,18 @@ const Help = ({ navigation }) => {
     
     // Animation values
     const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(20)).current;
+    const slideAnim = useRef(new Animated.Value(25)).current;
     
     useEffect(() => {
         Animated.parallel([
             Animated.timing(fadeAnim, {
                 toValue: 1,
-                duration: 600,
+                duration: 700,
                 useNativeDriver: true,
             }),
             Animated.timing(slideAnim, {
                 toValue: 0,
-                duration: 500,
+                duration: 600,
                 useNativeDriver: true,
             }),
         ]).start();
@@ -62,20 +62,32 @@ const Help = ({ navigation }) => {
         }
     };
 
+    // Glass Container Dynamic Styles
+    const getGlassStyles = () => ({
+        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.45)',
+        borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.6)',
+        shadowColor: isDark ? '#000000' : colors.primary,
+        shadowOpacity: isDark ? 0.3 : 0.06,
+    });
+
     const QuickAction = ({ icon, title, subtitle, color, onPress }) => (
         <TouchableOpacity 
-            style={[styles.actionCard, { backgroundColor: isDark ? '#1C1C1E' : '#F2F2F6' }]}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
             onPress={onPress}
         >
-            <View style={[styles.actionIcon, { backgroundColor: `${color}15` }]}>
-                <Ionicons name={icon} size={24} color={color} />
-            </View>
-            <View style={styles.actionContent}>
-                <Text style={[styles.actionTitle, { color: colors.textMain }]}>{title}</Text>
-                <Text style={[styles.actionSub, { color: colors.textSecondary }]}>{subtitle}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} style={styles.actionChevron} />
+            <LinearGradient
+                colors={isDark ? ['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.02)'] : ['rgba(255,255,255,0.6)', 'rgba(255,255,255,0.3)']}
+                style={[styles.actionCard, getGlassStyles()]}
+            >
+                <View style={[styles.actionIcon, { backgroundColor: `${color}18` }]}>
+                    <Ionicons name={icon} size={24} color={color} />
+                </View>
+                <View style={styles.actionContent}>
+                    <Text style={[styles.actionTitle, { color: colors.textMain }]}>{title}</Text>
+                    <Text style={[styles.actionSub, { color: colors.textSecondary }]}>{subtitle}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} style={styles.actionChevron} />
+            </LinearGradient>
         </TouchableOpacity>
     );
 
@@ -125,8 +137,12 @@ const Help = ({ navigation }) => {
 
     return (
         <LinearGradient colors={colors.background} style={styles.container}>
+            {/* Ambient background glow objects for depth */}
+            <View style={[styles.ambientGlow, { backgroundColor: colors.primary, top: '15%', left: -50 }]} />
+            <View style={[styles.ambientGlow, { backgroundColor: '#EC4899', bottom: '10%', right: -50, opacity: 0.12 }]} />
+
             <ScrollView 
-                contentContainerStyle={{ paddingTop: insets.top + 10, paddingBottom: 40 }} 
+                contentContainerStyle={{ paddingTop: insets.top + 15, paddingBottom: 60 }} 
                 showsVerticalScrollIndicator={false}
                 bounces={true}
             >
@@ -137,10 +153,10 @@ const Help = ({ navigation }) => {
                 ]}>
                     <TouchableOpacity 
                         onPress={() => navigation.goBack()} 
-                        style={styles.backBtn}
+                        style={[styles.backBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}
                         activeOpacity={0.7}
                     >
-                        <Ionicons name="chevron-back" size={28} color={colors.textMain} />
+                        <Ionicons name="chevron-back" size={24} color={colors.textMain} />
                     </TouchableOpacity>
                     <Text style={[styles.title, { color: colors.textMain }]}>Help Center</Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
@@ -153,11 +169,11 @@ const Help = ({ navigation }) => {
                     styles.searchContainer,
                     { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
                 ]}>
-                    <View style={[styles.searchBar, { backgroundColor: isDark ? '#1C1C1E' : '#F2F2F6' }]}>
-                        <Ionicons name="search" size={20} color={colors.textSecondary} />
+                    <View style={[styles.searchBar, getGlassStyles()]}>
+                        <Ionicons name="search" size={20} color={colors.textSecondary} style={{ opacity: 0.7 }} />
                         <TextInput 
                             placeholder="Search questions..."
-                            placeholderTextColor={colors.textSecondary}
+                            placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
                             style={[styles.searchInput, { color: colors.textMain }]}
                             value={searchQuery}
                             onChangeText={setSearchQuery}
@@ -166,7 +182,7 @@ const Help = ({ navigation }) => {
                         />
                         {searchQuery !== '' && (
                             <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+                                <Ionicons name="close-circle" size={20} color={colors.textSecondary} style={{ opacity: 0.8 }} />
                             </TouchableOpacity>
                         )}
                     </View>
@@ -175,7 +191,7 @@ const Help = ({ navigation }) => {
                 {/* Quick Actions Section */}
                 <Animated.View style={[
                     styles.section,
-                    { opacity: fadeAnim, transform: [{ translateX: slideAnim }] }
+                    { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
                 ]}>
                     <Text style={[styles.sectionTitle, { color: colors.textMain }]}>Quick Help</Text>
                     <View style={styles.actionGrid}>
@@ -183,7 +199,7 @@ const Help = ({ navigation }) => {
                             icon="mail-outline" 
                             title="Email Support" 
                             subtitle="Direct message to our team" 
-                            color="#EC4899" 
+                            color={isDark ? '#F472B6' : '#EC4899'} 
                             onPress={handleEmailSupport}
                         />
                     </View>
@@ -196,52 +212,54 @@ const Help = ({ navigation }) => {
                 ]}>
                     <Text style={[styles.sectionTitle, { color: colors.textMain }]}>
                         Frequently Asked Questions
-                        <Text style={[styles.faqCount, { color: colors.textSecondary }]}> ({filteredFaqs.length})</Text>
+                        <Text style={[styles.faqCount, { color: colors.textSecondary, opacity: 0.6 }]}> ({filteredFaqs.length})</Text>
                     </Text>
                     
                     {filteredFaqs.length === 0 ? (
-                        <View style={[styles.emptyState, { backgroundColor: isDark ? '#1C1C1E' : '#F2F2F6' }]}>
-                            <Ionicons name="search-outline" size={48} color={colors.textSecondary} />
+                        <View style={[styles.emptyState, getGlassStyles()]}>
+                            <Ionicons name="search-outline" size={44} color={colors.textSecondary} style={{ opacity: 0.5 }} />
                             <Text style={[styles.emptyStateTitle, { color: colors.textMain }]}>No results found</Text>
                             <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
                                 Try searching with different keywords
                             </Text>
                         </View>
                     ) : (
-                        filteredFaqs.map((faq, index) => (
-                            <TouchableOpacity 
-                                key={faq.id}
-                                onPress={() => {
-                                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                                    setExpandedFaq(expandedFaq === faq.id ? null : faq.id);
-                                }}
-                                activeOpacity={0.7}
-                                style={[
-                                    styles.faqCard, 
-                                    { 
-                                        backgroundColor: isDark ? '#1C1C1E' : '#F2F2F6',
-                                        marginBottom: index === filteredFaqs.length - 1 ? 0 : 12
-                                    }
-                                ]}
-                            >
-                                <View style={styles.faqHeader}>
-                                    <View style={styles.faqHeaderLeft}>
-                                        <View style={[styles.faqIcon, { backgroundColor: `${colors.primary}10` }]}>
-                                            <Ionicons name={faq.icon} size={18} color={colors.primary} />
+                        filteredFaqs.map((faq, index) => {
+                            const isExpanded = expandedFaq === faq.id;
+                            return (
+                                <TouchableOpacity 
+                                    key={faq.id}
+                                    onPress={() => {
+                                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                        setExpandedFaq(isExpanded ? null : faq.id);
+                                    }}
+                                    activeOpacity={0.85}
+                                    style={[
+                                        styles.faqCard, 
+                                        getGlassStyles(),
+                                        { marginBottom: index === filteredFaqs.length - 1 ? 0 : 12 }
+                                    ]}
+                                >
+                                    <View style={styles.faqHeader}>
+                                        <View style={styles.faqHeaderLeft}>
+                                            <View style={[styles.faqIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
+                                                <Ionicons name={faq.icon} size={18} color={colors.primary} />
+                                            </View>
+                                            <Text style={[styles.faqQuestion, { color: colors.textMain }]}>{faq.question}</Text>
                                         </View>
-                                        <Text style={[styles.faqQuestion, { color: colors.textMain }]}>{faq.question}</Text>
+                                        <Ionicons 
+                                            name={isExpanded ? "chevron-up" : "chevron-down"} 
+                                            size={18} 
+                                            color={colors.textSecondary}
+                                            style={{ opacity: 0.7 }}
+                                        />
                                     </View>
-                                    <Ionicons 
-                                        name={expandedFaq === faq.id ? "chevron-up" : "chevron-down"} 
-                                        size={20} 
-                                        color={colors.textSecondary}
-                                    />
-                                </View>
-                                {expandedFaq === faq.id && (
-                                    <Text style={[styles.faqAnswer, { color: colors.textSecondary }]}>{faq.answer}</Text>
-                                )}
-                            </TouchableOpacity>
-                        ))
+                                    {isExpanded && (
+                                        <Text style={[styles.faqAnswer, { color: colors.textSecondary }]}>{faq.answer}</Text>
+                                    )}
+                                </TouchableOpacity>
+                            );
+                        })
                     )}
                 </Animated.View>
 
@@ -250,7 +268,7 @@ const Help = ({ navigation }) => {
                     styles.footer,
                     { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
                 ]}>
-                    <View style={[styles.footerNote, { backgroundColor: isDark ? '#1C1C1E' : '#F2F2F6' }]}>
+                    <View style={[styles.footerNote, getGlassStyles()]}>
                         <Ionicons name="chatbubble-outline" size={20} color={colors.primary} />
                         <Text style={[styles.footerText, { color: colors.textSecondary }]}>
                             Still need help? Our support team is here for you.
@@ -266,211 +284,198 @@ const Help = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1 },
-    
+    container: { 
+        flex: 1,
+    },
+    ambientGlow: {
+        position: 'absolute',
+        width: 250,
+        height: 250,
+        borderRadius: 125,
+        opacity: 0.08,
+        blurRadius: 50, // Note: Works beautifully natively on iOS, acts as layout anchor for multi-layered effects
+    },
     header: { 
         paddingHorizontal: 20, 
         marginBottom: 24 
     },
-    
     backBtn: { 
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 38,
+        height: 38,
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 8,
-        marginLeft: -8,
+        marginBottom: 12,
     },
-    
     title: { 
-        fontSize: 34, 
+        fontSize: 32, 
         fontWeight: '700', 
         letterSpacing: -0.5,
         fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'System',
-        marginBottom: 4,
+        marginBottom: 6,
     },
-    
     subtitle: { 
         fontSize: 16, 
         fontWeight: '400', 
-        opacity: 0.7,
         letterSpacing: -0.3,
     },
-    
     searchContainer: { 
         paddingHorizontal: 20, 
-        marginBottom: 32 
+        marginBottom: 28 
     },
-    
     searchBar: { 
         flexDirection: 'row', 
         alignItems: 'center', 
         paddingHorizontal: 16, 
-        height: 52, 
-        borderRadius: 16, 
+        height: 54, 
+        borderRadius: 18, 
+        borderWidth: 1,
         gap: 12,
     },
-    
     searchInput: { 
         flex: 1, 
         fontSize: 16, 
         fontWeight: '400',
         letterSpacing: -0.3,
     },
-    
     section: { 
         paddingHorizontal: 20, 
-        marginBottom: 32 
+        marginBottom: 28 
     },
-    
     sectionTitle: { 
-        fontSize: 20, 
+        fontSize: 18, 
         fontWeight: '600', 
-        letterSpacing: -0.5,
-        marginBottom: 16,
+        letterSpacing: -0.4,
+        marginBottom: 14,
     },
-    
     faqCount: {
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: '400',
     },
-    
     actionGrid: { 
         gap: 12 
     },
-    
     actionCard: { 
         flexDirection: 'row', 
         alignItems: 'center', 
         padding: 16, 
-        borderRadius: 16, 
+        borderRadius: 20, 
+        borderWidth: 1,
         gap: 14,
+        shadowOffset: { width: 0, height: 4 },
+        shadowRadius: 12,
     },
-    
     actionIcon: { 
-        width: 48, 
-        height: 48, 
-        borderRadius: 12, 
+        width: 46, 
+        height: 46, 
+        borderRadius: 14, 
         justifyContent: 'center', 
         alignItems: 'center' 
     },
-    
     actionContent: {
         flex: 1,
     },
-    
     actionTitle: { 
         fontSize: 16, 
         fontWeight: '600',
         letterSpacing: -0.3,
         marginBottom: 2,
     },
-    
     actionSub: { 
         fontSize: 13, 
         fontWeight: '400',
-        opacity: 0.7,
-        letterSpacing: -0.3,
+        letterSpacing: -0.2,
     },
-    
     actionChevron: {
-        opacity: 0.5,
+        opacity: 0.4,
     },
-    
     faqCard: { 
-        padding: 18, 
-        borderRadius: 16, 
+        padding: 16, 
+        borderRadius: 20, 
+        borderWidth: 1,
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 8,
     },
-    
     faqHeader: { 
         flexDirection: 'row', 
         justifyContent: 'space-between', 
         alignItems: 'center',
         gap: 12,
     },
-    
     faqHeaderLeft: {
         flexDirection: 'row',
         alignItems: 'center',
         flex: 1,
         gap: 12,
     },
-    
     faqIcon: {
-        width: 32,
-        height: 32,
-        borderRadius: 8,
+        width: 34,
+        height: 34,
+        borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    
     faqQuestion: { 
-        fontSize: 16, 
-        fontWeight: '500',
-        letterSpacing: -0.3,
+        fontSize: 15, 
+        fontWeight: '600',
+        letterSpacing: -0.2,
         flex: 1,
     },
-    
     faqAnswer: { 
         fontSize: 14, 
-        lineHeight: 20, 
+        lineHeight: 21, 
         marginTop: 14,
-        marginLeft: 44,
+        marginLeft: 46,
         fontWeight: '400',
-        letterSpacing: -0.3,
+        letterSpacing: -0.2,
         opacity: 0.8,
     },
-    
     emptyState: {
-        padding: 40,
-        borderRadius: 16,
+        padding: 36,
+        borderRadius: 20,
+        borderWidth: 1,
         alignItems: 'center',
-        gap: 12,
+        gap: 10,
     },
-    
     emptyStateTitle: {
-        fontSize: 18,
+        fontSize: 17,
         fontWeight: '600',
-        letterSpacing: -0.3,
-        marginTop: 8,
+        letterSpacing: -0.2,
+        marginTop: 4,
     },
-    
     emptyStateText: {
         fontSize: 14,
         fontWeight: '400',
         textAlign: 'center',
-        letterSpacing: -0.3,
-        opacity: 0.7,
+        letterSpacing: -0.2,
+        opacity: 0.6,
     },
-    
     footer: {
         paddingHorizontal: 20,
-        marginTop: 8,
+        marginTop: 4,
         gap: 12,
     },
-    
     footerNote: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
-        borderRadius: 16,
+        borderRadius: 20,
+        borderWidth: 1,
         gap: 12,
     },
-    
     footerText: {
         flex: 1,
         fontSize: 14,
         fontWeight: '400',
-        letterSpacing: -0.3,
+        letterSpacing: -0.2,
+        lineHeight: 19,
     },
-    
     responseTime: {
         fontSize: 12,
         fontWeight: '400',
         textAlign: 'center',
-        opacity: 0.6,
-        letterSpacing: -0.3,
+        opacity: 0.5,
+        letterSpacing: -0.1,
     },
 });
 

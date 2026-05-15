@@ -22,18 +22,18 @@ const Terms = ({ navigation }) => {
     
     // Animation values
     const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(20)).current;
+    const slideAnim = useRef(new Animated.Value(25)).current;
     
     useEffect(() => {
         Animated.parallel([
             Animated.timing(fadeAnim, {
                 toValue: 1,
-                duration: 600,
+                duration: 700,
                 useNativeDriver: true,
             }),
             Animated.timing(slideAnim, {
                 toValue: 0,
-                duration: 500,
+                duration: 600,
                 useNativeDriver: true,
             }),
         ]).start();
@@ -84,6 +84,14 @@ const Terms = ({ navigation }) => {
         }
     ];
 
+    // Glass Container Dynamic Styles Shared Module
+    const getGlassStyles = () => ({
+        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.45)',
+        borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.6)',
+        shadowColor: isDark ? '#000000' : colors.primary,
+        shadowOpacity: isDark ? 0.3 : 0.06,
+    });
+
     const Section = ({ title, content, icon, index }) => (
         <Animated.View 
             style={[
@@ -95,8 +103,8 @@ const Terms = ({ navigation }) => {
             ]}
         >
             <View style={[styles.sectionHeader, { borderLeftColor: colors.primary }]}>
-                <View style={[styles.sectionIcon, { backgroundColor: `${colors.primary}10` }]}>
-                    <Ionicons name={icon} size={18} color={colors.primary} />
+                <View style={[styles.sectionIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
+                    <Ionicons name={icon} size={16} color={colors.primary} />
                 </View>
                 <Text style={[styles.sectionTitle, { color: colors.textMain }]}>{title}</Text>
             </View>
@@ -106,21 +114,25 @@ const Terms = ({ navigation }) => {
 
     return (
         <LinearGradient colors={colors.background} style={styles.container}>
+            {/* Ambient background glass elements */}
+            <View style={[styles.ambientGlow, { backgroundColor: colors.primary, top: '15%', left: -50 }]} />
+            <View style={[styles.ambientGlow, { backgroundColor: '#3B82F6', bottom: '25%', right: -60, opacity: 0.08 }]} />
+
             {/* Header */}
             <Animated.View style={[
                 styles.header, 
                 { 
-                    paddingTop: insets.top + 10,
+                    paddingTop: insets.top + 15,
                     opacity: fadeAnim,
                     transform: [{ translateY: slideAnim }]
                 }
             ]}>
                 <TouchableOpacity 
                     onPress={() => navigation.goBack()} 
-                    style={styles.backBtn}
+                    style={[styles.backBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}
                     activeOpacity={0.7}
                 >
-                    <Ionicons name="close" size={28} color={colors.textMain} />
+                    <Ionicons name="close" size={24} color={colors.textMain} />
                 </TouchableOpacity>
                 <Text style={[styles.title, { color: colors.textMain }]}>Terms of Service</Text>
                 <Text style={[styles.lastUpdated, { color: colors.textSecondary }]}>Updated March 2026</Text>
@@ -131,23 +143,27 @@ const Terms = ({ navigation }) => {
                 showsVerticalScrollIndicator={false}
                 bounces={true}
             >
-                {/* Summary Card - Apple Style */}
+                {/* Summary Card - Glassmorphism */}
                 <Animated.View 
                     style={[
                         styles.summaryCard,
+                        getGlassStyles(),
                         { 
-                            backgroundColor: isDark ? '#1C1C1E' : '#F2F2F6',
                             opacity: fadeAnim,
                             transform: [{ scale: fadeAnim.interpolate({
                                 inputRange: [0, 1],
-                                outputRange: [0.95, 1]
+                                outputRange: [0.96, 1]
                             }) }]
                         }
                     ]}
                 >
+                    <LinearGradient
+                        colors={isDark ? ['rgba(255,255,255,0.03)', 'rgba(255,255,255,0.005)'] : ['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.05)']}
+                        style={StyleSheet.absoluteFillObject}
+                    />
                     <View style={styles.summaryHeader}>
-                        <View style={[styles.summaryIcon, { backgroundColor: `${colors.primary}15` }]}>
-                            <Ionicons name="document-text" size={22} color={colors.primary} />
+                        <View style={[styles.summaryIcon, { backgroundColor: `${colors.primary}18` }]}>
+                            <Ionicons name="document-text" size={20} color={colors.primary} />
                         </View>
                         <Text style={[styles.summaryTitle, { color: colors.textMain }]}>Summary</Text>
                     </View>
@@ -170,7 +186,7 @@ const Terms = ({ navigation }) => {
                     ))}
                 </View>
 
-                {/* Contact Footer - Apple Style */}
+                {/* Contact Footer - Glassmorphism */}
                 <Animated.View 
                     style={[
                         styles.footer,
@@ -180,15 +196,22 @@ const Terms = ({ navigation }) => {
                         }
                     ]}
                 >
-                    <View style={[styles.contactCard, { backgroundColor: isDark ? '#1C1C1E' : '#F2F2F6' }]}>
-                        <Ionicons name="mail-outline" size={24} color={colors.primary} />
+                    <LinearGradient
+                        colors={isDark ? ['rgba(255,255,255,0.05)', 'rgba(255,255,255,0.01)'] : ['rgba(255,255,255,0.65)', 'rgba(255,255,255,0.35)']}
+                        style={[styles.contactCard, getGlassStyles()]}
+                    >
+                        <View style={[styles.contactIconCircle, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
+                            <Ionicons name="mail-outline" size={22} color={colors.primary} />
+                        </View>
                         <Text style={[styles.contactTitle, { color: colors.textMain }]}>Questions?</Text>
-                        <Text style={[styles.contactEmail, { color: colors.primary }]}>stampecho22@gmail.com</Text>
+                        <TouchableOpacity activeOpacity={0.6}>
+                            <Text style={[styles.contactEmail, { color: colors.primary }]}>stampecho22@gmail.com</Text>
+                        </TouchableOpacity>
                         <Text style={[styles.contactText, { color: colors.textSecondary }]}>
                             We're here to help. Reach out anytime.
                         </Text>
-                    </View>
-                    <Text style={[styles.footerText, { color: colors.textSecondary }]}>
+                    </LinearGradient>
+                    <Text style={[styles.footerText, { color: colors.textSecondary, opacity: 0.6 }]}>
                         By using Echo Stamp, you agree to these terms.
                     </Text>
                 </Animated.View>
@@ -198,61 +221,62 @@ const Terms = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1 },
-    
-    header: {
-        paddingHorizontal: 20,
-        marginBottom: 8,
+    container: { 
+        flex: 1 
     },
-    
+    ambientGlow: {
+        position: 'absolute',
+        width: 300,
+        height: 300,
+        borderRadius: 150,
+        opacity: 0.06,
+        blurRadius: 60,
+    },
+    header: {
+        paddingHorizontal: 24,
+        marginBottom: 4,
+    },
     backBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 38,
+        height: 38,
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 8,
-        marginLeft: -8,
+        marginBottom: 12,
     },
-    
     title: {
-        fontSize: 34,
+        fontSize: 32,
         fontWeight: '700',
         letterSpacing: -0.5,
         fontFamily: Platform.OS === 'ios' ? 'SF Pro Display' : 'System',
         marginBottom: 4,
     },
-    
     lastUpdated: {
         fontSize: 14,
         fontWeight: '400',
-        opacity: 0.6,
+        opacity: 0.5,
     },
-    
     scrollContent: {
-        paddingHorizontal: 20,
-        paddingBottom: 40,
+        paddingHorizontal: 24,
+        paddingBottom: 60,
     },
-    
     summaryCard: {
         padding: 20,
         borderRadius: 24,
-        marginTop: 16,
+        borderWidth: 1,
+        marginTop: 20,
         marginBottom: 32,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 2,
+        overflow: 'hidden',
+        shadowOffset: { width: 0, height: 6 },
+        shadowRadius: 16,
+      
     },
-    
     summaryHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 12,
         gap: 12,
     },
-    
     summaryIcon: {
         width: 36,
         height: 36,
@@ -260,101 +284,98 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    
     summaryTitle: {
         fontSize: 17,
         fontWeight: '600',
         letterSpacing: -0.3,
     },
-    
     summaryText: {
         fontSize: 15,
         lineHeight: 22,
         fontWeight: '400',
-        letterSpacing: -0.3,
+        letterSpacing: -0.2,
+        opacity: 0.9,
     },
-    
     sectionsContainer: {
-        marginBottom: 32,
+        marginBottom: 16,
     },
-    
     section: {
-        marginBottom: 28,
+        marginBottom: 26,
     },
-    
     sectionHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 10,
         gap: 12,
         borderLeftWidth: 3,
         paddingLeft: 12,
     },
-    
     sectionIcon: {
-        width: 30,
-        height: 30,
+        width: 28,
+        height: 28,
         borderRadius: 8,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    
     sectionTitle: {
-        fontSize: 17,
+        fontSize: 16,
         fontWeight: '600',
         letterSpacing: -0.3,
         flex: 1,
     },
-    
     sectionText: {
         fontSize: 15,
         lineHeight: 22,
         fontWeight: '400',
-        letterSpacing: -0.3,
-        opacity: 0.8,
+        letterSpacing: -0.2,
+        opacity: 0.75,
         paddingLeft: 24,
     },
-    
     footer: {
-        marginTop: 16,
+        marginTop: 8,
         alignItems: 'center',
-        gap: 24,
+        gap: 20,
     },
-    
     contactCard: {
         width: '100%',
         padding: 24,
         borderRadius: 24,
+        borderWidth: 1,
         alignItems: 'center',
-        gap: 12,
+        gap: 10,
+        shadowOffset: { width: 0, height: 6 },
+        shadowRadius: 16,
     },
-    
+    contactIconCircle: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 2,
+    },
     contactTitle: {
         fontSize: 18,
         fontWeight: '600',
         letterSpacing: -0.3,
     },
-    
     contactEmail: {
         fontSize: 16,
         fontWeight: '500',
-        letterSpacing: -0.3,
+        letterSpacing: -0.2,
     },
-    
     contactText: {
         fontSize: 14,
         fontWeight: '400',
         textAlign: 'center',
-        opacity: 0.7,
-        letterSpacing: -0.3,
+        opacity: 0.65,
+        letterSpacing: -0.2,
     },
-    
     footerText: {
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: '400',
         textAlign: 'center',
-        opacity: 0.6,
-        letterSpacing: -0.3,
+        letterSpacing: -0.2,
     },
 });
 
