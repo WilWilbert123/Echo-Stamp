@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center'
     },
     logoText: { 
-        fontSize: 52, // Larger for impact
+        fontSize: 52, 
         fontWeight: '900', 
         letterSpacing: 8,
         textShadowColor: 'rgba(0, 0, 0, 0.1)',
