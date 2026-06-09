@@ -44,7 +44,7 @@ const Intro = ({ navigation }) => {
 
         const timer = setTimeout(() => {
             navigation.replace('Login');
-        }, 4000); // Slightly longer to appreciate the animation
+        }, 4000); 
 
         return () => clearTimeout(timer);
     }, []);
