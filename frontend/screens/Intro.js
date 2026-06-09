@@ -21,7 +21,7 @@ const Intro = ({ navigation }) => {
                 tension: 40,
                 friction: 7,
                 useNativeDriver: true,
-                delay: i * 150, // This creates the E... C... H... effect
+                delay: i * 150, 
             });
         });
 
