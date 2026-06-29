@@ -122,7 +122,7 @@ const MainTabs = () => {
           options={{ tabBarIcon: ({ color }) => <Ionicons name="map-outline" size={24} color={color} /> }} 
         />
 
-        {/* NEW CENTER TAB: Echo Stamp */}
+      
         <Tab.Screen 
           name="Echo" 
           component={EchoStamp} 
