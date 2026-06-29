@@ -80,7 +80,7 @@ const MainTabs = () => {
             focusComment: data.focusComment 
         });
       } else if (data.echoId) {
-        // Navigate to the Global Echo Feed (Home)
+        
         navigation.navigate('Home', { 
             echoId: data.echoId,
             commentId: data.commentId,
