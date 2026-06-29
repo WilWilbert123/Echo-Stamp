@@ -8,7 +8,7 @@ const Intro = ({ navigation }) => {
     const logoText = "ECHOES";
     const letters = logoText.split("");
 
-    // Create an array of animated values, one for each letter
+
     const animatedValues = useRef(letters.map(() => new Animated.Value(0))).current;
     const subtitleOpacity = useRef(new Animated.Value(0)).current;
     const lineScale = useRef(new Animated.Value(0)).current;
