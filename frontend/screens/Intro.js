@@ -14,7 +14,7 @@ const Intro = ({ navigation }) => {
     const lineScale = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        // 1. Create a staggered animation for the letters
+        
         const letterAnimations = letters.map((_, i) => {
             return Animated.spring(animatedValues[i], {
                 toValue: 1,
