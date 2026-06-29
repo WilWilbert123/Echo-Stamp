@@ -7,7 +7,7 @@ import React, { useEffect } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import AIAgent from '../components/AIAgent';
-import NotificationPopup from '../components/NotificationPopup'; // Import this
+import NotificationPopup from '../components/NotificationPopup'; 
 import { useTheme } from '../context/ThemeContext';
 import { getGroupsList } from '../redux/groupSlice';
 import { getConversationsList } from '../redux/messageSlice';
