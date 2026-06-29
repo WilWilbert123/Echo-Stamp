@@ -44,7 +44,7 @@ const MainTabs = () => {
       dispatch(getConversationsList());
       dispatch(getGroupsList());
       dispatch(getNotificationsAsync());
-    }, 10000); // Sync every 10 seconds
+    }, 10000); 
 
     return () => clearInterval(pollInterval);
   }, [dispatch]);
