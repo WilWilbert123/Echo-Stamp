@@ -231,7 +231,7 @@ const Insights = () => {
                 contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20, paddingBottom: 120 }]}
                 showsVerticalScrollIndicator={false}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-                style={{ backgroundColor: 'transparent' }} // Ensure waves aren't covered
+                style={{ backgroundColor: 'transparent' }} 
             >
                 <View style={styles.header}>
                     <Text style={[styles.headerTitle, { color: colors.textMain }]}>Insights</Text>
