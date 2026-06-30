@@ -42,7 +42,7 @@ const Insights = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [chartKey, setChartKey] = useState(0);
 
-    // --- Modernized Refresh Logic ---
+
     const onRefresh = useCallback(async () => {
         if (!user?._id) return;
         
