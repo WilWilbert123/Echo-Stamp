@@ -43,7 +43,7 @@ const handleMessage = (event) => {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <WebView
         ref={webViewRef}
-        // IMPORTANT: Use the /login route for the auth screen
+        
         source={{ uri: 'https://echo-stamp.onrender.com/login' }} 
         injectedJavaScript={injectedJS}
         javaScriptEnabled={true}
