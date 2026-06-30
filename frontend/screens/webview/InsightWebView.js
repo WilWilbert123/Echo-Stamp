@@ -26,7 +26,7 @@ const handleMessage = (event) => {
       const data = JSON.parse(event.nativeEvent.data);
 
       if (data.type === 'AUTH_SUCCESS') {
-        // Update Redux state with user data and token
+      
         dispatch(setCredentials(data.payload));
         
         // Success feedback and transition
