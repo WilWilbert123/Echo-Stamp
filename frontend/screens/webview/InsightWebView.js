@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { useDispatch, useSelector } from 'react-redux';
-import { setCredentials } from '../../redux/authSlice'; // Ensure path is correct
+import { setCredentials } from '../../redux/authSlice'; 
 
 const InsightWebView = ({ navigation }) => {
   const insets = useSafeAreaInsets();
