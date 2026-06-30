@@ -85,7 +85,7 @@ const Insights = () => {
         'Play': 10, 'Fire': 9, 'Haha': 9, 'Loved': 8, 'Beach': 8, 'Walk': 7, 
         'Calm': 6, 'Ok': 5, 'Drunk': 4, 'Burnout': 3, 'Sad': 2, 'NoEnergy': 2, 
         'Sick': 1, 'Crying': 1,
-        // New Asset Weights (Intensity/Positivity scale)
+        
         'Dragonflying': 7, 'Guitarist': 8, 'WaveyBirdie': 6, 'Dogparty': 10,
         'Groovywalk': 8, 'TotoroWalk': 7, 'MoodyDog': 3, 'Hrundel': 5,
         'Fatherday': 9, 'AvocadoFruit': 6, 'Handwave': 5, 'ClappingHands': 7,
