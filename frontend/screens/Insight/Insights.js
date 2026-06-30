@@ -325,7 +325,7 @@ const Insights = () => {
                     )}
                 </View>
 
-                {/* Emotional Resilience (Stability Chart) */}
+            
                 <Text style={[styles.sectionTitle, { color: colors.textMain }]}>Emotional Resilience</Text>
                 <View style={[styles.chartCard, { flexDirection: 'row', backgroundColor: colors.glass, borderColor: colors.glassBorder, padding: 20 }]}>
                     <ProgressChart 
